@@ -9,6 +9,23 @@ mod inner_bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+pub mod forbidden {
+    use crate::bindings::ossl_param_st;
+
+    extern "C" {
+        pub fn OSSL_PARAM_set_utf8_ptr(
+            p: *mut ossl_param_st,
+            val: *const ::std::os::raw::c_char,
+        ) -> ::std::os::raw::c_int;
+    }
+    extern "C" {
+        pub fn OSSL_PARAM_locate(
+            p: *mut ossl_param_st,
+            key: *const ::std::os::raw::c_char,
+        ) -> *mut ossl_param_st;
+    }
+}
+
 /// Then we export as pub all the symbols from the inner module.
 pub use inner_bindings::*;
 
