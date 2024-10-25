@@ -1,3 +1,5 @@
+#![feature(c_size_t)]
+
 #[macro_use]
 extern crate log;
 
