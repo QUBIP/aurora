@@ -1,11 +1,12 @@
-use crate::bindings::forbidden;
-use crate::bindings::ossl_param_st;
-use crate::bindings::OSSL_DISPATCH;
-use crate::bindings::OSSL_PROV_PARAM_NAME;
 use crate::named;
-use crate::osslparams::OSSLParam;
 use crate::OpenSSLProvider;
 use libc::{c_int, c_void};
+use rust_openssl_core_provider::{bindings, osslparams};
+use bindings::forbidden;
+use bindings::ossl_param_st;
+use bindings::OSSL_DISPATCH;
+use bindings::OSSL_PROV_PARAM_NAME;
+use osslparams::OSSLParam;
 
 use crate::{PROV_NAME, PROV_VER};
 

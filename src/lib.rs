@@ -17,9 +17,8 @@ macro_rules! log_target {
     };
 }
 
-mod bindings;
+use rust_openssl_core_provider::{bindings, osslparams};
 mod init;
-mod osslparams;
 
 use bindings::dispatch_table_entry;
 use bindings::ossl_param_st;
