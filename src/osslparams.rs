@@ -173,7 +173,16 @@ pub const OSSL_PARAM_END: ossl_param_st = ossl_param_st {
     return_size: 0,
 };
 
-const OSSL_PARAM_UNMODIFIED: usize = core::ffi::c_size_t::MAX;
+/*
+ * core::ffi:c_size_t is only in nightly, and unstable
+ *
+ * https://github.com/rust-lang/rust/issues/88345 seems to have stalled,
+ * so for now we just assume c_size_t and usize are the same.
+ *
+ * TODO: revisit if c_size_t goes stable
+ */
+// const OSSL_PARAM_UNMODIFIED: usize = core::ffi::c_size_t::MAX;
+const OSSL_PARAM_UNMODIFIED: usize = usize::MAX;
 
 pub fn ossl_param_locate<'a>(params: &'a mut [OSSLParam], key: &KeyType) -> Option<&'a mut OSSLParam> {
     params.iter_mut().find(|p| {
