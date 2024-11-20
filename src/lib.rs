@@ -25,6 +25,8 @@ use bindings::ossl_param_st;
 use bindings::{
     OSSL_DISPATCH, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS, OSSL_FUNC_PROVIDER_GET_PARAMS,
     OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_NAME,
+    OSSL_FUNC_provider_get_params_fn, OSSL_FUNC_provider_gettable_params_fn,
+    OSSL_FUNC_provider_teardown_fn,
 };
 use init::OSSL_CORE_HANDLE;
 use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
@@ -85,12 +87,21 @@ impl<'a> OpenSSLProvider<'a> {
     /// Retrieve a heap allocated `OSSL_DISPATCH` table associated with this provider instance.
     pub fn get_provider_dispatch(&mut self) -> *const OSSL_DISPATCH {
         let ret = Box::new([
-            dispatch_table_entry!(OSSL_FUNC_PROVIDER_TEARDOWN, crate::init::provider_teardown),
+            dispatch_table_entry!(
+                OSSL_FUNC_PROVIDER_TEARDOWN,
+                OSSL_FUNC_provider_teardown_fn,
+                crate::init::provider_teardown
+            ),
             dispatch_table_entry!(
                 OSSL_FUNC_PROVIDER_GETTABLE_PARAMS,
+                OSSL_FUNC_provider_gettable_params_fn,
                 crate::init::gettable_params
             ),
-            dispatch_table_entry!(OSSL_FUNC_PROVIDER_GET_PARAMS, crate::init::get_params),
+            dispatch_table_entry!(
+                OSSL_FUNC_PROVIDER_GET_PARAMS,
+                OSSL_FUNC_provider_get_params_fn,
+                crate::init::get_params
+            ),
             OSSL_DISPATCH::END,
         ]);
         ret.as_ptr()
