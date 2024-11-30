@@ -1,12 +1,12 @@
 use crate::named;
 use crate::OpenSSLProvider;
-use libc::{c_int, c_void};
-use rust_openssl_core_provider::{bindings, osslparams};
 use bindings::forbidden;
 use bindings::ossl_param_st;
 use bindings::OSSL_DISPATCH;
 use bindings::OSSL_PROV_PARAM_NAME;
+use libc::{c_int, c_void};
 use osslparams::OSSLParam;
+use rust_openssl_core_provider::{bindings, osslparams};
 
 use crate::{PROV_NAME, PROV_VER};
 
@@ -97,4 +97,3 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut ossl_par
     }
     1
 }
-

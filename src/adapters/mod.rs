@@ -7,6 +7,8 @@ pub(crate) struct Contexts {
 
 impl Default for Contexts {
     fn default() -> Self {
-        Self { libcrux: Default::default() }
+        Self {
+            libcrux: Default::default(),
+        }
     }
 }

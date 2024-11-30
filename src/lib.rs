@@ -18,17 +18,17 @@ macro_rules! log_target {
 }
 
 use rust_openssl_core_provider::{bindings, osslparams};
+pub(crate) mod adapters;
 mod init;
 mod query;
-pub(crate) mod adapters;
 
 use bindings::dispatch_table_entry;
 use bindings::ossl_param_st;
 use bindings::{
-    OSSL_DISPATCH, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS, OSSL_FUNC_PROVIDER_GET_PARAMS,
-    OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_NAME, OSSL_FUNC_PROVIDER_QUERY_OPERATION,
     OSSL_FUNC_provider_get_params_fn, OSSL_FUNC_provider_gettable_params_fn,
-    OSSL_FUNC_provider_teardown_fn, OSSL_FUNC_provider_query_operation_fn
+    OSSL_FUNC_provider_query_operation_fn, OSSL_FUNC_provider_teardown_fn, OSSL_DISPATCH,
+    OSSL_FUNC_PROVIDER_GETTABLE_PARAMS, OSSL_FUNC_PROVIDER_GET_PARAMS,
+    OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_NAME,
 };
 use init::OSSL_CORE_HANDLE;
 use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
@@ -175,6 +175,3 @@ impl<'a> From<*mut core::ffi::c_void> for &OpenSSLProvider<'a> {
         unsafe { &*provp }
     }
 }
-
-
-

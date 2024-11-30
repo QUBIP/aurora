@@ -1,9 +1,28 @@
 use function_name::named;
 use rust_openssl_core_provider::bindings::{OSSL_ALGORITHM, OSSL_DISPATCH};
+use std::ffi::CStr;
 
-const MLKEM_FUNCTIONS: [OSSL_DISPATCH; 1] = [
-    OSSL_DISPATCH::END,
-];
+const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP'";
+
+#[allow(non_snake_case)]
+mod X25519MLKEM768 {
+    use super::*;
+
+    // Ensure proper null-terminated C string
+    // https://docs.openssl.org/master/man7/provider/#algorithm-naming
+    pub const NAMES: &CStr = c"X25519MLKEM768";
+
+    // https://docs.openssl.org/master/man7/provider-kem/
+    pub const KEM_FUNCTIONS: [OSSL_DISPATCH; 1] = [
+        OSSL_DISPATCH::END,
+    ];
+
+    // https://docs.openssl.org/master/man7/provider-keymgmt/
+    #[expect(unused)]
+    pub const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 1] = [
+        OSSL_DISPATCH::END,
+    ];
+}
 
 #[derive(Debug)]
 pub struct AdapterContext {
@@ -12,7 +31,9 @@ pub struct AdapterContext {
 
 impl Default for AdapterContext {
     fn default() -> Self {
-        Self { op_kem_ptr: Default::default() }
+        Self {
+            op_kem_ptr: Default::default(),
+        }
     }
 }
 
@@ -23,12 +44,12 @@ impl AdapterContext {
         match self.op_kem_ptr {
             Some(ptr) => ptr,
             None => {
-                // Dynamically create the MLKEMPROV array
+                // Dynamically create the OP_KEM array
                 let array = vec![
                     OSSL_ALGORITHM {
-                        algorithm_names: c"MLKEM".as_ptr(), // Ensure proper null-terminated C string
-                        property_definition: c"x.author='author'".as_ptr(), // Ensure proper null-terminated C string
-                        implementation: MLKEM_FUNCTIONS.as_ptr(),
+                        algorithm_names: X25519MLKEM768::NAMES.as_ptr(),
+                        property_definition: PROPERTY_DEFINITION.as_ptr(), // Ensure proper null-terminated C string
+                        implementation: X25519MLKEM768::KEM_FUNCTIONS.as_ptr(),
                         algorithm_description: std::ptr::null(),
                     },
                     OSSL_ALGORITHM::END,
@@ -42,6 +63,3 @@ impl AdapterContext {
         }
     }
 }
-
-
-
