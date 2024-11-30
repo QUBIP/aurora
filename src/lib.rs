@@ -138,8 +138,7 @@ impl<'a> OpenSSLProvider<'a> {
     }
 
     pub fn c_prov_name(&self) -> &CStr {
-        // FIXME: this should be turned into `expect` or removed
-        #[allow(clippy::let_and_return)]
+        #[expect(clippy::let_and_return)]
         static L: LazyLock<CString> = LazyLock::new(|| {
             let _s = CString::new(crate::PROV_NAME).expect("Error parsing cPROV_NAME");
             _s
