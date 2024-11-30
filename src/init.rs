@@ -1,10 +1,6 @@
-use std::ffi::CStr;
-use std::ptr::null;
-
 use crate::named;
 use crate::OpenSSLProvider;
 use libc::{c_int, c_void};
-use rust_openssl_core_provider::bindings::OSSL_OP_KEM;
 use rust_openssl_core_provider::{bindings, osslparams};
 use bindings::forbidden;
 use bindings::ossl_param_st;
@@ -102,67 +98,3 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut ossl_par
     1
 }
 
-
-use bindings::OSSL_ALGORITHM;
-
-const MLKEM_FUNCTIONS: [OSSL_DISPATCH; 1] = [
-    OSSL_DISPATCH {
-        function_id: 0,
-        function: None,
-    },
-];
-
-
-pub struct ProviderContext {
-    mlkemprov_ptr: Option<*const OSSL_ALGORITHM>,
-}
-
-impl ProviderContext {
-    
-    fn get_mlkemprov(&mut self) -> *const OSSL_ALGORITHM {
-        match self.mlkemprov_ptr {
-            Some(ptr) => ptr,
-            None => {
-                // Dynamically create the MLKEMPROV array
-                let array = vec![
-                    OSSL_ALGORITHM {
-                        algorithm_names: c"MLKEM".as_ptr(), // Ensure proper null-terminated C string
-                        property_definition: c"x.author='author'".as_ptr(), // Ensure proper null-terminated C string
-                        implementation: MLKEM_FUNCTIONS.as_ptr(),
-                        algorithm_description: std::ptr::null(),
-                    },
-                    OSSL_ALGORITHM {
-                        algorithm_names: std::ptr::null(),
-                        property_definition: std::ptr::null(),
-                        implementation: std::ptr::null(),
-                        algorithm_description: std::ptr::null(),
-                    },
-                ]
-                .into_boxed_slice();
-
-                let raw_ptr = Box::into_raw(array) as *const OSSL_ALGORITHM;
-                self.mlkemprov_ptr = Some(raw_ptr);
-                raw_ptr
-            }
-        }
-    }
-}
-
-
-
-pub extern "C" fn query(provctx: *mut c_void,
-                        operation_id: i32,
-                        no_cache: *mut i32,
-) -> *const OSSL_ALGORITHM {
-
-    unsafe {
-        if !no_cache.is_null() {
-            *no_cache = 0;
-        }
-        let ctx = &mut *(provctx as *mut ProviderContext); // Cast the void pointer to ProviderContext
-        match operation_id {
-            x if x == OSSL_OP_KEM as i32 => ctx.get_mlkemprov(),
-            _ => std::ptr::null(),
-        }
-    }
-}

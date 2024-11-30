@@ -19,6 +19,8 @@ macro_rules! log_target {
 
 use rust_openssl_core_provider::{bindings, osslparams};
 mod init;
+mod query;
+pub(crate) mod adapters;
 
 use bindings::dispatch_table_entry;
 use bindings::ossl_param_st;
@@ -49,6 +51,7 @@ pub struct OpenSSLProvider<'a> {
     pub version: &'a str,
     params: Vec<OSSLParam>,
     param_array_ptr: Option<*mut [ossl_param_st]>,
+    pub(crate) adapters_ctx: adapters::Contexts,
 }
 
 /// We implement the Drop trait to make it explicit when a provider
@@ -81,6 +84,7 @@ impl<'a> OpenSSLProvider<'a> {
             params: vec![OSSLParam::Utf8Ptr(Utf8PtrData::new_null(
                 OSSL_PROV_PARAM_NAME,
             ))],
+            adapters_ctx: adapters::Contexts::default(),
         }
     }
 
@@ -105,7 +109,7 @@ impl<'a> OpenSSLProvider<'a> {
             dispatch_table_entry!(
                 OSSL_FUNC_PROVIDER_QUERY_OPERATION,
                 OSSL_FUNC_provider_query_operation_fn,
-                crate::init::query
+                crate::query::query_operation
             ),
             OSSL_DISPATCH::END,
         ]);
