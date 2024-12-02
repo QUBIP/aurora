@@ -2,7 +2,7 @@ use function_name::named;
 use rust_openssl_core_provider::bindings::{OSSL_ALGORITHM, OSSL_DISPATCH};
 use std::ffi::CStr;
 
-const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP'";
+const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP':x.qubip.adapter='libcrux'";
 
 #[allow(non_snake_case)]
 mod X25519MLKEM768 {
@@ -11,6 +11,8 @@ mod X25519MLKEM768 {
     // Ensure proper null-terminated C string
     // https://docs.openssl.org/master/man7/provider/#algorithm-naming
     pub const NAMES: &CStr = c"X25519MLKEM768";
+
+    pub const DESCRIPTION: &CStr = c"This is a description";
 
     // https://docs.openssl.org/master/man7/provider-kem/
     pub const KEM_FUNCTIONS: [OSSL_DISPATCH; 1] = [
@@ -50,7 +52,7 @@ impl AdapterContext {
                         algorithm_names: X25519MLKEM768::NAMES.as_ptr(),
                         property_definition: PROPERTY_DEFINITION.as_ptr(), // Ensure proper null-terminated C string
                         implementation: X25519MLKEM768::KEM_FUNCTIONS.as_ptr(),
-                        algorithm_description: std::ptr::null(),
+                        algorithm_description: X25519MLKEM768::DESCRIPTION.as_ptr(),
                     },
                     OSSL_ALGORITHM::END,
                 ]
