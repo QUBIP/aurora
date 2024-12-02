@@ -4,7 +4,7 @@ use function_name::named;
 use rust_openssl_core_provider::bindings;
 use std::ffi::CStr;
 
-const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP':x.qubip.adapter='libcrux'";
+const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='libcrux'";
 
 #[allow(non_snake_case)]
 mod X25519MLKEM768 {
@@ -27,7 +27,7 @@ mod X25519MLKEM768 {
     pub(super) const NAMES: &CStr = c"X25519MLKEM768";
 
     // Ensure proper null-terminated C string
-    pub(super) const DESCRIPTION: &CStr = c"This is a description";
+    pub(super) const DESCRIPTION: &CStr = c"X25519MLKEM768 from libcrux";
 
     // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
     // https://docs.openssl.org/master/man7/provider-kem/
