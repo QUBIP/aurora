@@ -1,5 +1,7 @@
+use crate::OpenSSLProvider;
+use bindings::{OSSL_ALGORITHM, OSSL_DISPATCH};
 use function_name::named;
-use rust_openssl_core_provider::bindings::{OSSL_ALGORITHM, OSSL_DISPATCH};
+use rust_openssl_core_provider::bindings;
 use std::ffi::CStr;
 
 const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP':x.qubip.adapter='libcrux'";
@@ -7,22 +9,127 @@ const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP':x.qubip.adapter='libcrux'"
 #[allow(non_snake_case)]
 mod X25519MLKEM768 {
     use super::*;
+    use bindings::dispatch_table_entry;
+    use bindings::{OSSL_FUNC_kem_decapsulate_fn, OSSL_FUNC_KEM_DECAPSULATE};
+    use bindings::{OSSL_FUNC_kem_decapsulate_init_fn, OSSL_FUNC_KEM_DECAPSULATE_INIT};
+    use bindings::{OSSL_FUNC_kem_encapsulate_fn, OSSL_FUNC_KEM_ENCAPSULATE};
+    use bindings::{OSSL_FUNC_kem_encapsulate_init_fn, OSSL_FUNC_KEM_ENCAPSULATE_INIT};
+    use bindings::{OSSL_FUNC_kem_freectx_fn, OSSL_FUNC_KEM_FREECTX};
+    use bindings::{OSSL_FUNC_kem_newctx_fn, OSSL_FUNC_KEM_NEWCTX};
 
     // Ensure proper null-terminated C string
     // https://docs.openssl.org/master/man7/provider/#algorithm-naming
-    pub const NAMES: &CStr = c"X25519MLKEM768";
+    pub(super) const NAMES: &CStr = c"X25519MLKEM768";
 
-    pub const DESCRIPTION: &CStr = c"This is a description";
+    // Ensure proper null-terminated C string
+    pub(super) const DESCRIPTION: &CStr = c"This is a description";
 
     // https://docs.openssl.org/master/man7/provider-kem/
-    pub const KEM_FUNCTIONS: [OSSL_DISPATCH; 1] = [
+    pub(super) const KEM_FUNCTIONS: [OSSL_DISPATCH; 7] = [
+        dispatch_table_entry!(
+            OSSL_FUNC_KEM_NEWCTX,
+            OSSL_FUNC_kem_newctx_fn,
+            kem_functions::newctx
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEM_FREECTX,
+            OSSL_FUNC_kem_freectx_fn,
+            kem_functions::freectx
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEM_ENCAPSULATE_INIT,
+            OSSL_FUNC_kem_encapsulate_init_fn,
+            kem_functions::encapsulate_init
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEM_ENCAPSULATE,
+            OSSL_FUNC_kem_encapsulate_fn,
+            kem_functions::encapsulate
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEM_DECAPSULATE_INIT,
+            OSSL_FUNC_kem_decapsulate_init_fn,
+            kem_functions::decapsulate_init
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEM_DECAPSULATE,
+            OSSL_FUNC_kem_decapsulate_fn,
+            kem_functions::decapsulate
+        ),
         OSSL_DISPATCH::END,
     ];
 
     // https://docs.openssl.org/master/man7/provider-keymgmt/
-    pub const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 1] = [
-        OSSL_DISPATCH::END,
-    ];
+    pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 1] = [OSSL_DISPATCH::END];
+
+    mod kem_functions {
+        use super::*;
+        use bindings::ossl_param_st;
+        use libc::{c_int, c_uchar, c_void};
+
+        #[named]
+        pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
+            trace!(target: log_target!(), "{}", "Called!");
+            let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+
+            todo!("Create a new KEM ctx")
+        }
+
+        #[named]
+        pub(super) extern "C" fn freectx(_vkemctx: *mut c_void) -> c_void {
+            trace!(target: log_target!(), "{}", "Called!");
+
+            todo!("Reclaim and drop vkemctx")
+        }
+
+        #[named]
+        pub(super) extern "C" fn encapsulate_init(
+            _vkemctx: *mut c_void,
+            _provkey: *mut c_void,
+            _params: *mut ossl_param_st,
+        ) -> c_int {
+            trace!(target: log_target!(), "{}", "Called!");
+
+            todo!("Init encapsulate operation ctx")
+        }
+
+        #[named]
+        pub(super) extern "C" fn decapsulate_init(
+            _vkemctx: *mut c_void,
+            _provkey: *mut c_void,
+            _params: *mut ossl_param_st,
+        ) -> c_int {
+            trace!(target: log_target!(), "{}", "Called!");
+
+            todo!("Init decapsulate operation ctx")
+        }
+
+        #[named]
+        pub(super) extern "C" fn encapsulate(
+            _ctx: *mut c_void,
+            _out: *mut c_uchar,
+            _outlen: *mut usize,
+            _secret: *mut c_uchar,
+            _secretlen: *mut usize,
+        ) -> c_int {
+            trace!(target: log_target!(), "{}", "Called!");
+
+            todo!("Perform encapsulate")
+        }
+
+        #[named]
+        pub(super) extern "C" fn decapsulate(
+            _ctx: *mut c_void,
+            _out: *mut c_uchar,
+            _outlen: *mut usize,
+            _in_: *const c_uchar,
+            _inlen: usize,
+        ) -> c_int {
+            trace!(target: log_target!(), "{}", "Called!");
+
+            todo!("Perform decapsulate")
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -8,7 +8,7 @@ use bindings::OSSL_OP_KEM;
 use bindings::OSSL_OP_KEYMGMT;
 
 #[named]
-pub extern "C" fn query_operation(
+pub(crate) extern "C" fn query_operation(
     vprovctx: *mut c_void,
     operation_id: i32,
     no_cache: *mut i32,
