@@ -16,6 +16,11 @@ mod X25519MLKEM768 {
     use bindings::{OSSL_FUNC_kem_encapsulate_init_fn, OSSL_FUNC_KEM_ENCAPSULATE_INIT};
     use bindings::{OSSL_FUNC_kem_freectx_fn, OSSL_FUNC_KEM_FREECTX};
     use bindings::{OSSL_FUNC_kem_newctx_fn, OSSL_FUNC_KEM_NEWCTX};
+    use bindings::{OSSL_FUNC_keymgmt_export_types_ex_fn, OSSL_FUNC_KEYMGMT_EXPORT_TYPES_EX};
+    use bindings::{OSSL_FUNC_keymgmt_free_fn, OSSL_FUNC_KEYMGMT_FREE};
+    use bindings::{OSSL_FUNC_keymgmt_has_fn, OSSL_FUNC_KEYMGMT_HAS};
+    use bindings::{OSSL_FUNC_keymgmt_import_types_ex_fn, OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX};
+    use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
 
     // Ensure proper null-terminated C string
     // https://docs.openssl.org/master/man7/provider/#algorithm-naming
@@ -24,6 +29,7 @@ mod X25519MLKEM768 {
     // Ensure proper null-terminated C string
     pub(super) const DESCRIPTION: &CStr = c"This is a description";
 
+    // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
     // https://docs.openssl.org/master/man7/provider-kem/
     pub(super) const KEM_FUNCTIONS: [OSSL_DISPATCH; 7] = [
         dispatch_table_entry!(
@@ -59,8 +65,36 @@ mod X25519MLKEM768 {
         OSSL_DISPATCH::END,
     ];
 
+    // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
     // https://docs.openssl.org/master/man7/provider-keymgmt/
-    pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 1] = [OSSL_DISPATCH::END];
+    pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 6] = [
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_NEW,
+            OSSL_FUNC_keymgmt_new_fn,
+            keymgmt_functions::keymgmt_new
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_FREE,
+            OSSL_FUNC_keymgmt_free_fn,
+            keymgmt_functions::keymgmt_free
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_HAS,
+            OSSL_FUNC_keymgmt_has_fn,
+            keymgmt_functions::keymgmt_has
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX,
+            OSSL_FUNC_keymgmt_import_types_ex_fn,
+            keymgmt_functions::import_types_ex
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_EXPORT_TYPES_EX,
+            OSSL_FUNC_keymgmt_export_types_ex_fn,
+            keymgmt_functions::export_types_ex
+        ),
+        OSSL_DISPATCH::END,
+    ];
 
     mod kem_functions {
         use super::*;
@@ -128,6 +162,56 @@ mod X25519MLKEM768 {
             trace!(target: log_target!(), "{}", "Called!");
 
             todo!("Perform decapsulate")
+        }
+    }
+
+    mod keymgmt_functions {
+        use super::*;
+        use bindings::ossl_param_st;
+        use std::ffi::{c_int, c_void};
+
+        #[named]
+        pub(super) unsafe extern "C" fn keymgmt_new(vprovctx: *mut c_void) -> *mut c_void {
+            trace!(target: log_target!(), "{}", "Called!");
+            let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+            todo!("Create a new key management ctx")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn keymgmt_free(_keydata: *mut c_void) {
+            trace!(target: log_target!(), "{}", "Called!");
+            todo!("Free the key data")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn keymgmt_has(
+            _keydata: *const c_void,
+            _selection: c_int,
+        ) -> c_int {
+            trace!(target: log_target!(), "{}", "Called!");
+            todo!("Check whether the given keydata contains the subsets of data indicated by the selector")
+        }
+
+        // I think using {import,export}_types_ex instead of the non-_ex variant means we only
+        // support OSSL 3.2 and up, but I also think that's fine...?
+        #[named]
+        pub(super) unsafe extern "C" fn import_types_ex(
+            vprovctx: *mut c_void,
+            _selection: c_int,
+        ) -> *const ossl_param_st {
+            trace!(target: log_target!(), "{}", "Called!");
+            let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+            todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn export_types_ex(
+            vprovctx: *mut c_void,
+            _selection: c_int,
+        ) -> *const ossl_param_st {
+            trace!(target: log_target!(), "{}", "Called!");
+            let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+            todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection")
         }
     }
 }
