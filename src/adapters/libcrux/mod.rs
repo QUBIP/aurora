@@ -20,7 +20,6 @@ mod X25519MLKEM768 {
     ];
 
     // https://docs.openssl.org/master/man7/provider-keymgmt/
-    #[expect(unused)]
     pub const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 1] = [
         OSSL_DISPATCH::END,
     ];
@@ -29,12 +28,14 @@ mod X25519MLKEM768 {
 #[derive(Debug)]
 pub struct AdapterContext {
     op_kem_ptr: Option<*const OSSL_ALGORITHM>,
+    op_keymgmt_ptr: Option<*const OSSL_ALGORITHM>,
 }
 
 impl Default for AdapterContext {
     fn default() -> Self {
         Self {
             op_kem_ptr: Default::default(),
+            op_keymgmt_ptr: Default::default(),
         }
     }
 }
@@ -60,6 +61,31 @@ impl AdapterContext {
 
                 let raw_ptr = Box::into_raw(array) as *const OSSL_ALGORITHM;
                 self.op_kem_ptr = Some(raw_ptr);
+                raw_ptr
+            }
+        }
+    }
+
+    #[named]
+    pub fn get_op_keymgmt(&mut self) -> *const OSSL_ALGORITHM {
+        debug!(target: log_target!(), "{}", "Called!");
+        match self.op_keymgmt_ptr {
+            Some(ptr) => ptr,
+            None => {
+                // Dynamically create the OP_KEYMGMT array
+                let array = vec![
+                    OSSL_ALGORITHM {
+                        algorithm_names: X25519MLKEM768::NAMES.as_ptr(),
+                        property_definition: PROPERTY_DEFINITION.as_ptr(),
+                        implementation: X25519MLKEM768::KMGMT_FUNCTIONS.as_ptr(),
+                        algorithm_description: X25519MLKEM768::DESCRIPTION.as_ptr(),
+                    },
+                    OSSL_ALGORITHM::END,
+                ]
+                .into_boxed_slice();
+
+                let raw_ptr = Box::into_raw(array) as *const OSSL_ALGORITHM;
+                self.op_keymgmt_ptr = Some(raw_ptr);
                 raw_ptr
             }
         }

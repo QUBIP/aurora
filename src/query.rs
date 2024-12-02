@@ -5,6 +5,7 @@ use rust_openssl_core_provider::bindings;
 
 use bindings::OSSL_ALGORITHM;
 use bindings::OSSL_OP_KEM;
+use bindings::OSSL_OP_KEYMGMT;
 
 #[named]
 pub extern "C" fn query_operation(
@@ -24,6 +25,7 @@ pub extern "C" fn query_operation(
     /* this is still wrong, when thinking we will have multiple adapters, but works for now */
     match operation_id as u32 {
         x if x == OSSL_OP_KEM => provctx.adapters_ctx.libcrux.get_op_kem(),
+        x if x == OSSL_OP_KEYMGMT => provctx.adapters_ctx.libcrux.get_op_keymgmt(),
         unsupported_op_id => {
             trace!(target: log_target!(), "Unsupported operation_id: {}", unsupported_op_id);
             std::ptr::null()
