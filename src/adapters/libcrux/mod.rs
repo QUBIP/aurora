@@ -16,9 +16,11 @@ mod X25519MLKEM768 {
     use bindings::{OSSL_FUNC_kem_encapsulate_init_fn, OSSL_FUNC_KEM_ENCAPSULATE_INIT};
     use bindings::{OSSL_FUNC_kem_freectx_fn, OSSL_FUNC_KEM_FREECTX};
     use bindings::{OSSL_FUNC_kem_newctx_fn, OSSL_FUNC_KEM_NEWCTX};
+    use bindings::{OSSL_FUNC_keymgmt_export_fn, OSSL_FUNC_KEYMGMT_EXPORT};
     use bindings::{OSSL_FUNC_keymgmt_export_types_ex_fn, OSSL_FUNC_KEYMGMT_EXPORT_TYPES_EX};
     use bindings::{OSSL_FUNC_keymgmt_free_fn, OSSL_FUNC_KEYMGMT_FREE};
     use bindings::{OSSL_FUNC_keymgmt_has_fn, OSSL_FUNC_KEYMGMT_HAS};
+    use bindings::{OSSL_FUNC_keymgmt_import_fn, OSSL_FUNC_KEYMGMT_IMPORT};
     use bindings::{OSSL_FUNC_keymgmt_import_types_ex_fn, OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX};
     use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
 
@@ -67,21 +69,31 @@ mod X25519MLKEM768 {
 
     // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
     // https://docs.openssl.org/master/man7/provider-keymgmt/
-    pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 6] = [
+    pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 8] = [
         dispatch_table_entry!(
             OSSL_FUNC_KEYMGMT_NEW,
             OSSL_FUNC_keymgmt_new_fn,
-            keymgmt_functions::keymgmt_new
+            keymgmt_functions::new
         ),
         dispatch_table_entry!(
             OSSL_FUNC_KEYMGMT_FREE,
             OSSL_FUNC_keymgmt_free_fn,
-            keymgmt_functions::keymgmt_free
+            keymgmt_functions::free
         ),
         dispatch_table_entry!(
             OSSL_FUNC_KEYMGMT_HAS,
             OSSL_FUNC_keymgmt_has_fn,
-            keymgmt_functions::keymgmt_has
+            keymgmt_functions::has
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_IMPORT,
+            OSSL_FUNC_keymgmt_import_fn,
+            keymgmt_functions::import
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_EXPORT,
+            OSSL_FUNC_keymgmt_export_fn,
+            keymgmt_functions::export
         ),
         dispatch_table_entry!(
             OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX,
@@ -167,29 +179,50 @@ mod X25519MLKEM768 {
 
     mod keymgmt_functions {
         use super::*;
-        use bindings::ossl_param_st;
+        use bindings::{ossl_param_st, OSSL_CALLBACK};
         use std::ffi::{c_int, c_void};
 
         #[named]
-        pub(super) unsafe extern "C" fn keymgmt_new(vprovctx: *mut c_void) -> *mut c_void {
+        pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
             trace!(target: log_target!(), "{}", "Called!");
             let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
             todo!("Create a new key management ctx")
         }
 
         #[named]
-        pub(super) unsafe extern "C" fn keymgmt_free(_keydata: *mut c_void) {
+        pub(super) unsafe extern "C" fn free(_keydata: *mut c_void) {
             trace!(target: log_target!(), "{}", "Called!");
             todo!("Free the key data")
         }
 
         #[named]
-        pub(super) unsafe extern "C" fn keymgmt_has(
+        pub(super) unsafe extern "C" fn has(
             _keydata: *const c_void,
             _selection: c_int,
         ) -> c_int {
             trace!(target: log_target!(), "{}", "Called!");
             todo!("Check whether the given keydata contains the subsets of data indicated by the selector")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn import(
+            _keydata: *mut c_void,
+            _selection: c_int,
+            _params: *const ossl_param_st
+        ) -> c_int {
+            trace!(target: log_target!(), "{}", "Called!");
+            todo!("import data indicated by selection into keydata with values taken from the params array")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn export(
+            _keydata: *mut c_void,
+            _selection: c_int,
+            _param_cb: OSSL_CALLBACK,
+            _cbarg: *mut c_void,
+        ) -> c_int {
+            trace!(target: log_target!(), "{}", "Called!");
+            todo!("extract values indicated by selection from keydata, create an OSSL_PARAM array with them, and call param_cb with that array as well as the given cbarg")
         }
 
         // I think using {import,export}_types_ex instead of the non-_ex variant means we only
@@ -201,7 +234,7 @@ mod X25519MLKEM768 {
         ) -> *const ossl_param_st {
             trace!(target: log_target!(), "{}", "Called!");
             let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
-            todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection")
+            todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, for parameters that OSSL_FUNC_keymgmt_import() can handle")
         }
 
         #[named]
@@ -211,7 +244,7 @@ mod X25519MLKEM768 {
         ) -> *const ossl_param_st {
             trace!(target: log_target!(), "{}", "Called!");
             let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
-            todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection")
+            todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, that the OSSL_FUNC_keymgmt_export() callback can expect to receive")
         }
     }
 }
