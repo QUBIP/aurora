@@ -22,6 +22,9 @@ mod X25519MLKEM768 {
     use bindings::{OSSL_FUNC_keymgmt_has_fn, OSSL_FUNC_KEYMGMT_HAS};
     use bindings::{OSSL_FUNC_keymgmt_import_fn, OSSL_FUNC_KEYMGMT_IMPORT};
     use bindings::{OSSL_FUNC_keymgmt_import_types_ex_fn, OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX};
+    use bindings::{OSSL_FUNC_keymgmt_gen_fn, OSSL_FUNC_KEYMGMT_GEN};
+    use bindings::{OSSL_FUNC_keymgmt_gen_cleanup_fn, OSSL_FUNC_KEYMGMT_GEN_CLEANUP};
+    use bindings::{OSSL_FUNC_keymgmt_gen_init_fn, OSSL_FUNC_KEYMGMT_GEN_INIT};
     use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
 
     // Ensure proper null-terminated C string
@@ -69,7 +72,7 @@ mod X25519MLKEM768 {
 
     // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
     // https://docs.openssl.org/master/man7/provider-keymgmt/
-    pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 8] = [
+    pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 11] = [
         dispatch_table_entry!(
             OSSL_FUNC_KEYMGMT_NEW,
             OSSL_FUNC_keymgmt_new_fn,
@@ -84,6 +87,21 @@ mod X25519MLKEM768 {
             OSSL_FUNC_KEYMGMT_HAS,
             OSSL_FUNC_keymgmt_has_fn,
             keymgmt_functions::has
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_GEN,
+            OSSL_FUNC_keymgmt_gen_fn,
+            keymgmt_functions::gen
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_GEN_CLEANUP,
+            OSSL_FUNC_keymgmt_gen_cleanup_fn,
+            keymgmt_functions::gen_cleanup
+        ),
+        dispatch_table_entry!(
+            OSSL_FUNC_KEYMGMT_GEN_INIT,
+            OSSL_FUNC_keymgmt_gen_init_fn,
+            keymgmt_functions::gen_init
         ),
         dispatch_table_entry!(
             OSSL_FUNC_KEYMGMT_IMPORT,
@@ -202,6 +220,33 @@ mod X25519MLKEM768 {
         ) -> c_int {
             trace!(target: log_target!(), "{}", "Called!");
             todo!("Check whether the given keydata contains the subsets of data indicated by the selector")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn gen(
+            _genctx: *mut c_void,
+            _cb: OSSL_CALLBACK,
+            _cbarg: *mut c_void,
+        ) -> *mut c_void {
+            trace!(target: log_target!(), "{}", "Called!");
+            todo!("perform keygen and call cb at regular intervals with progress indications")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn gen_cleanup(_genctx: *mut c_void) {
+            trace!(target: log_target!(), "{}", "Called!");
+            todo!("clean up and free the key object generation context genctx")
+        }
+
+        #[named]
+        pub(super) unsafe extern "C" fn gen_init(
+            vprovctx: *mut c_void,
+            _selection: c_int,
+            _params: *const ossl_param_st,
+        ) -> *mut c_void {
+            trace!(target: log_target!(), "{}", "Called!");
+            let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+            todo!("create the keygen context genctx; initialize it with selections; set params on the context if params is not null")
         }
 
         #[named]
