@@ -1,4 +1,3 @@
-
 use super::*;
 use bindings::ossl_param_st;
 use libc::{c_int, c_uchar, c_void};
