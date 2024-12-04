@@ -113,7 +113,7 @@ impl<'a> OpenSSLProvider<'a> {
             ),
             OSSL_DISPATCH::END,
         ]);
-        ret.as_ptr()
+        Box::into_raw(ret).cast()
     }
 
     fn get_params_array(&mut self) -> *const ossl_param_st {
