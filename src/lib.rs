@@ -25,9 +25,10 @@ mod query;
 use bindings::dispatch_table_entry;
 use bindings::ossl_param_st;
 use bindings::{
-    OSSL_FUNC_provider_get_params_fn, OSSL_FUNC_provider_gettable_params_fn,
-    OSSL_FUNC_provider_query_operation_fn, OSSL_FUNC_provider_teardown_fn, OSSL_DISPATCH,
-    OSSL_FUNC_PROVIDER_GETTABLE_PARAMS, OSSL_FUNC_PROVIDER_GET_PARAMS,
+    OSSL_FUNC_provider_get_capabilities_fn, OSSL_FUNC_provider_get_params_fn,
+    OSSL_FUNC_provider_gettable_params_fn, OSSL_FUNC_provider_query_operation_fn,
+    OSSL_FUNC_provider_teardown_fn, OSSL_DISPATCH, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS,
+    OSSL_FUNC_PROVIDER_GET_CAPABILITIES, OSSL_FUNC_PROVIDER_GET_PARAMS,
     OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_NAME,
 };
 use init::OSSL_CORE_HANDLE;
@@ -110,6 +111,11 @@ impl<'a> OpenSSLProvider<'a> {
                 OSSL_FUNC_PROVIDER_QUERY_OPERATION,
                 OSSL_FUNC_provider_query_operation_fn,
                 crate::query::query_operation
+            ),
+            dispatch_table_entry!(
+                OSSL_FUNC_PROVIDER_GET_CAPABILITIES,
+                OSSL_FUNC_provider_get_capabilities_fn,
+                crate::query::get_capabilities
             ),
             OSSL_DISPATCH::END,
         ]);
