@@ -72,13 +72,13 @@ pub(crate) extern "C" fn get_capabilities(
     let _ = tls_group_params[0].set(c"X25519MLKEM768"); // IANA group name
     let _ = tls_group_params[1].set(c"X25519MLKEM768"); // group name according to the provider
     let _ = tls_group_params[2].set(c"X25519MLKEM768"); // algorithm name
-    let _ = tls_group_params[3].set(0x11ec);            // group ID
-    let _ = tls_group_params[4].set(192);               // number of bits of security
+    let _ = tls_group_params[3].set(0x11ec as u32);     // group ID
+    let _ = tls_group_params[4].set(192 as u32);        // number of bits of security
     let _ = tls_group_params[5].set(0x0304);            // min TLS: v1.3
     let _ = tls_group_params[6].set(0);                 // max TLS: no set version
     let _ = tls_group_params[7].set(-1);                // min DTLS (do not use this group at all with DTLS)
     let _ = tls_group_params[8].set(-1);                // max DTLS (do not use this group at all with DTLS)
-    let _ = tls_group_params[9].set(1);                 // is KEM: yes
+    let _ = tls_group_params[9].set(1 as u32);          // is KEM: yes
     // TODO: eliminate code duplication between here and OpenSSLProvider::get_params_array
     let tls_group_params_boxed_slice = Box::new(
         tls_group_params
