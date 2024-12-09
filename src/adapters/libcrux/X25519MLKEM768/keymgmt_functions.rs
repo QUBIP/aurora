@@ -178,3 +178,29 @@ pub(super) unsafe extern "C" fn export_types_ex(
     let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
     todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, that the OSSL_FUNC_keymgmt_export() callback can expect to receive")
 }
+
+#[named]
+pub(super) unsafe extern "C" fn gen_set_params(
+    _vgenctx: *mut c_void,
+    _params: *const ossl_param_st
+) -> c_int {
+    trace!(target: log_target!(), "{}", "Called!");
+    warn!(target: log_target!(), "{}", "Ignoring params!");
+    //todo!("set genctx params");
+    1
+}
+
+use crate::osslparams::EMPTY_PARAMS;
+
+#[named]
+pub(super) unsafe extern "C" fn gen_settable_params(
+    _vgenctx: *mut c_void,
+    vprovctx: *mut c_void,
+) -> *const ossl_param_st {
+    trace!(target: log_target!(), "{}", "Called!");
+    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    //todo!("return pointer to array of settable genctx params")
+    warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of settable genctx params");
+
+    EMPTY_PARAMS.as_ptr()
+}

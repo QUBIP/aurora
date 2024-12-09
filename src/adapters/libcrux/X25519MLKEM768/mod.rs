@@ -12,6 +12,8 @@ use bindings::{OSSL_FUNC_keymgmt_free_fn, OSSL_FUNC_KEYMGMT_FREE};
 use bindings::{OSSL_FUNC_keymgmt_gen_cleanup_fn, OSSL_FUNC_KEYMGMT_GEN_CLEANUP};
 use bindings::{OSSL_FUNC_keymgmt_gen_fn, OSSL_FUNC_KEYMGMT_GEN};
 use bindings::{OSSL_FUNC_keymgmt_gen_init_fn, OSSL_FUNC_KEYMGMT_GEN_INIT};
+use bindings::{OSSL_FUNC_keymgmt_gen_set_params_fn, OSSL_FUNC_KEYMGMT_GEN_SET_PARAMS};
+use bindings::{OSSL_FUNC_keymgmt_gen_settable_params_fn, OSSL_FUNC_KEYMGMT_GEN_SETTABLE_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_has_fn, OSSL_FUNC_KEYMGMT_HAS};
 use bindings::{OSSL_FUNC_keymgmt_import_fn, OSSL_FUNC_KEYMGMT_IMPORT};
 use bindings::{OSSL_FUNC_keymgmt_import_types_ex_fn, OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX};
@@ -65,7 +67,7 @@ pub(super) const KEM_FUNCTIONS: [OSSL_DISPATCH; 7] = [
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/master/man7/provider-keymgmt/
-pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 11] = [
+pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 13] = [
     dispatch_table_entry!(
         OSSL_FUNC_KEYMGMT_NEW,
         OSSL_FUNC_keymgmt_new_fn,
@@ -95,6 +97,16 @@ pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 11] = [
         OSSL_FUNC_KEYMGMT_GEN_INIT,
         OSSL_FUNC_keymgmt_gen_init_fn,
         keymgmt_functions::gen_init
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_KEYMGMT_GEN_SET_PARAMS,
+        OSSL_FUNC_keymgmt_gen_set_params_fn,
+        keymgmt_functions::gen_set_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_KEYMGMT_GEN_SETTABLE_PARAMS,
+        OSSL_FUNC_keymgmt_gen_settable_params_fn,
+        keymgmt_functions::gen_settable_params
     ),
     dispatch_table_entry!(
         OSSL_FUNC_KEYMGMT_IMPORT,
