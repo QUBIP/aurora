@@ -182,15 +182,21 @@ pub(super) unsafe extern "C" fn export_types_ex(
 #[named]
 pub(super) unsafe extern "C" fn gen_set_params(
     _vgenctx: *mut c_void,
-    _params: *const ossl_param_st
+    _params: *const ossl_param_st,
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
-    warn!(target: log_target!(), "{}", "Ignoring params!");
-    //todo!("set genctx params");
-    1
-}
 
-use crate::osslparams::EMPTY_PARAMS;
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        todo!("set genctx params");
+    }
+
+    #[cfg(debug_assertions)] // code compiled only in development builds
+    {
+        warn!(target: log_target!(), "{}", "Ignoring params!");
+        return 1;
+    }
+}
 
 #[named]
 pub(super) unsafe extern "C" fn gen_settable_params(
@@ -199,8 +205,16 @@ pub(super) unsafe extern "C" fn gen_settable_params(
 ) -> *const ossl_param_st {
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
-    //todo!("return pointer to array of settable genctx params")
-    warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of settable genctx params");
 
-    EMPTY_PARAMS.as_ptr()
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        todo!("return pointer to array of settable genctx params")
+    }
+
+    #[cfg(debug_assertions)] // code compiled only in development builds
+    {
+        warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of settable genctx params");
+
+        crate::osslparams::EMPTY_PARAMS.as_ptr()
+    }
 }

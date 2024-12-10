@@ -27,7 +27,7 @@ impl Default for AdapterContext {
 impl AdapterContext {
     #[named]
     pub fn get_op_kem(&mut self) -> *const OSSL_ALGORITHM {
-        debug!(target: log_target!(), "{}", "Called!");
+        trace!(target: log_target!(), "{}", "Called!");
         match self.op_kem_ptr {
             Some(ptr) => ptr,
             None => {
@@ -52,7 +52,7 @@ impl AdapterContext {
 
     #[named]
     pub fn get_op_keymgmt(&mut self) -> *const OSSL_ALGORITHM {
-        debug!(target: log_target!(), "{}", "Called!");
+        trace!(target: log_target!(), "{}", "Called!");
         match self.op_keymgmt_ptr {
             Some(ptr) => ptr,
             None => {

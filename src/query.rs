@@ -5,18 +5,20 @@ use crate::OpenSSLProvider;
 use libc::{c_char, c_int, c_void};
 use rust_openssl_core_provider::bindings;
 
+use crate::osslparams::{
+    IntData, OSSLParam, OSSLParamData, UIntData, Utf8StringData, OSSL_PARAM_END,
+};
 use bindings::OSSL_ALGORITHM;
 use bindings::OSSL_CALLBACK;
 use bindings::OSSL_OP_KEM;
 use bindings::OSSL_OP_KEYMGMT;
 use bindings::{
     OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID, OSSL_CAPABILITY_TLS_GROUP_IS_KEM,
-    OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_TLS,
-    OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
+    OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, OSSL_CAPABILITY_TLS_GROUP_MAX_TLS,
+    OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, OSSL_CAPABILITY_TLS_GROUP_MIN_TLS,
     OSSL_CAPABILITY_TLS_GROUP_NAME, OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
     OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
 };
-use crate::osslparams::{IntData, OSSLParam, OSSLParamData, UIntData, Utf8StringData, OSSL_PARAM_END};
 
 #[named]
 pub(crate) extern "C" fn query_operation(
@@ -56,7 +58,9 @@ pub(crate) extern "C" fn get_capabilities(
     let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
     let mut tls_group_params = vec![
         OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_NAME)),
-        OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL)),
+        OSSLParam::Utf8String(Utf8StringData::new_null(
+            OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
+        )),
         OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_ALG)),
         OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_ID)),
         OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS)),
