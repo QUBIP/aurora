@@ -4,6 +4,7 @@ use crate::named;
 use crate::OpenSSLProvider;
 use libc::{c_char, c_int, c_void};
 use rust_openssl_core_provider::bindings;
+use rust_openssl_core_provider::osslparams::OSSLParamError;
 
 use crate::osslparams::{
     IntData, OSSLParam, OSSLParamData, UIntData, Utf8StringData, OSSL_PARAM_END,
@@ -70,19 +71,32 @@ pub(crate) extern "C" fn get_capabilities(
         OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS)),
         OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_IS_KEM)),
     ];
+
     // oqs-provider keeps these values in a struct in an array that seems to be generated at build
     // time and not actually committed into the repo in a readable format; I dug them up with gdb.
-    // TODO: check return values? surely there's a better way to do this than all these `let _`s....
-    let _ = tls_group_params[0].set(c"X25519MLKEM768"); // IANA group name
-    let _ = tls_group_params[1].set(c"X25519MLKEM768"); // group name according to the provider
-    let _ = tls_group_params[2].set(c"X25519MLKEM768"); // algorithm name
-    let _ = tls_group_params[3].set(0x11ec as u32);     // group ID
-    let _ = tls_group_params[4].set(192 as u32);        // number of bits of security
-    let _ = tls_group_params[5].set(0x0304);            // min TLS: v1.3
-    let _ = tls_group_params[6].set(0);                 // max TLS: no set version
-    let _ = tls_group_params[7].set(-1);                // min DTLS (do not use this group at all with DTLS)
-    let _ = tls_group_params[8].set(-1);                // max DTLS (do not use this group at all with DTLS)
-    let _ = tls_group_params[9].set(1 as u32);          // is KEM: yes
+    let result: Result<(), OSSLParamError> = (|tls_group_params: &mut Vec<OSSLParam>| {
+        tls_group_params[0].set(c"X25519MLKEM768")?; // IANA group name
+        tls_group_params[1].set(c"X25519MLKEM768")?; // group name according to the provider
+        tls_group_params[2].set(c"X25519MLKEM768")?; // algorithm name
+        tls_group_params[3].set(0x11ec as u32)?;     // group ID
+        tls_group_params[4].set(192 as u32)?;        // number of bits of security
+        tls_group_params[5].set(0x0304)?;            // min TLS: v1.3
+        tls_group_params[6].set(0)?;                 // max TLS: no set version
+        tls_group_params[7].set(-1)?;                // min DTLS (do not use this group at all with DTLS)
+        tls_group_params[8].set(-1)?;                // max DTLS (do not use this group at all with DTLS)
+        tls_group_params[9].set(1 as u32)?;          // is KEM: yes
+
+        Ok(())
+    })(&mut tls_group_params);
+
+    match result {
+        Ok(_) => (),
+        Err(e) => {
+            error!(target: log_target!(), "Got {:?}", e);
+            return 0;
+        },
+    }
+
     // TODO: eliminate code duplication between here and OpenSSLProvider::get_params_array
     let tls_group_params_boxed_slice = Box::new(
         tls_group_params
