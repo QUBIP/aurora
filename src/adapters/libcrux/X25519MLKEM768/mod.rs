@@ -14,10 +14,14 @@ use bindings::{OSSL_FUNC_keymgmt_gen_fn, OSSL_FUNC_KEYMGMT_GEN};
 use bindings::{OSSL_FUNC_keymgmt_gen_init_fn, OSSL_FUNC_KEYMGMT_GEN_INIT};
 use bindings::{OSSL_FUNC_keymgmt_gen_set_params_fn, OSSL_FUNC_KEYMGMT_GEN_SET_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_gen_settable_params_fn, OSSL_FUNC_KEYMGMT_GEN_SETTABLE_PARAMS};
+use bindings::{OSSL_FUNC_keymgmt_get_params_fn, OSSL_FUNC_KEYMGMT_GET_PARAMS};
+use bindings::{OSSL_FUNC_keymgmt_gettable_params_fn, OSSL_FUNC_KEYMGMT_GETTABLE_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_has_fn, OSSL_FUNC_KEYMGMT_HAS};
 use bindings::{OSSL_FUNC_keymgmt_import_fn, OSSL_FUNC_KEYMGMT_IMPORT};
 use bindings::{OSSL_FUNC_keymgmt_import_types_ex_fn, OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX};
 use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
+use bindings::{OSSL_FUNC_keymgmt_set_params_fn, OSSL_FUNC_KEYMGMT_SET_PARAMS};
+use bindings::{OSSL_FUNC_keymgmt_settable_params_fn, OSSL_FUNC_KEYMGMT_SETTABLE_PARAMS};
 
 mod kem_functions;
 mod keymgmt_functions;
@@ -67,7 +71,7 @@ pub(super) const KEM_FUNCTIONS: [OSSL_DISPATCH; 7] = [
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/master/man7/provider-keymgmt/
-pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 13] = [
+pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 17] = [
     dispatch_table_entry!(
         OSSL_FUNC_KEYMGMT_NEW,
         OSSL_FUNC_keymgmt_new_fn,
@@ -107,6 +111,26 @@ pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 13] = [
         OSSL_FUNC_KEYMGMT_GEN_SETTABLE_PARAMS,
         OSSL_FUNC_keymgmt_gen_settable_params_fn,
         keymgmt_functions::gen_settable_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_KEYMGMT_GET_PARAMS,
+        OSSL_FUNC_keymgmt_get_params_fn,
+        keymgmt_functions::get_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_KEYMGMT_GETTABLE_PARAMS,
+        OSSL_FUNC_keymgmt_gettable_params_fn,
+        keymgmt_functions::gettable_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_KEYMGMT_SET_PARAMS,
+        OSSL_FUNC_keymgmt_set_params_fn,
+        keymgmt_functions::set_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_KEYMGMT_SETTABLE_PARAMS,
+        OSSL_FUNC_keymgmt_settable_params_fn,
+        keymgmt_functions::settable_params
     ),
     dispatch_table_entry!(
         OSSL_FUNC_KEYMGMT_IMPORT,

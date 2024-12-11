@@ -218,3 +218,79 @@ pub(super) unsafe extern "C" fn gen_settable_params(
         crate::osslparams::EMPTY_PARAMS.as_ptr()
     }
 }
+
+#[named]
+pub(super) unsafe extern "C" fn get_params(
+    _vkeydata: *mut c_void,
+    _params: *mut ossl_param_st,
+) -> c_int {
+    trace!(target: log_target!(), "{}", "Called!");
+
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        todo!("get keymgmt params")
+    }
+
+    #[cfg(debug_assertions)] // code compiled only in development builds
+    {
+        warn!(target: log_target!(), "{}", "TODO: get keymgmt params");
+
+        1
+    }
+}
+
+#[named]
+pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
+    trace!(target: log_target!(), "{}", "Called!");
+    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        todo!("return pointer to array of gettable keymgmt params")
+    }
+
+    #[cfg(debug_assertions)] // code compiled only in development builds
+    {
+        warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of gettable keymgmt params");
+
+        crate::osslparams::EMPTY_PARAMS.as_ptr()
+    }
+}
+
+#[named]
+pub(super) unsafe extern "C" fn set_params(
+    _vkeydata: *mut c_void,
+    _params: *const ossl_param_st,
+) -> c_int {
+    trace!(target: log_target!(), "{}", "Called!");
+
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        todo!("set keymgmt params")
+    }
+
+    #[cfg(debug_assertions)] // code compiled only in development builds
+    {
+        warn!(target: log_target!(), "{}", "TODO: set keymgmt params");
+
+        1
+    }
+}
+
+#[named]
+pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
+    trace!(target: log_target!(), "{}", "Called!");
+    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        todo!("return pointer to array of settable keymgmt params")
+    }
+
+    #[cfg(debug_assertions)] // code compiled only in development builds
+    {
+        warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of settable keymgmt params");
+
+        crate::osslparams::EMPTY_PARAMS.as_ptr()
+    }
+}
