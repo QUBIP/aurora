@@ -81,14 +81,14 @@ impl<'a> KemContext<'a> {
         }
     }
 
-    pub fn own_privkey(&mut self, ownkey: &'a PrivateKey) -> anyhow::Result<()> {
+    pub fn set_own_privkey(&mut self, ownkey: &'a PrivateKey) -> anyhow::Result<()> {
         self.private_key = Some(ownkey);
         Ok(())
     }
 
-    pub fn own_keypair(&mut self, ownkeypair: &'a KeyPair) -> anyhow::Result<()> {
+    pub fn set_own_keypair(&mut self, ownkeypair: &'a KeyPair) -> anyhow::Result<()> {
         match &ownkeypair.private {
-            Some(privkey) => self.own_privkey(privkey),
+            Some(privkey) => self.set_own_privkey(privkey),
             None => Err(anyhow!("Missing private key")),
         }
     }
@@ -129,7 +129,7 @@ pub(super) extern "C" fn decapsulate_init(
     let kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
     let keypair: &mut KeyPair = handleResult!(vprovkey.try_into());
 
-    match kemctx.own_keypair(keypair) {
+    match kemctx.set_own_keypair(keypair) {
         Ok(_) => 1,
         Err(e) => {
             error!(target: log_target!(), "Private key not found {}", e);
