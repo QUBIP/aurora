@@ -22,6 +22,20 @@ impl From<*mut c_void> for &mut KeyPair {
     }
 }
 
+impl From<*mut c_void> for &KeyPair {
+    #[named]
+    fn from(vptr: *mut c_void) -> Self {
+        trace!(target: log_target!(), "Called for {}",
+        "impl<'a> From<*mut c_void> for &KeyPair"
+        );
+        let ptr = vptr as *mut KeyPair;
+        if ptr.is_null() {
+            panic!("vptr was null");
+        }
+        unsafe { &*ptr }
+    }
+}
+
 #[named]
 pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
