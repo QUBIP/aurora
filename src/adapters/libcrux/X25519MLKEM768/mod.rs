@@ -154,3 +154,24 @@ pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 17] = [
     ),
     OSSL_DISPATCH::END,
 ];
+
+#[macro_export]
+macro_rules! handleResult {
+    ($e:expr) => { match ($e)
+        {
+            Ok(r) => r,
+            Err(e) => {
+                error!(target: log_target!(), "{}", e);
+                return ERROR_RET;
+            }
+        }
+    };
+    //($e:expr, $errhandler:expr) => { match ($e)
+    //    {
+    //        Ok(r) => r,
+    //        Err(e) => {
+    //            errhandler
+    //        }
+    //    }
+    //};
+}

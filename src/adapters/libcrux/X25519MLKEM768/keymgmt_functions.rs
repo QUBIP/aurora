@@ -17,7 +17,7 @@ impl TryFrom<*mut c_void> for &mut KeyPair {
     #[named]
     fn try_from(vptr: *mut c_void) -> Result<Self, Self::Error> {
         trace!(target: log_target!(), "Called for {}",
-        "impl<'a> From<*mut c_void> for &mut KeyPair"
+        "impl TryFrom<*mut c_void> for &mut KeyPair"
         );
         let ptr = vptr as *mut KeyPair;
         if ptr.is_null() {
@@ -31,9 +31,9 @@ impl TryFrom<*mut core::ffi::c_void> for &KeyPair {
     type Error = anyhow::Error;
 
     #[named]
-    fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
-        trace!(target: log_target!(), "Called for {}", "impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a>");
-        let r: &mut KeyPair = vctx.try_into()?;
+    fn try_from(vptr: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
+        trace!(target: log_target!(), "Called for {}", "impl<'a> TryFrom<*mut core::ffi::c_void> for &KeyPair<'a>");
+        let r: &mut KeyPair = vptr.try_into()?;
         Ok(r)
     }
 }

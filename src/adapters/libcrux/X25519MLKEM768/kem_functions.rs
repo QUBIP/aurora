@@ -1,5 +1,8 @@
 use super::*;
-use crate::adapters::libcrux::X25519MLKEM768::keymgmt_functions::{KeyPair, PrivateKey, PublicKey};
+use crate::{
+    adapters::libcrux::X25519MLKEM768::keymgmt_functions::{KeyPair, PrivateKey, PublicKey},
+    handleResult,
+};
 use anyhow::anyhow;
 use bindings::ossl_param_st;
 use libc::{c_int, c_uchar, c_void};
@@ -11,24 +14,28 @@ struct KemContext<'a> {
     provctx: *mut c_void,
 }
 
-impl<'a> From<*mut core::ffi::c_void> for &mut KemContext<'a> {
+impl<'a> TryFrom<*mut core::ffi::c_void> for &mut KemContext<'a> {
+    type Error = anyhow::Error;
+
     #[named]
-    fn from(vctx: *mut core::ffi::c_void) -> Self {
+    fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
         trace!(target: log_target!(), "Called for {}",
-        "impl<'a> From<*mut core::ffi::c_void> for &mut KemContext<'a>"
+        "impl<'a> TryFrom<*mut core::ffi::c_void> for &mut KemContext<'a>"
         );
         let ctxp = vctx as *mut KemContext;
         if ctxp.is_null() {
-            panic!("vctx was null");
+            return Err(anyhow::anyhow!("vctx was null"));
         }
-        unsafe { &mut *ctxp }
+        Ok(unsafe { &mut *ctxp })
     }
 }
 
-impl<'a> From<*mut core::ffi::c_void> for &KemContext<'a> {
-    fn from(vctx: *mut core::ffi::c_void) -> Self {
-        let ctxp: &mut KemContext = vctx.into();
-        ctxp
+impl<'a> TryFrom<*mut core::ffi::c_void> for &KemContext<'a> {
+    type Error = anyhow::Error;
+
+    fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
+        let ctxp: &mut KemContext = vctx.try_into()?;
+        Ok(ctxp)
     }
 }
 
@@ -93,18 +100,21 @@ pub(super) extern "C" fn encapsulate_init(
     vprovkey: *mut c_void,
     _params: *mut ossl_param_st,
 ) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    let kemctx: &mut KemContext<'_> = vkemctx.try_into().unwrap();
-    let keypair: &mut KeyPair = vprovkey.try_into().unwrap();
+    let kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
+    let keypair: &mut KeyPair = handleResult!(vprovkey.try_into());
 
-    match kemctx.set_peer_keypair(keypair) {
-        Ok(_) => 1,
-        Err(e) => {
+    let r = kemctx.set_peer_keypair(keypair).map_or_else(
+        |e| {
             error!(target: log_target!(), "set_peer_keypair() failed with {}", e);
-            0
-        }
-    }
+            ERROR_RET
+        },
+        |_ok| 1,
+    );
+
+    return r;
 }
 
 #[named]
@@ -113,16 +123,17 @@ pub(super) extern "C" fn decapsulate_init(
     vprovkey: *mut c_void,
     _params: *mut ossl_param_st,
 ) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    let kemctx: &mut KemContext<'_> = vkemctx.into();
-    let keypair: &mut KeyPair = vprovkey.try_into().unwrap();
+    let kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
+    let keypair: &mut KeyPair = handleResult!(vprovkey.try_into());
 
     match kemctx.own_keypair(keypair) {
         Ok(_) => 1,
         Err(e) => {
             error!(target: log_target!(), "Private key not found {}", e);
-            0
+            return ERROR_RET;
         }
     }
 }

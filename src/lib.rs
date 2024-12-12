@@ -2,9 +2,9 @@
 extern crate log;
 
 use ::function_name::named;
+use rand::rngs::OsRng;
 use std::ffi::{CStr, CString};
 use std::sync::LazyLock;
-use rand::rngs::OsRng;
 
 macro_rules! function_path {
     () => {
