@@ -4,6 +4,7 @@ extern crate log;
 use ::function_name::named;
 use std::ffi::{CStr, CString};
 use std::sync::LazyLock;
+use rand::rngs::OsRng;
 
 macro_rules! function_path {
     () => {
@@ -53,6 +54,7 @@ pub struct OpenSSLProvider<'a> {
     params: Vec<OSSLParam>,
     param_array_ptr: Option<*mut [ossl_param_st]>,
     pub(crate) adapters_ctx: adapters::Contexts,
+    pub rng: OsRng,
 }
 
 /// We implement the Drop trait to make it explicit when a provider
@@ -86,6 +88,7 @@ impl<'a> OpenSSLProvider<'a> {
                 OSSL_PROV_PARAM_NAME,
             ))],
             adapters_ctx: adapters::Contexts::default(),
+            rng: OsRng,
         }
     }
 
