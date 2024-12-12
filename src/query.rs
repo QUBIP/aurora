@@ -29,7 +29,13 @@ pub(crate) extern "C" fn query_operation(
 ) -> *const OSSL_ALGORITHM {
     trace!(target: log_target!(), "{}", "Called!");
 
-    let provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    let provctx: &mut OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return std::ptr::null();
+        }
+    };
     if !no_cache.is_null() {
         unsafe {
             *no_cache = 0;
@@ -56,7 +62,13 @@ pub(crate) extern "C" fn get_capabilities(
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
 
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return 0;
+        }
+    };
     let mut tls_group_params = vec![
         OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_NAME)),
         OSSLParam::Utf8String(Utf8StringData::new_null(
@@ -94,7 +106,7 @@ pub(crate) extern "C" fn get_capabilities(
         Err(e) => {
             error!(target: log_target!(), "Got {:?}", e);
             return 0;
-        },
+        }
     }
 
     // TODO: eliminate code duplication between here and OpenSSLProvider::get_params_array

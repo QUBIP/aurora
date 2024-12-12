@@ -153,30 +153,29 @@ impl<'a> OpenSSLProvider<'a> {
     }
 }
 
-impl<'a> From<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a> {
+impl<'a> TryFrom<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a> {
+    type Error = anyhow::Error;
+
     #[named]
-    fn from(vctx: *mut core::ffi::c_void) -> Self {
+    fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
         trace!(target: log_target!(), "Called for {}",
-        "impl<'a> From<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a>"
+        "impl<'a> TryFrom<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a>"
         );
         let provp = vctx as *mut OpenSSLProvider;
         if provp.is_null() {
-            panic!("vctx was null");
+            return Err(anyhow::anyhow!("vctx was null"));
         }
-        unsafe { &mut *provp }
+        Ok(unsafe { &mut *provp })
     }
 }
 
-impl<'a> From<*mut core::ffi::c_void> for &OpenSSLProvider<'a> {
+impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a> {
+    type Error = anyhow::Error;
+
     #[named]
-    fn from(vctx: *mut core::ffi::c_void) -> Self {
-        trace!(target: log_target!(), "Called for {}",
-        "impl<'a> From<*mut core::ffi::c_void> for &OpenSSLProvider<'a>"
-        );
-        let provp = vctx as *const OpenSSLProvider;
-        if provp.is_null() {
-            panic!("vctx was null");
-        }
-        unsafe { &*provp }
+    fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
+        trace!(target: log_target!(), "Called for {}", "impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a>");
+        let r: &mut OpenSSLProvider<'a> = vctx.try_into()?;
+        Ok(r)
     }
 }

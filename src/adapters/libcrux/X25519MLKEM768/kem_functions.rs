@@ -4,8 +4,15 @@ use libc::{c_int, c_uchar, c_void};
 
 #[named]
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
+    const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
 
     todo!("Create a new KEM ctx")
 }

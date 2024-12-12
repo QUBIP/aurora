@@ -58,18 +58,33 @@ pub unsafe extern "C" fn provider_teardown(vprovctx: *mut c_void) {
 
 #[named]
 pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
+    const ERROR_RET: *const ossl_param_st = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let prov: &mut OpenSSLProvider<'_> = vprovctx.into();
-    (*prov).get_params_array()
+
+    let prov: &mut OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
+    prov.get_params_array()
 }
 
 #[named]
 pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut ossl_param_st) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
     /* It's important to only cast the pointer, not Box it back up, because otherwise the provctx
      * object would get dropped at the end of this function (and the compiler wouldn't even warn
      * us about it, because this code is marked unsafe!). */
-    let prov: &OpenSSLProvider<'_> = vprovctx.into();
+    let prov: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
 
     /* Here we build a vec of OSSLParam structs which are type-safe wrappers around pointers to the
      * actual C structs in the params array... */

@@ -40,7 +40,15 @@ impl From<*mut c_void> for &KeyPair {
 #[named]
 pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    const ERROR_RET: *mut c_void = std::ptr::null_mut();
+
+    let _prov: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
 
     //todo!("Create a provider side key object.")
 
@@ -141,8 +149,15 @@ pub(super) unsafe extern "C" fn gen_init(
     selection: c_int,
     _params: *const ossl_param_st,
 ) -> *mut c_void {
+    const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let provctx: &OpenSSLProvider<'_> = vprovctx.into();
+    let provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
     let newctx = Box::new(GenCTX::new(provctx, selection));
     warn!(target: log_target!(), "Ignoring params!");
     //todo!("set params on the context if params is not null")
@@ -179,8 +194,15 @@ pub(super) unsafe extern "C" fn import_types_ex(
     vprovctx: *mut c_void,
     _selection: c_int,
 ) -> *const ossl_param_st {
+    const ERROR_RET: *const ossl_param_st = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
     todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, for parameters that OSSL_FUNC_keymgmt_import() can handle")
 }
 
@@ -189,8 +211,15 @@ pub(super) unsafe extern "C" fn export_types_ex(
     vprovctx: *mut c_void,
     _selection: c_int,
 ) -> *const ossl_param_st {
+    const ERROR_RET: *const ossl_param_st = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
     todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, that the OSSL_FUNC_keymgmt_export() callback can expect to receive")
 }
 
@@ -218,8 +247,15 @@ pub(super) unsafe extern "C" fn gen_settable_params(
     _vgenctx: *mut c_void,
     vprovctx: *mut c_void,
 ) -> *const ossl_param_st {
+    const ERROR_RET: *const ossl_param_st = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
 
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
@@ -276,7 +312,14 @@ pub(super) unsafe extern "C" fn get_params(
 #[named]
 pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    const ERROR_RET: *const ossl_param_st = std::ptr::null();
+    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
 
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
@@ -313,8 +356,15 @@ pub(super) unsafe extern "C" fn set_params(
 
 #[named]
 pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
+    const ERROR_RET: *const ossl_param_st = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &mut OpenSSLProvider<'_> = vprovctx.into();
+    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            error!(target: log_target!(), "{}", e);
+            return ERROR_RET;
+        }
+    };
 
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
