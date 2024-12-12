@@ -9,31 +9,30 @@ struct KeyPair {
     public: Option<libcrux_kem::PublicKey>,
 }
 
-impl From<*mut c_void> for &mut KeyPair {
+impl TryFrom<*mut c_void> for &mut KeyPair {
+    type Error = anyhow::Error;
+
     #[named]
-    fn from(vptr: *mut c_void) -> Self {
+    fn try_from(vptr: *mut c_void) -> Result<Self, Self::Error> {
         trace!(target: log_target!(), "Called for {}",
         "impl<'a> From<*mut c_void> for &mut KeyPair"
         );
         let ptr = vptr as *mut KeyPair;
         if ptr.is_null() {
-            panic!("vptr was null");
+            return Err(anyhow::anyhow!("vptr was null"));
         }
-        unsafe { &mut *ptr }
+        Ok(unsafe { &mut *ptr })
     }
 }
 
-impl From<*mut c_void> for &KeyPair {
+impl TryFrom<*mut core::ffi::c_void> for &KeyPair {
+    type Error = anyhow::Error;
+
     #[named]
-    fn from(vptr: *mut c_void) -> Self {
-        trace!(target: log_target!(), "Called for {}",
-        "impl<'a> From<*mut c_void> for &KeyPair"
-        );
-        let ptr = vptr as *mut KeyPair;
-        if ptr.is_null() {
-            panic!("vptr was null");
-        }
-        unsafe { &*ptr }
+    fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
+        trace!(target: log_target!(), "Called for {}", "impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a>");
+        let r: &mut KeyPair = vctx.try_into()?;
+        Ok(r)
     }
 }
 
@@ -276,7 +275,7 @@ pub(super) unsafe extern "C" fn get_params(
     params: *mut ossl_param_st,
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
-    let keydata: &KeyPair = vkeydata.into();
+    let keydata: &KeyPair = vkeydata.try_into().unwrap();
 
     // TODO: handle errors responsibly!!!
     match ossl_param_locate_raw(params, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY).as_mut() {
