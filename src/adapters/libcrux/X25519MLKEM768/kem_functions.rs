@@ -26,16 +26,9 @@ impl<'a> From<*mut core::ffi::c_void> for &mut KemContext<'a> {
 }
 
 impl<'a> From<*mut core::ffi::c_void> for &KemContext<'a> {
-    #[named]
     fn from(vctx: *mut core::ffi::c_void) -> Self {
-        trace!(target: log_target!(), "Called for {}",
-        "impl<'a> From<*mut core::ffi::c_void> for &KemContext<'a>"
-        );
-        let ctxp = vctx as *const KemContext;
-        if ctxp.is_null() {
-            panic!("vctx was null");
-        }
-        unsafe { &*ctxp }
+        let ctxp: &mut KemContext = vctx.into();
+        ctxp
     }
 }
 
