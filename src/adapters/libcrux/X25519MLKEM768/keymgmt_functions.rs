@@ -1,5 +1,6 @@
 use super::*;
-use bindings::{ossl_param_st, OSSL_CALLBACK};
+use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
+use rust_openssl_core_provider::osslparams::{ossl_param_locate, OSSLParam};
 use std::ffi::{c_int, c_void};
 
 #[allow(dead_code)]
@@ -235,19 +236,44 @@ pub(super) unsafe extern "C" fn gen_settable_params(
 
 #[named]
 pub(super) unsafe extern "C" fn get_params(
-    _vkeydata: *mut c_void,
-    _params: *mut ossl_param_st,
+    vkeydata: *mut c_void,
+    params: *mut ossl_param_st,
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
+    let keydata: &KeyPair = vkeydata.into();
+
+    // TODO: handle errors responsibly!!!
+    let mut params = OSSLParam::try_new_vec(params);
+    match params.as_mut() {
+        Ok(v) => {
+            match ossl_param_locate(v, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY) {
+                Some(p) => {
+                    match &keydata.public {
+                        Some(pubkey) => {
+                            let bytes = pubkey.encode();
+                            // might be nice to impl OSSLParamSetter<&Vec<u8>> and avoid .as_slice()
+                            let _ = p.set(bytes.as_slice());
+                        }
+                        None => (),
+                    }
+                }
+                None => (),
+            }
+        }
+        Err(_) => (),
+    }
+
+    // Based on stepping through the code with gdb, OSSL also asks for params with the keys "bits",
+    // "security-bits", and "max-size", but I'm not sure if responding to those is necessary.
 
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
-        todo!("get keymgmt params")
+        todo!("get remaining keymgmt params (if any)")
     }
 
     #[cfg(debug_assertions)] // code compiled only in development builds
     {
-        warn!(target: log_target!(), "{}", "TODO: get keymgmt params");
+        warn!(target: log_target!(), "{}", "TODO: get remaining keymgmt params (if any)");
 
         1
     }
