@@ -17,10 +17,10 @@ pub struct KeyPair<'a> {
     provctx: &'a OpenSSLProvider<'a>,
 }
 
-type Error = anyhow::Error;
+pub(crate) type Error = anyhow::Error;
 
-type EncapsulatedKey = Vec<u8>;
-type SharedSecret = Vec<u8>;
+pub(crate) type EncapsulatedKey = Vec<u8>;
+pub(crate) type SharedSecret = Vec<u8>;
 
 impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     type Error = Error;
@@ -46,8 +46,7 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
 
 impl KeyPair<'_> {
     #[named]
-    #[expect(dead_code)]
-    fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), Error> {
+    pub fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), Error> {
         trace!(target: log_target!(), "Called ");
 
         let mut rng = {
