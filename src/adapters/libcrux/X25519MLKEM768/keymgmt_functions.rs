@@ -5,10 +5,72 @@ use std::ffi::{c_int, c_void};
 
 pub type PrivateKey = libcrux_kem::PrivateKey;
 pub type PublicKey = libcrux_kem::PublicKey;
+use std::fmt::Debug;
 
 pub struct KeyPair {
     pub private: Option<PrivateKey>,
     pub public: Option<PublicKey>,
+}
+
+pub struct PubKey {
+    pubkey: PublicKey,
+}
+
+pub struct PrivKey {
+    pubkey: PrivateKey,
+}
+
+trait Encapsulate<EK, SS> {
+    type Error: Debug;
+
+    fn encapsulate(&self, rng: &mut impl CryptoRngCore) -> Result<(EK, SS), Self::Error>;
+}
+
+pub struct EncapsulatedKey(Vec<u8>); //is there a different/better way to do this?
+pub struct SharedSecret(Vec<u8>);
+
+impl Encapsulate<EncapsulatedKey, SharedSecret> for PubKey {
+    type Error = anyhow::Error;
+
+    // TODO: Checks for public key validity
+
+    // TODO: Error handling
+
+    fn encapsulate(
+        &self,
+        rng: &mut impl CryptoRngCore, //added 'rand_core' crate for this. Should we keep this or use OsRng instead?
+    ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
+        let mut enc_key = vec![0u8; 32];
+        rng.fill_bytes(&mut enc_key);
+
+        let mut shared_secret = vec![0u8; 32];
+        rng.fill_bytes(&mut shared_secret);
+
+        let encapsulated_key = EncapsulatedKey(enc_key);
+        let shared_secret = SharedSecret(shared_secret);
+
+        Ok((encapsulated_key, shared_secret))
+    }
+}
+
+impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair {
+    type Error = anyhow::Error;
+
+    fn encapsulate(
+        &self,
+        rng: &mut impl CryptoRngCore,
+    ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
+        let mut enc_key = vec![0u8; 32];
+        rng.fill_bytes(&mut enc_key);
+
+        let mut shared_secret = vec![0u8; 32];
+        rng.fill_bytes(&mut shared_secret);
+
+        let encapsulated_key = EncapsulatedKey(enc_key);
+        let shared_secret = SharedSecret(shared_secret);
+
+        Ok((encapsulated_key, shared_secret))
+    }
 }
 
 impl TryFrom<*mut c_void> for &mut KeyPair {
