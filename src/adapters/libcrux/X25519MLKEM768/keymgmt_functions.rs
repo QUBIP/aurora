@@ -1,4 +1,5 @@
 use super::*;
+use crate::{handleResult, OpenSSLProvider};
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
 use rand_core::CryptoRngCore;
@@ -8,9 +9,11 @@ pub type PrivateKey = libcrux_kem::PrivateKey;
 pub type PublicKey = libcrux_kem::PublicKey;
 use std::fmt::Debug;
 
-pub struct KeyPair {
+#[expect(dead_code)]
+pub struct KeyPair<'a> {
     pub private: Option<PrivateKey>,
     pub public: Option<PublicKey>,
+    provctx: &'a OpenSSLProvider<'a>,
 }
 
 pub struct PubKey {
@@ -54,7 +57,7 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for PubKey {
     }
 }
 
-impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair {
+impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     type Error = anyhow::Error;
 
     fn encapsulate(
@@ -74,7 +77,7 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair {
     }
 }
 
-impl TryFrom<*mut c_void> for &mut KeyPair {
+impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
     type Error = anyhow::Error;
 
     #[named]
@@ -90,7 +93,7 @@ impl TryFrom<*mut c_void> for &mut KeyPair {
     }
 }
 
-impl TryFrom<*mut core::ffi::c_void> for &KeyPair {
+impl TryFrom<*mut core::ffi::c_void> for &KeyPair<'_> {
     type Error = anyhow::Error;
 
     #[named]
@@ -105,14 +108,7 @@ impl TryFrom<*mut core::ffi::c_void> for &KeyPair {
 pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
-
-    let _prov: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
+    let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
     //todo!("Create a provider side key object.")
 
@@ -125,6 +121,7 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     let keypair = Box::new(KeyPair {
         private: Some(s),
         public: Some(p),
+        provctx: provctx,
     });
 
     return Box::into_raw(keypair).cast();
@@ -152,7 +149,7 @@ pub(super) unsafe extern "C" fn gen(
     _cbarg: *mut c_void,
 ) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
-    let _genctx: &mut GenCTX<'_> = vgenctx.into();
+    let genctx: &mut GenCTX<'_> = vgenctx.into();
 
     // FIXME: we should probably wrap around the randomness provided by OSSL in their dispatch table
     let mut rng = rand::rngs::OsRng;
@@ -163,6 +160,7 @@ pub(super) unsafe extern "C" fn gen(
     let keypair = Box::new(KeyPair {
         private: Some(s),
         public: Some(p),
+        provctx: genctx.provctx,
     });
 
     let keypair_ptr = Box::into_raw(keypair);
@@ -180,14 +178,14 @@ pub(super) unsafe extern "C" fn gen_cleanup(vgenctx: *mut c_void) {
 }
 
 struct GenCTX<'a> {
-    _provctx: &'a OpenSSLProvider<'a>,
+    provctx: &'a OpenSSLProvider<'a>,
     _selection: c_int,
 }
 
 impl<'a> GenCTX<'a> {
     fn new(provctx: &'a OpenSSLProvider, selection: c_int) -> Self {
         Self {
-            _provctx: provctx,
+            provctx: provctx,
             _selection: selection,
         }
     }
