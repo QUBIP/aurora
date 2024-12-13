@@ -49,9 +49,22 @@ impl KeyPair<'_> {
     #[expect(dead_code)]
     fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), Error> {
         trace!(target: log_target!(), "Called ");
-        let _rng = self.provctx.get_rng();
-        todo!();
-        //self.encapsulate(rng)
+
+        let mut rng = {
+            #[cfg(not(debug_assertions))] // code compiled only in release builds
+            {
+                let _prng = self.provctx.get_rng();
+                todo!("Retrieve rng from provctx");
+            }
+            #[cfg(debug_assertions)] // code compiled only in development builds
+            {
+                // FIXME: clean this up and to the right thing above!
+                warn!(target: log_target!(), "{}", "Using OsRng!");
+                rand::rngs::OsRng
+            }
+        };
+
+        self.encapsulate(&mut rng)
     }
 }
 
