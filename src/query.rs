@@ -84,6 +84,7 @@ pub(crate) extern "C" fn get_capabilities(
         OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_IS_KEM)),
     ];
 
+    #[rustfmt::skip]
     // oqs-provider keeps these values in a struct in an array that seems to be generated at build
     // time and not actually committed into the repo in a readable format; I dug them up with gdb.
     let result: Result<(), OSSLParamError> = (|tls_group_params: &mut Vec<OSSLParam>| {

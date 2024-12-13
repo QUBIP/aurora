@@ -1,11 +1,11 @@
+use super::OurError as KMGMTError;
 use super::*;
 use crate::{handleResult, OpenSSLProvider};
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
-use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
 use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
+use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
 use std::ffi::{c_int, c_void};
-use super::OurError as KMGMTError;
 
 pub type PrivateKey = libcrux_kem::PrivateKey;
 pub type PublicKey = libcrux_kem::PublicKey;
@@ -278,7 +278,7 @@ impl<'a> TryFrom<*mut c_void> for &mut GenCTX<'a> {
     type Error = KMGMTError;
 
     #[named]
-    fn try_from(vctx: *mut c_void)  -> Result<Self, Self::Error> {
+    fn try_from(vctx: *mut c_void) -> Result<Self, Self::Error> {
         trace!(target: log_target!(), "Called for {}",
         "impl<'a> TryFrom<*mut c_void> for &mut GenCTX<'a>"
         );

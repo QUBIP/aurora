@@ -1,10 +1,10 @@
+use super::OurError as KEMError;
 use super::*;
 use crate::{adapters::libcrux::X25519MLKEM768::keymgmt_functions::KeyPair, handleResult};
 use bindings::ossl_param_st;
 use kem::Encapsulate;
 use libc::{c_int, c_uchar, c_void};
 use rand_core::CryptoRngCore;
-use super::OurError as KEMError;
 
 #[expect(dead_code)]
 struct KemContext<'a> {
