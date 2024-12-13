@@ -3,10 +3,9 @@ use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY}
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
 use std::ffi::{c_int, c_void};
 
-#[allow(dead_code)]
-struct KeyPair {
-    private: Option<libcrux_kem::PrivateKey>,
-    public: Option<libcrux_kem::PublicKey>,
+pub(crate) struct KeyPair {
+    pub private: Option<libcrux_kem::PrivateKey>,
+    pub public: Option<libcrux_kem::PublicKey>,
 }
 
 impl TryFrom<*mut c_void> for &mut KeyPair {
