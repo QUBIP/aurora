@@ -262,17 +262,19 @@ impl<'a> GenCTX<'a> {
     }
 }
 
-impl<'a> From<*mut c_void> for &mut GenCTX<'a> {
+impl<'a> TryFrom<*mut c_void> for &mut GenCTX<'a> {
+    type Error = KMGMTError;
+
     #[named]
-    fn from(vctx: *mut c_void) -> Self {
+    fn try_from(vctx: *mut c_void)  -> Result<Self, Self::Error> {
         trace!(target: log_target!(), "Called for {}",
-        "impl<'a> From<*mut c_void> for &mut OpenSSLProvider<'a>"
+        "impl<'a> TryFrom<*mut c_void> for &mut GenCTX<'a>"
         );
         let ctxp = vctx as *mut GenCTX;
         if ctxp.is_null() {
             panic!("vctx was null");
         }
-        unsafe { &mut *ctxp }
+        Ok(unsafe { &mut *ctxp })
     }
 }
 
