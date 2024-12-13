@@ -1,13 +1,14 @@
 use super::*;
 use crate::{handleResult, OpenSSLProvider};
+use anyhow::anyhow;
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
+use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
 use std::ffi::{c_int, c_void};
 
 pub type PrivateKey = libcrux_kem::PrivateKey;
 pub type PublicKey = libcrux_kem::PublicKey;
-use std::fmt::Debug;
 
 #[expect(dead_code)]
 pub struct KeyPair<'a> {
@@ -16,64 +17,30 @@ pub struct KeyPair<'a> {
     provctx: &'a OpenSSLProvider<'a>,
 }
 
-pub struct PubKey {
-    pubkey: PublicKey,
-}
+type Error = anyhow::Error;
 
-pub struct PrivKey {
-    pubkey: PrivateKey,
-}
-
-trait Encapsulate<EK, SS> {
-    type Error: Debug;
-
-    fn encapsulate(&self, rng: &mut impl CryptoRngCore) -> Result<(EK, SS), Self::Error>;
-}
-
-pub struct EncapsulatedKey(Vec<u8>); //is there a different/better way to do this?
-pub struct SharedSecret(Vec<u8>);
-
-impl Encapsulate<EncapsulatedKey, SharedSecret> for PubKey {
-    type Error = anyhow::Error;
-
-    // TODO: Checks for public key validity
-
-    // TODO: Error handling
-
-    fn encapsulate(
-        &self,
-        rng: &mut impl CryptoRngCore, //added 'rand_core' crate for this. Should we keep this or use OsRng instead?
-    ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
-        let mut enc_key = vec![0u8; 32];
-        rng.fill_bytes(&mut enc_key);
-
-        let mut shared_secret = vec![0u8; 32];
-        rng.fill_bytes(&mut shared_secret);
-
-        let encapsulated_key = EncapsulatedKey(enc_key);
-        let shared_secret = SharedSecret(shared_secret);
-
-        Ok((encapsulated_key, shared_secret))
-    }
-}
+type EncapsulatedKey = Vec<u8>;
+type SharedSecret = Vec<u8>;
 
 impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
-    type Error = anyhow::Error;
+    type Error = Error;
 
+    #[named]
     fn encapsulate(
         &self,
         rng: &mut impl CryptoRngCore,
     ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
-        let mut enc_key = vec![0u8; 32];
-        rng.fill_bytes(&mut enc_key);
-
-        let mut shared_secret = vec![0u8; 32];
-        rng.fill_bytes(&mut shared_secret);
-
-        let encapsulated_key = EncapsulatedKey(enc_key);
-        let shared_secret = SharedSecret(shared_secret);
-
-        Ok((encapsulated_key, shared_secret))
+        trace!(target: log_target!(), "Called ");
+        match &self.public {
+            Some(pk) => match pk.encapsulate(rng) {
+                Ok((ss, ct)) => Ok((ct.encode(), ss.encode())),
+                Err(e) => Err(anyhow!("{:?}", e)),
+            },
+            None => {
+                error!(target: log_target!(), "Keypair is missing a public key");
+                Err(anyhow!("Missing public key"))
+            }
+        }
     }
 }
 
