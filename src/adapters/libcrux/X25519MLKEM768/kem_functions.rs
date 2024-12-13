@@ -1,10 +1,10 @@
 use super::*;
 use crate::{adapters::libcrux::X25519MLKEM768::keymgmt_functions::KeyPair, handleResult};
-use anyhow::anyhow;
 use bindings::ossl_param_st;
 use kem::Encapsulate;
 use libc::{c_int, c_uchar, c_void};
 use rand_core::CryptoRngCore;
+use super::OurError as KEMError;
 
 #[expect(dead_code)]
 struct KemContext<'a> {
@@ -14,7 +14,7 @@ struct KemContext<'a> {
 }
 
 impl<'a> TryFrom<*mut core::ffi::c_void> for &mut KemContext<'a> {
-    type Error = anyhow::Error;
+    type Error = KEMError;
 
     #[named]
     fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
@@ -30,7 +30,7 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &mut KemContext<'a> {
 }
 
 impl<'a> TryFrom<*mut core::ffi::c_void> for &KemContext<'a> {
-    type Error = anyhow::Error;
+    type Error = KEMError;
 
     fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
         let ctxp: &mut KemContext = vctx.try_into()?;
@@ -67,7 +67,6 @@ pub(super) extern "C" fn freectx(vkemctx: *mut c_void) {
     }
 }
 
-use super::keymgmt_functions::Error as KEMError;
 use super::keymgmt_functions::{EncapsulatedKey, SharedSecret};
 
 impl Encapsulate<EncapsulatedKey, SharedSecret> for KemContext<'_> {

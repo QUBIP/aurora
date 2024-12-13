@@ -1,11 +1,11 @@
 use super::*;
 use crate::{handleResult, OpenSSLProvider};
-use anyhow::anyhow;
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
 use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
 use std::ffi::{c_int, c_void};
+use super::OurError as KMGMTError;
 
 pub type PrivateKey = libcrux_kem::PrivateKey;
 pub type PublicKey = libcrux_kem::PublicKey;
@@ -17,13 +17,11 @@ pub struct KeyPair<'a> {
     provctx: &'a OpenSSLProvider<'a>,
 }
 
-pub(crate) type Error = anyhow::Error;
-
 pub(crate) type EncapsulatedKey = Vec<u8>;
 pub(crate) type SharedSecret = Vec<u8>;
 
 impl Decapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
-    type Error = Error;
+    type Error = KMGMTError;
 
     #[named]
     fn decapsulate(&self, encapsulated_key: &EncapsulatedKey) -> Result<SharedSecret, Self::Error> {
@@ -51,7 +49,7 @@ impl Decapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
 }
 
 impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
-    type Error = Error;
+    type Error = KMGMTError;
 
     #[named]
     fn encapsulate(
@@ -107,7 +105,7 @@ impl KeyPair<'_> {
     ///
     /// This function will return an error if key encapsulation fails.
     #[named]
-    pub fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), Error> {
+    pub fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), KMGMTError> {
         trace!(target: log_target!(), "Called ");
 
         let mut rng = {
@@ -132,7 +130,7 @@ impl KeyPair<'_> {
 }
 
 impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
-    type Error = anyhow::Error;
+    type Error = KMGMTError;
 
     #[named]
     fn try_from(vptr: *mut c_void) -> Result<Self, Self::Error> {
@@ -148,7 +146,7 @@ impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
 }
 
 impl TryFrom<*mut core::ffi::c_void> for &KeyPair<'_> {
-    type Error = anyhow::Error;
+    type Error = KMGMTError;
 
     #[named]
     fn try_from(vptr: *mut core::ffi::c_void) -> Result<Self, Self::Error> {

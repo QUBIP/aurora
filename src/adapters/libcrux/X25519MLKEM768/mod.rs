@@ -26,6 +26,10 @@ use bindings::{OSSL_FUNC_keymgmt_settable_params_fn, OSSL_FUNC_KEYMGMT_SETTABLE_
 mod kem_functions;
 mod keymgmt_functions;
 
+pub(crate) type OurError = anyhow::Error;
+pub(crate) use anyhow::anyhow;
+
+
 // Ensure proper null-terminated C string
 // https://docs.openssl.org/master/man7/provider/#algorithm-naming
 pub(super) const NAMES: &CStr = c"X25519MLKEM768";
