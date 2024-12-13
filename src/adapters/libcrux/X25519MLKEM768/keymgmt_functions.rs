@@ -164,11 +164,19 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    //todo!("Create a provider side key object.")
-
-    // FIXME: we should probably wrap around the randomness provided by OSSL in their dispatch table
-    let mut rng = rand::rngs::OsRng;
-    warn!(target: log_target!(), "{}", "Using OsRng!");
+    let mut rng = {
+        #[cfg(not(debug_assertions))] // code compiled only in release builds
+        {
+            let _prng = self.provctx.get_rng();
+            todo!("Retrieve rng from provctx");
+        }
+        #[cfg(debug_assertions)] // code compiled only in development builds
+        {
+            // FIXME: clean this up and to the right thing above!
+            warn!(target: log_target!(), "{}", "Using OsRng!");
+            rand::rngs::OsRng
+        }
+    };
 
     let (s, p) =
         libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
@@ -203,11 +211,21 @@ pub(super) unsafe extern "C" fn gen(
     _cbarg: *mut c_void,
 ) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
-    let genctx: &mut GenCTX<'_> = vgenctx.into();
+    let genctx: &mut GenCTX<'_> = vgenctx.try_into().unwrap();
 
-    // FIXME: we should probably wrap around the randomness provided by OSSL in their dispatch table
-    let mut rng = rand::rngs::OsRng;
-    warn!(target: log_target!(), "{}", "Using OsRng!");
+    let mut rng = {
+        #[cfg(not(debug_assertions))] // code compiled only in release builds
+        {
+            let _prng = self.provctx.get_rng();
+            todo!("Retrieve rng from provctx");
+        }
+        #[cfg(debug_assertions)] // code compiled only in development builds
+        {
+            // FIXME: clean this up and to the right thing above!
+            warn!(target: log_target!(), "{}", "Using OsRng!");
+            rand::rngs::OsRng
+        }
+    };
 
     let (s, p) =
         libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
