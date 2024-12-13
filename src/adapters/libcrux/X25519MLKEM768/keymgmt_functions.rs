@@ -1,6 +1,6 @@
 use super::*;
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
-use rust_openssl_core_provider::osslparams::{ossl_param_locate, OSSLParam};
+use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
 use std::ffi::{c_int, c_void};
 
 #[allow(dead_code)]
@@ -243,24 +243,18 @@ pub(super) unsafe extern "C" fn get_params(
     let keydata: &KeyPair = vkeydata.into();
 
     // TODO: handle errors responsibly!!!
-    let mut params = OSSLParam::try_new_vec(params);
-    match params.as_mut() {
-        Ok(v) => {
-            match ossl_param_locate(v, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY) {
-                Some(p) => {
-                    match &keydata.public {
-                        Some(pubkey) => {
-                            let bytes = pubkey.encode();
-                            // might be nice to impl OSSLParamSetter<&Vec<u8>> and avoid .as_slice()
-                            let _ = p.set(bytes.as_slice());
-                        }
-                        None => (),
-                    }
+    match ossl_param_locate_raw(params, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY).as_mut() {
+        Some(p) => {
+            match &keydata.public {
+                Some(pubkey) => {
+                    let bytes = pubkey.encode();
+                    // might be nice to impl OSSLParamSetter<&Vec<u8>> and avoid .as_slice()
+                    let _ = p.set(bytes.as_slice()); // set(&bytes)
                 }
                 None => (),
             }
         }
-        Err(_) => (),
+        None => (),
     }
 
     // Based on stepping through the code with gdb, OSSL also asks for params with the keys "bits",
