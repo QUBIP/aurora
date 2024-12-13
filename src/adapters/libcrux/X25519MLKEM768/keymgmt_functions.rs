@@ -3,7 +3,7 @@ use crate::{handleResult, OpenSSLProvider};
 use anyhow::anyhow;
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
-use kem::{Decapsulate, Encapsulate};
+use kem::Encapsulate;
 use rand_core::CryptoRngCore;
 use std::ffi::{c_int, c_void};
 
@@ -46,9 +46,10 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
 
 impl KeyPair<'_> {
     #[named]
+    #[expect(dead_code)]
     fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), Error> {
         trace!(target: log_target!(), "Called ");
-        let rng = &self.provctx.rng;
+        let _rng = self.provctx.get_rng();
         todo!();
         //self.encapsulate(rng)
     }

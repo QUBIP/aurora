@@ -1,8 +1,7 @@
 #[macro_use]
 extern crate log;
 
-use ::function_name::named;
-use rand::rngs::OsRng;
+pub(crate) use ::function_name::named;
 use std::ffi::{CStr, CString};
 use std::sync::LazyLock;
 
@@ -22,6 +21,7 @@ use rust_openssl_core_provider::{bindings, osslparams};
 pub(crate) mod adapters;
 mod init;
 mod query;
+pub(crate) mod random;
 
 use bindings::dispatch_table_entry;
 use bindings::ossl_param_st;
@@ -54,7 +54,6 @@ pub struct OpenSSLProvider<'a> {
     params: Vec<OSSLParam>,
     param_array_ptr: Option<*mut [ossl_param_st]>,
     pub(crate) adapters_ctx: adapters::Contexts,
-    pub rng: OsRng,
 }
 
 /// We implement the Drop trait to make it explicit when a provider
@@ -88,7 +87,6 @@ impl<'a> OpenSSLProvider<'a> {
                 OSSL_PROV_PARAM_NAME,
             ))],
             adapters_ctx: adapters::Contexts::default(),
-            rng: OsRng,
         }
     }
 
