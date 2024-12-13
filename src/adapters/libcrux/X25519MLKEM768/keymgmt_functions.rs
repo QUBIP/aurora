@@ -208,8 +208,9 @@ pub(super) unsafe extern "C" fn gen(
     _cb: OSSL_CALLBACK,
     _cbarg: *mut c_void,
 ) -> *mut c_void {
+    const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let genctx: &mut GenCTX<'_> = vgenctx.try_into().unwrap();
+    let genctx: &mut GenCTX<'_> = handleResult!(vgenctx.try_into());
 
     let mut rng = {
         #[cfg(not(debug_assertions))] // code compiled only in release builds
@@ -407,8 +408,9 @@ pub(super) unsafe extern "C" fn get_params(
     vkeydata: *mut c_void,
     params: *mut ossl_param_st,
 ) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
-    let keydata: &KeyPair = vkeydata.try_into().unwrap();
+    let keydata: &KeyPair = handleResult!(vkeydata.try_into());
 
     // TODO: handle errors responsibly!!!
     match ossl_param_locate_raw(params, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY).as_mut() {
