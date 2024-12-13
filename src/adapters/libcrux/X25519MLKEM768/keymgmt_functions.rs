@@ -45,6 +45,39 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
 }
 
 impl KeyPair<'_> {
+    /// A convenience method to encapsulate a shared secret and generate a
+    /// ciphertext (encapsulated key).
+    ///
+    /// # Description
+    ///
+    /// This function performs key encapsulation by securely generating a
+    /// shared secret and the corresponding encapsulated key.
+    /// It uses the pseudorandom number generator (PRNG) associated with this
+    /// `KeyPair` (from the associated Provider Context).
+    ///
+    /// # Returns
+    ///
+    /// On success, returns a tuple containing:
+    /// - `EncapsulatedKey`: The ciphertext to be transmitted to the other peer.
+    /// - `SharedSecret`: The shared secret derived during the encapsulation.
+    ///
+    /// On failure, returns an `Error`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use your_crate::{KeyPair, EncapsulatedKey, SharedSecret, Error};
+    /// # fn main() -> Result<(), Error> {
+    /// let keypair = KeyPair::new();
+    /// let (encapsulated_key, shared_secret) = keypair.encapsulate_ex()?;
+    /// // Use the `encapsulated_key` and `shared_secret` as needed.
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if key encapsulation fails.
     #[named]
     pub fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), Error> {
         trace!(target: log_target!(), "Called ");
