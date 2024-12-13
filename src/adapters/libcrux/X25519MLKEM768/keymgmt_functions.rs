@@ -178,6 +178,12 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
 
     let (s, p) =
         libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        // FIXME: unwrap() should go away and errors properly handled
+        todo!("Remove unwrap");
+    }
+
     let keypair = Box::new(KeyPair {
         private: Some(s),
         public: Some(p),
@@ -228,6 +234,12 @@ pub(super) unsafe extern "C" fn gen(
 
     let (s, p) =
         libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
+    #[cfg(not(debug_assertions))] // code compiled only in release builds
+    {
+        // FIXME: unwrap() should go away and errors properly handled
+        todo!("Remove unwrap");
+    }
+
     let keypair = Box::new(KeyPair {
         private: Some(s),
         public: Some(p),
