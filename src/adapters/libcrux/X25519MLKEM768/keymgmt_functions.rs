@@ -44,6 +44,16 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     }
 }
 
+impl KeyPair<'_> {
+    #[named]
+    fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), Error> {
+        trace!(target: log_target!(), "Called ");
+        let rng = &self.provctx.rng;
+        todo!();
+        //self.encapsulate(rng)
+    }
+}
+
 impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
     type Error = anyhow::Error;
 
