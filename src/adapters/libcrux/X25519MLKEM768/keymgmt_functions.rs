@@ -3,7 +3,7 @@ use crate::{handleResult, OpenSSLProvider};
 use anyhow::anyhow;
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
-use kem::Encapsulate;
+use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
 use std::ffi::{c_int, c_void};
 
@@ -21,6 +21,34 @@ pub(crate) type Error = anyhow::Error;
 
 pub(crate) type EncapsulatedKey = Vec<u8>;
 pub(crate) type SharedSecret = Vec<u8>;
+
+impl Decapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
+    type Error = Error;
+
+    #[named]
+    fn decapsulate(&self, encapsulated_key: &EncapsulatedKey) -> Result<SharedSecret, Self::Error> {
+        trace!(target: log_target!(), "Called ");
+        let ek = libcrux_kem::Ct::decode(
+            libcrux_kem::Algorithm::X25519MlKem768Draft00,
+            encapsulated_key,
+        )
+        .map_err(|e| anyhow!("libcrux_kem::Ct::decode returned {:?}", e))?;
+
+        match &self.private {
+            Some(sk) => {
+                let ss = ek
+                    .decapsulate(sk)
+                    .map_err(|e| anyhow!("libcrux_kem::EK::decapsulate() returned {:?}", e))?;
+                let ss = ss.encode();
+                Ok(ss)
+            }
+            None => {
+                error!(target: log_target!(), "Keypair is missing a private key");
+                Err(anyhow!("Missing private key"))
+            }
+        }
+    }
+}
 
 impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     type Error = Error;
@@ -98,6 +126,9 @@ impl KeyPair<'_> {
 
         self.encapsulate(&mut rng)
     }
+
+    // No `decapsulate_ex`: decapsulate does not require extra randomness, so
+    // we don't need a convenience method
 }
 
 impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
