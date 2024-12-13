@@ -1,6 +1,7 @@
 use super::*;
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
+use rand_core::CryptoRngCore;
 use std::ffi::{c_int, c_void};
 
 pub type PrivateKey = libcrux_kem::PrivateKey;
