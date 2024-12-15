@@ -239,15 +239,15 @@ pub(super) extern "C" fn decapsulate(
         return 1;
     }
     let ct_in_slice = handleResult!(u8_slice_try_from_raw_parts(inp, inlen));
-    warn!(target: log_target!(), "Input CT is {:?}", ct_in_slice); // FIXME: remove
+    warn!(target: log_target!(), "Input CT is {:X?}", ct_in_slice); // FIXME: remove
 
     let ct_vec = ct_in_slice.to_vec();
     let ss_out = handleResult!(u8_mut_slice_try_from_raw_parts(out, outlen));
 
     trace!(target: log_target!(),"{}", "Calling kemctx.decapsulate");
-    warn!(target: log_target!(), "Current own SK is {:#?}", &kemctx.own_keypair); // FIXME: remove
+    warn!(target: log_target!(), "Current own SK is {:#X?}", &kemctx.own_keypair); // FIXME: remove
     let ss = handleResult!(kemctx.decapsulate(&ct_vec));
-    warn!(target: log_target!(), "Resulting SS is {:?}", ss); // FIXME: remove
+    warn!(target: log_target!(), "Resulting SS is {:X?}", ss); // FIXME: remove
 
     trace!(target: log_target!(), "{}", "Copying to output slice");
     ss_out.copy_from_slice(ss.as_slice());
@@ -290,10 +290,10 @@ pub(super) extern "C" fn encapsulate(
     let ct_out = handleResult!(u8_mut_slice_try_from_raw_parts(out, outlen));
     let ss_out = handleResult!(u8_mut_slice_try_from_raw_parts(secret, secretlen));
 
-    warn!(target: log_target!(), "Current peer PK is {:#?}", &kemctx.peer_keypair); // FIXME: remove
+    warn!(target: log_target!(), "Current peer PK is {:#X?}", &kemctx.peer_keypair); // FIXME: remove
     let (ct, ss) = handleResult!(kemctx.encapsulate_ex());
-    warn!(target: log_target!(), "Output CT is {:?}", &ct); // FIXME: remove
-    warn!(target: log_target!(), "Output SS is {:?}", &ss); // FIXME: remove
+    warn!(target: log_target!(), "Output CT is {:X?}", &ct); // FIXME: remove
+    warn!(target: log_target!(), "Output SS is {:X?}", &ss); // FIXME: remove
 
     ct_out.copy_from_slice(ct.as_slice());
     ss_out.copy_from_slice(ss.as_slice());

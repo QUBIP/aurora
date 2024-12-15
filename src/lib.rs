@@ -190,7 +190,7 @@ macro_rules! handleResult {
         {
             Ok(r) => r,
             Err(e) => {
-                error!(target: log_target!(), "{}", e);
+                error!(target: log_target!(), "{:#?}", e);
                 return ERROR_RET;
             }
         }
