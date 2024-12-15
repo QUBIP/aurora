@@ -1,6 +1,7 @@
+use super::keymgmt_functions::KeyPair;
 use super::OurError as KEMError;
 use super::*;
-use crate::{adapters::libcrux::X25519MLKEM768::keymgmt_functions::KeyPair, handleResult};
+use crate::{handleResult, named};
 use bindings::ossl_param_st;
 use kem::{Decapsulate, Encapsulate};
 use libc::{c_int, c_uchar, c_void};

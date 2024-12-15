@@ -7,7 +7,8 @@ use std::ffi::CStr;
 const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='libcrux'";
 
 #[allow(non_snake_case)]
-mod X25519MLKEM768;
+mod X25519MLKEM768Draft00;
+use X25519MLKEM768Draft00 as X25519MLKEM768;
 
 #[derive(Debug)]
 pub struct AdapterContext {
