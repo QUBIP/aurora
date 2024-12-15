@@ -31,10 +31,13 @@ pub(crate) use anyhow::anyhow;
 
 // Ensure proper null-terminated C string
 // https://docs.openssl.org/master/man7/provider/#algorithm-naming
-pub(super) const NAMES: &CStr = c"X25519MLKEM768";
+pub(super) const NAMES: &CStr = c"X25519MLKEM768Draft00";
+
+/// NAME should be a substring of NAMES
+pub(crate) const NAME: &CStr = c"X25519MLKEM768Draft00";
 
 // Ensure proper null-terminated C string
-pub(super) const DESCRIPTION: &CStr = c"X25519MLKEM768 from libcrux";
+pub(super) const DESCRIPTION: &CStr = c"X25519MLKEM768Draft00 from libcrux";
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/master/man7/provider-kem/

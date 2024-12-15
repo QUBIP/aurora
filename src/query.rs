@@ -6,6 +6,7 @@ use libc::{c_char, c_int, c_void};
 use rust_openssl_core_provider::bindings;
 use rust_openssl_core_provider::osslparams::OSSLParamError;
 
+use crate::adapters::libcrux::X25519MLKEM768Draft00 as X25519MLKEM768;
 use crate::osslparams::{
     IntData, OSSLParam, OSSLParamData, UIntData, Utf8StringData, OSSL_PARAM_END,
 };
@@ -90,7 +91,8 @@ pub(crate) extern "C" fn get_capabilities(
     let result: Result<(), OSSLParamError> = (|tls_group_params: &mut Vec<OSSLParam>| {
         tls_group_params[0].set(c"X25519MLKEM768")?; // IANA group name
         tls_group_params[1].set(c"X25519MLKEM768")?; // group name according to the provider
-        tls_group_params[2].set(c"X25519MLKEM768")?; // algorithm name
+        //tls_group_params[2].set(c"X25519MLKEM768Draft00")?; // algorithm name
+        tls_group_params[2].set(X25519MLKEM768::NAME)?; // algorithm name
         tls_group_params[3].set(0x11ec as u32)?;     // group ID
         tls_group_params[4].set(192 as u32)?;        // number of bits of security
         tls_group_params[5].set(0x0304)?;            // min TLS: v1.3
