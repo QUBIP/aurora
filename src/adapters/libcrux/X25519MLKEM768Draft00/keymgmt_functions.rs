@@ -4,8 +4,12 @@ use crate::{handleResult, OpenSSLProvider};
 use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
 use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
+use rust_openssl_core_provider::keymgmt::selection::Selection;
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
-use std::ffi::{c_int, c_void};
+use std::{
+    ffi::{c_int, c_void},
+    fmt::Debug,
+};
 
 pub type PrivateKey = libcrux_kem::PrivateKey;
 pub type PublicKey = libcrux_kem::PublicKey;
@@ -15,6 +19,23 @@ pub struct KeyPair<'a> {
     pub private: Option<PrivateKey>,
     pub public: Option<PublicKey>,
     provctx: &'a OpenSSLProvider<'a>,
+}
+
+impl<'a> Debug for KeyPair<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let private = match &self.private {
+            Some(p) => format!("{:?}", p.encode()),
+            None => format!("{:?}", None::<()>),
+        };
+        let public = match &self.public {
+            Some(p) => format!("{:?}", p.encode()),
+            None => format!("{:?}", None::<()>),
+        };
+        f.debug_struct("KeyPair")
+            .field("private", &private)
+            .field("public", &public)
+            .finish()
+    }
 }
 
 pub(crate) type EncapsulatedKey = Vec<u8>;
@@ -142,32 +163,24 @@ impl KeyPair<'_> {
 impl<'a> KeyPair<'a> {
     #[named]
     fn new(provctx: &'a OpenSSLProvider) -> Self {
-        let mut rng = {
-            #[cfg(not(debug_assertions))] // code compiled only in release builds
-            {
-                let _prng = self.provctx.get_rng();
-                todo!("Retrieve rng from provctx");
-            }
-            #[cfg(debug_assertions)] // code compiled only in development builds
-            {
-                // FIXME: clean this up and to the right thing above!
-                warn!(target: log_target!(), "{}", "Using OsRng!");
-                rand::rngs::OsRng
-            }
-        };
-
-        let (s, p) =
-            libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            // FIXME: unwrap() should go away and errors properly handled
-            todo!("Remove unwrap");
+        trace!(target: log_target!(), "Called");
+        KeyPair {
+            private: None,
+            public: None,
+            provctx: provctx,
         }
+    }
+
+    #[named]
+    fn generate(provctx: &'a OpenSSLProvider) -> Self {
+        trace!(target: log_target!(), "Called");
+        let genctx = GenCTX::new(provctx, Selection::KEYPAIR);
+        let r = genctx.generate();
 
         KeyPair {
-            private: Some(s),
-            public: Some(p),
-            provctx: provctx,
+            private: r.private,
+            public: r.public,
+            provctx,
         }
     }
 }
@@ -234,33 +247,7 @@ pub(super) unsafe extern "C" fn gen(
     trace!(target: log_target!(), "{}", "Called!");
     let genctx: &mut GenCTX<'_> = handleResult!(vgenctx.try_into());
 
-    let mut rng = {
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            let _prng = self.provctx.get_rng();
-            todo!("Retrieve rng from provctx");
-        }
-        #[cfg(debug_assertions)] // code compiled only in development builds
-        {
-            // FIXME: clean this up and to the right thing above!
-            warn!(target: log_target!(), "{}", "Using OsRng!");
-            rand::rngs::OsRng
-        }
-    };
-
-    let (s, p) =
-        libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        // FIXME: unwrap() should go away and errors properly handled
-        todo!("Remove unwrap");
-    }
-
-    let keypair = Box::new(KeyPair {
-        private: Some(s),
-        public: Some(p),
-        provctx: genctx.provctx,
-    });
+    let keypair: Box<KeyPair<'_>> = Box::new(genctx.generate());
 
     let keypair_ptr = Box::into_raw(keypair);
 
@@ -278,14 +265,52 @@ pub(super) unsafe extern "C" fn gen_cleanup(vgenctx: *mut c_void) {
 
 struct GenCTX<'a> {
     provctx: &'a OpenSSLProvider<'a>,
-    _selection: c_int,
+    selection: Selection,
 }
 
 impl<'a> GenCTX<'a> {
-    fn new(provctx: &'a OpenSSLProvider, selection: c_int) -> Self {
+    fn new(provctx: &'a OpenSSLProvider, selection: Selection) -> Self {
         Self {
             provctx: provctx,
-            _selection: selection,
+            selection: selection,
+        }
+    }
+
+    #[named]
+    fn generate(&self) -> KeyPair<'_> {
+        trace!(target: log_target!(), "Called");
+        if !self.selection.contains(Selection::KEYPAIR) {
+            trace!(target: log_target!(), "Returning empty keypair due to selection bits {:?}", self.selection);
+            return KeyPair::new(self.provctx);
+        }
+        debug!(target: log_target!(), "Generating a new KeyPair");
+
+        let mut rng = {
+            #[cfg(not(debug_assertions))] // code compiled only in release builds
+            {
+                let _prng = self.provctx.get_rng();
+                todo!("Retrieve rng from provctx");
+            }
+            #[cfg(debug_assertions)] // code compiled only in development builds
+            {
+                // FIXME: clean this up and to the right thing above!
+                warn!(target: log_target!(), "{}", "Using OsRng!");
+                rand::rngs::OsRng
+            }
+        };
+
+        let (s, p) =
+            libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
+        #[cfg(not(debug_assertions))] // code compiled only in release builds
+        {
+            // FIXME: unwrap() should go away and errors properly handled
+            todo!("Remove unwrap");
+        }
+
+        KeyPair {
+            private: Some(s),
+            public: Some(p),
+            provctx: self.provctx,
         }
     }
 }
@@ -309,21 +334,20 @@ impl<'a> TryFrom<*mut c_void> for &mut GenCTX<'a> {
 #[named]
 pub(super) unsafe extern "C" fn gen_init(
     vprovctx: *mut c_void,
-    selection: c_int,
-    _params: *const ossl_param_st,
+    i_selection: c_int,
+    params: *const ossl_param_st,
 ) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
+    let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let selection: Selection = handleResult!((i_selection as u32).try_into());
     let newctx = Box::new(GenCTX::new(provctx, selection));
-    warn!(target: log_target!(), "Ignoring params!");
-    //todo!("set params on the context if params is not null")
+
+    if !params.is_null() {
+        warn!(target: log_target!(), "Ignoring params!");
+        //todo!("set params on the context if params is not null")
+    }
+
     let newctx_raw_ptr = Box::into_raw(newctx);
 
     return newctx_raw_ptr.cast();
@@ -552,7 +576,7 @@ mod tests {
     fn test_loopback_kex() {
         let provctx = new_provctx_for_testing();
 
-        let client_kp = KeyPair::new(&provctx);
+        let client_kp = KeyPair::generate(&provctx);
 
         let (ct, ss) = client_kp.encapsulate_ex().unwrap();
 
@@ -565,7 +589,7 @@ mod tests {
     fn test_full_kex() {
         let provctx = new_provctx_for_testing();
 
-        let client_kp = KeyPair::new(&provctx);
+        let client_kp = KeyPair::generate(&provctx);
 
         let client_keyshare = client_kp.public.as_ref().unwrap().encode();
         // client sends its keyshare
