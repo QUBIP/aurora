@@ -1,11 +1,14 @@
 use super::OurError as KMGMTError;
 use super::*;
 use crate::{handleResult, OpenSSLProvider};
-use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
+use bindings::{
+    ossl_param_st, OSSL_CALLBACK, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+    OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
+};
 use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
-use rust_openssl_core_provider::keymgmt::selection::Selection;
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
+use rust_openssl_core_provider::{keymgmt::selection::Selection, osslparams};
 use std::{
     ffi::{c_int, c_void},
     fmt::Debug,
@@ -374,23 +377,40 @@ pub(super) unsafe extern "C" fn export(
     todo!("extract values indicated by selection from keydata, create an OSSL_PARAM array with them, and call param_cb with that array as well as the given cbarg")
 }
 
+const HANDLED_KEY_TYPES: [ossl_param_st; 3] = [
+    ossl_param_st {
+        key: OSSL_PKEY_PARAM_PUB_KEY.as_ptr(),
+        data_type: OSSL_PARAM_OCTET_STRING,
+        data: std::ptr::null::<std::ffi::c_void>() as *mut std::ffi::c_void,
+        data_size: 0,
+        return_size: 0,
+    },
+    ossl_param_st {
+        key: OSSL_PKEY_PARAM_PRIV_KEY.as_ptr(),
+        data_type: OSSL_PARAM_OCTET_STRING,
+        data: std::ptr::null::<std::ffi::c_void>() as *mut std::ffi::c_void,
+        data_size: 0,
+        return_size: 0,
+    },
+    osslparams::OSSL_PARAM_END,
+];
+
 // I think using {import,export}_types_ex instead of the non-_ex variant means we only
 // support OSSL 3.2 and up, but I also think that's fine...?
 #[named]
 pub(super) unsafe extern "C" fn import_types_ex(
     vprovctx: *mut c_void,
-    _selection: c_int,
+    selection: c_int,
 ) -> *const ossl_param_st {
     const ERROR_RET: *const ossl_param_st = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
-    todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, for parameters that OSSL_FUNC_keymgmt_import() can handle")
+    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let selection: Selection = handleResult!((selection as u32).try_into());
+
+    if selection.intersects(Selection::KEYPAIR) {
+        return HANDLED_KEY_TYPES.as_ptr();
+    }
+    ERROR_RET
 }
 
 #[named]
