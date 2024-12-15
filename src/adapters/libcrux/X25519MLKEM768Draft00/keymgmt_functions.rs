@@ -547,10 +547,9 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
 mod tests {
     use super::*;
     use crate::tests::new_provctx_for_testing;
-    use crate::*;
 
     #[test]
-    fn test_full_kex() {
+    fn test_loopback_kex() {
         let provctx = new_provctx_for_testing();
 
         let client_kp = KeyPair::new(&provctx);
@@ -558,6 +557,37 @@ mod tests {
         let (ct, ss) = client_kp.encapsulate_ex().unwrap();
 
         let decapsulated_ss = client_kp.decapsulate(&ct).unwrap();
+
+        assert_eq!(ss, decapsulated_ss);
+    }
+
+    #[test]
+    fn test_full_kex() {
+        let provctx = new_provctx_for_testing();
+
+        let client_kp = KeyPair::new(&provctx);
+
+        let client_keyshare = client_kp.public.as_ref().unwrap().encode();
+        // client sends its keyshare
+
+        // server decodes the received keyshare
+        let server_recv_keyshare = client_keyshare;
+        let server_decoded_keyshare = libcrux_kem::PublicKey::decode(
+            libcrux_kem::Algorithm::X25519MlKem768Draft00,
+            &server_recv_keyshare,
+        )
+        .unwrap();
+        let serverside_kp = KeyPair {
+            private: None,
+            public: Some(server_decoded_keyshare),
+            provctx: &provctx,
+        };
+
+        let (ct, ss) = serverside_kp.encapsulate_ex().unwrap();
+        // server sends back CT as its keyshare
+        let server_keyshare = ct;
+
+        let decapsulated_ss = client_kp.decapsulate(&server_keyshare).unwrap();
 
         assert_eq!(ss, decapsulated_ss);
     }
