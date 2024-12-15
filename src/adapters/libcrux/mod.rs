@@ -6,10 +6,12 @@ use std::ffi::CStr;
 
 const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='libcrux'";
 
-#[allow(non_snake_case)]
-pub(crate) mod X25519MLKEM768;
+//#[allow(non_snake_case)]
+//pub(crate) mod X25519MLKEM768;
 #[allow(non_snake_case)]
 pub(crate) mod X25519MLKEM768Draft00;
+pub(crate) use X25519MLKEM768Draft00 as X25519MLKEM768;
+
 
 #[derive(Debug)]
 pub struct AdapterContext {
