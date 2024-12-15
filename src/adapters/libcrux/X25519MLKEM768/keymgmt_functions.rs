@@ -7,8 +7,23 @@ use rand_core::CryptoRngCore;
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
 use std::ffi::{c_int, c_void};
 
-pub type PrivateKey = libcrux_kem::PrivateKey;
-pub type PublicKey = libcrux_kem::PublicKey;
+pub struct PublicKey {
+    pub ec_share: libcrux_kem::PublicKey,
+    pub mlkem_share: libcrux_kem::PublicKey,
+}
+
+pub struct PrivateKey {
+    pub ec_share: libcrux_kem::PrivateKey,
+    pub mlkem_share: libcrux_kem::PrivateKey,
+}
+
+impl PublicKey {
+    pub fn encode(&self) -> Vec<u8> {
+        let mut out = self.mlkem_share.encode();
+        out.extend(self.ec_share.encode());
+        out
+    }
+}
 
 #[expect(dead_code)]
 pub struct KeyPair<'a> {
@@ -26,16 +41,13 @@ impl Decapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     #[named]
     fn decapsulate(&self, encapsulated_key: &EncapsulatedKey) -> Result<SharedSecret, Self::Error> {
         trace!(target: log_target!(), "Called ");
-        let ek = libcrux_kem::Ct::decode(
-            libcrux_kem::Algorithm::X25519MlKem768Draft00,
-            encapsulated_key,
-        )
-        .map_err(|e| anyhow!("libcrux_kem::Ct::decode returned {:?}", e))?;
+        let ek = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::MlKem768, encapsulated_key)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decode returned {:?}", e))?;
 
         match &self.private {
             Some(sk) => {
                 let ss = ek
-                    .decapsulate(sk)
+                    .decapsulate(&sk.mlkem_share)
                     .map_err(|e| anyhow!("libcrux_kem::EK::decapsulate() returned {:?}", e))?;
                 let ss = ss.encode();
                 Ok(ss)
@@ -58,7 +70,7 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
         trace!(target: log_target!(), "Called ");
         match &self.public {
-            Some(pk) => match pk.encapsulate(rng) {
+            Some(pk) => match pk.mlkem_share.encapsulate(rng) {
                 Ok((ss, ct)) => Ok((ct.encode(), ss.encode())),
                 Err(e) => Err(anyhow!("{:?}", e)),
             },
@@ -127,12 +139,12 @@ impl KeyPair<'_> {
 
     pub(crate) fn expected_ct_size(&self) -> Result<usize, KMGMTError> {
         // FIXME: should not be hardcoded
-        return Ok(1120);
+        return Ok(1088);
     }
 
     pub(crate) fn expected_ss_size(&self) -> Result<usize, KMGMTError> {
         // FIXME: should not be hardcoded
-        return Ok(64);
+        return Ok(32);
     }
 
     // No `decapsulate_ex`: decapsulate does not require extra randomness, so
@@ -186,8 +198,9 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
         }
     };
 
-    let (s, p) =
-        libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
+    let (ec_priv, ec_pub) = libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519, &mut rng).unwrap();
+    let (mlkem_priv, mlkem_pub) =
+        libcrux_kem::key_gen(libcrux_kem::Algorithm::MlKem768, &mut rng).unwrap();
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
         // FIXME: unwrap() should go away and errors properly handled
@@ -195,8 +208,14 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     }
 
     let keypair = Box::new(KeyPair {
-        private: Some(s),
-        public: Some(p),
+        private: Some(PrivateKey {
+            ec_share: ec_priv,
+            mlkem_share: mlkem_priv,
+        }),
+        public: Some(PublicKey {
+            ec_share: ec_pub,
+            mlkem_share: mlkem_pub,
+        }),
         provctx: provctx,
     });
 
@@ -242,8 +261,9 @@ pub(super) unsafe extern "C" fn gen(
         }
     };
 
-    let (s, p) =
-        libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
+    let (ec_priv, ec_pub) = libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519, &mut rng).unwrap();
+    let (mlkem_priv, mlkem_pub) =
+        libcrux_kem::key_gen(libcrux_kem::Algorithm::MlKem768, &mut rng).unwrap();
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
         // FIXME: unwrap() should go away and errors properly handled
@@ -251,8 +271,14 @@ pub(super) unsafe extern "C" fn gen(
     }
 
     let keypair = Box::new(KeyPair {
-        private: Some(s),
-        public: Some(p),
+        private: Some(PrivateKey {
+            ec_share: ec_priv,
+            mlkem_share: mlkem_priv,
+        }),
+        public: Some(PublicKey {
+            ec_share: ec_pub,
+            mlkem_share: mlkem_pub,
+        }),
         provctx: genctx.provctx,
     });
 
