@@ -125,7 +125,13 @@ impl KeyPair<'_> {
         self.encapsulate(&mut rng)
     }
 
+    pub(crate) fn expected_ct_size(&self) -> Result<usize, KMGMTError> {
+        // FIXME: should not be hardcoded
+        return Ok(1120);
+    }
+
     pub(crate) fn expected_ss_size(&self) -> Result<usize, KMGMTError> {
+        // FIXME: should not be hardcoded
         return Ok(64);
     }
 

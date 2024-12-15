@@ -106,7 +106,6 @@ impl Decapsulate<EncapsulatedKey, SharedSecret> for KemContext<'_> {
 
 impl KemContext<'_> {
     #[named]
-    #[expect(dead_code)]
     fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), KEMError> {
         trace!(target: log_target!(), "Called ");
         match self.peer_keypair {
@@ -186,42 +185,6 @@ pub(super) extern "C" fn decapsulate_init(
 }
 
 #[named]
-pub(super) extern "C" fn encapsulate(
-    vkemctx: *mut c_void,
-    _out: *mut c_uchar,
-    _outlen: *mut usize,
-    _secret: *mut c_uchar,
-    _secretlen: *mut usize,
-) -> c_int {
-    const ERROR_RET: c_int = 0;
-    trace!(target: log_target!(), "{}", "Called!");
-
-    let _kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
-
-    todo!("Use kemctx to decapsulate it, handle errors, properly write the result to `out` (ct) and `secret` (ss)");
-
-    //let (shared_secret, ciphertext) = match public_key.encapsulate(&mut rng) {
-    //    Ok((shared_secret, ciphertext)) => (shared_secret, ciphertext),
-    //    Err(e) => {
-    //        error!(target: log_target!(), "Encapsulation failed: {:?}", e);
-    //        return 0;
-    //    }
-    //};
-
-    //unsafe {
-    //    let encoded_ciphertext = ciphertext.encode();
-    //    std::ptr::copy_nonoverlapping(encoded_ciphertext.as_ptr(), out, encoded_ciphertext.len());
-    //    *outlen = encoded_ciphertext.len();
-
-    //    let encoded_secret = shared_secret.encode();
-    //    std::ptr::copy_nonoverlapping(encoded_secret.as_ptr(), secret, encoded_secret.len());
-    //    *secretlen = encoded_secret.len();
-    //}
-
-    //1
-}
-
-#[named]
 fn u8_slice_try_from_raw_parts<'a>(p: *const c_uchar, len: usize) -> Result<&'a [u8], KEMError> {
     trace!(target: log_target!(), "{}", "Called!");
     if p.is_null() {
@@ -264,74 +227,69 @@ pub(super) extern "C" fn decapsulate(
 
     let kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
     if out.is_null() && !outlen.is_null() {
-        let expected_out_len = match kemctx.own_keypair {
+        let expected_ss_len = match kemctx.own_keypair {
             Some(kp) => handleResult!(kp.expected_ss_size()),
             None => todo!(),
         };
         unsafe {
-            *outlen = expected_out_len;
+            *outlen = expected_ss_len;
         }
+        trace!(target: log_target!(), "Size of output ss buffer should be {}", expected_ss_len);
         return 1;
     }
     let ct_in_slice = handleResult!(u8_slice_try_from_raw_parts(inp, inlen));
     let ct_vec = ct_in_slice.to_vec();
     let ss_out = handleResult!(u8_mut_slice_try_from_raw_parts(out, outlen));
 
+    trace!(target: log_target!(),"{}", "Calling kemctx.decapsulate");
     let ss = handleResult!(kemctx.decapsulate(&ct_vec));
 
+    trace!(target: log_target!(), "{}", "Copying to output slice");
     ss_out.copy_from_slice(ss.as_slice());
+
+    trace!(target: log_target!(), "{}", "Returning successfully!");
     return 1;
+}
 
-    //todo!("Convert `in` in a suitable slice (it's the ciphertext), use kemctx to decapsulate it, handle errors, properly write the result to `out`");
+#[named]
+pub(super) extern "C" fn encapsulate(
+    vkemctx: *mut c_void,
+    out: *mut c_uchar,
+    outlen: *mut usize,
+    secret: *mut c_uchar,
+    secretlen: *mut usize,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    trace!(target: log_target!(), "{}", "Called!");
 
-    //let kem_ctx: &mut KemContext = unsafe { &mut *(ctx as *mut KemContext) };
+    let kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
+    if out.is_null() && !outlen.is_null() && !secretlen.is_null() {
+        let expected_ct_len = match kemctx.peer_keypair {
+            Some(kp) => handleResult!(kp.expected_ct_size()),
+            None => todo!(),
+        };
+        let expected_ss_len = match kemctx.peer_keypair {
+            Some(kp) => handleResult!(kp.expected_ss_size()),
+            None => todo!(),
+        };
 
-    //let private_key = match kem_ctx.private_key.as_ref() {
-    //    Some(pk) => pk,
-    //    None => {
-    //        error!(target: log_target!(), "No private key in the context");
-    //        return 0;
-    //    }
-    //};
+        unsafe {
+            *outlen = expected_ct_len;
+            *secretlen = expected_ss_len;
+        }
+        trace!(target: log_target!(), "Size of output ct buffer should be {}", expected_ct_len);
+        trace!(target: log_target!(), "Size of output ss buffer should be {}", expected_ss_len);
+        return 1;
+    }
 
-    //let ciphertext = unsafe { std::slice::from_raw_parts(in_, inlen) };
+    let ct_out = handleResult!(u8_mut_slice_try_from_raw_parts(out, outlen));
+    let ss_out = handleResult!(u8_mut_slice_try_from_raw_parts(secret, secretlen));
 
-    //if ciphertext.is_empty() {
-    //    error!(target: log_target!(), "No encapsulated data found");
-    //    return 0;
-    //}
+    let (ct, ss) = handleResult!(kemctx.encapsulate_ex());
 
-    //let ct =
-    //    match libcrux_kem::Ct::decode(libcrux_kem::Algorithm::X25519MlKem768Draft00, ciphertext) {
-    //        Ok(ct) => ct,
-    //        Err(e) => {
-    //            error!(target: log_target!(), "Failed to decode ciphertext: {:?}", e);
-    //            return 0;
-    //        }
-    //    };
+    ct_out.copy_from_slice(ct.as_slice());
+    ss_out.copy_from_slice(ss.as_slice());
 
-    //let shared_secret = match ct.decapsulate(private_key) {
-    //    Ok(secret) => secret.encode(),
-    //    Err(e) => {
-    //        error!(target: log_target!(), "Decapsulation failed: {:?}", e);
-    //        return 0;
-    //    }
-    //};
-
-    //unsafe {
-    //    if out.is_null() {
-    //        *outlen = shared_secret.len();
-    //        trace!(target: log_target!(), "Output buffer is null, returning length: {}", shared_secret.len());
-    //    } else {
-    //        if *outlen < shared_secret.len() {
-    //            error!(target: log_target!(), "Output buffer is too small");
-    //            return 0;
-    //        }
-    //        std::ptr::copy_nonoverlapping(shared_secret.as_ptr(), out, shared_secret.len());
-    //        *outlen = shared_secret.len();
-    //        trace!(target: log_target!(), "Decapsulation successful, output length: {}", shared_secret.len());
-    //    }
-    //}
-
-    //1
+    trace!(target: log_target!(), "{}", "Returning successfully!");
+    return 1;
 }
