@@ -239,11 +239,14 @@ pub(super) extern "C" fn decapsulate(
         return 1;
     }
     let ct_in_slice = handleResult!(u8_slice_try_from_raw_parts(inp, inlen));
+    warn!(target: log_target!(), "Input CT is {:?}", ct_in_slice); // FIXME: remove
+
     let ct_vec = ct_in_slice.to_vec();
     let ss_out = handleResult!(u8_mut_slice_try_from_raw_parts(out, outlen));
 
     trace!(target: log_target!(),"{}", "Calling kemctx.decapsulate");
     let ss = handleResult!(kemctx.decapsulate(&ct_vec));
+    warn!(target: log_target!(), "Resulting SS is {:?}", ss); // FIXME: remove
 
     trace!(target: log_target!(), "{}", "Copying to output slice");
     ss_out.copy_from_slice(ss.as_slice());
@@ -287,6 +290,7 @@ pub(super) extern "C" fn encapsulate(
     let ss_out = handleResult!(u8_mut_slice_try_from_raw_parts(secret, secretlen));
 
     let (ct, ss) = handleResult!(kemctx.encapsulate_ex());
+    warn!(target: log_target!(), "Resulting SS is {:?}", ss); // FIXME: remove
 
     ct_out.copy_from_slice(ct.as_slice());
     ss_out.copy_from_slice(ss.as_slice());

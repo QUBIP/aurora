@@ -23,6 +23,9 @@ mod init;
 mod query;
 pub(crate) mod random;
 
+#[cfg(test)]
+pub(crate) mod tests;
+
 use bindings::dispatch_table_entry;
 use bindings::ossl_param_st;
 use bindings::{

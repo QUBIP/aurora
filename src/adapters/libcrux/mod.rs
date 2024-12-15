@@ -12,7 +12,6 @@ const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='libcrux'"
 pub(crate) mod X25519MLKEM768Draft00;
 pub(crate) use X25519MLKEM768Draft00 as X25519MLKEM768;
 
-
 #[derive(Debug)]
 pub struct AdapterContext {
     op_kem_ptr: Option<*const OSSL_ALGORITHM>,

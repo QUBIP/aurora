@@ -139,6 +139,39 @@ impl KeyPair<'_> {
     // we don't need a convenience method
 }
 
+impl<'a> KeyPair<'a> {
+    #[named]
+    fn new(provctx: &'a OpenSSLProvider) -> Self {
+        let mut rng = {
+            #[cfg(not(debug_assertions))] // code compiled only in release builds
+            {
+                let _prng = self.provctx.get_rng();
+                todo!("Retrieve rng from provctx");
+            }
+            #[cfg(debug_assertions)] // code compiled only in development builds
+            {
+                // FIXME: clean this up and to the right thing above!
+                warn!(target: log_target!(), "{}", "Using OsRng!");
+                rand::rngs::OsRng
+            }
+        };
+
+        let (s, p) =
+            libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
+        #[cfg(not(debug_assertions))] // code compiled only in release builds
+        {
+            // FIXME: unwrap() should go away and errors properly handled
+            todo!("Remove unwrap");
+        }
+
+        KeyPair {
+            private: Some(s),
+            public: Some(p),
+            provctx: provctx,
+        }
+    }
+}
+
 impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
     type Error = KMGMTError;
 
@@ -172,34 +205,7 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    let mut rng = {
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            let _prng = self.provctx.get_rng();
-            todo!("Retrieve rng from provctx");
-        }
-        #[cfg(debug_assertions)] // code compiled only in development builds
-        {
-            // FIXME: clean this up and to the right thing above!
-            warn!(target: log_target!(), "{}", "Using OsRng!");
-            rand::rngs::OsRng
-        }
-    };
-
-    let (s, p) =
-        libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        // FIXME: unwrap() should go away and errors properly handled
-        todo!("Remove unwrap");
-    }
-
-    let keypair = Box::new(KeyPair {
-        private: Some(s),
-        public: Some(p),
-        provctx: provctx,
-    });
-
+    let keypair: Box<KeyPair<'_>> = Box::new(KeyPair::new(provctx));
     return Box::into_raw(keypair).cast();
 }
 
@@ -534,5 +540,25 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
         warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of settable keymgmt params");
 
         crate::osslparams::EMPTY_PARAMS.as_ptr()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::new_provctx_for_testing;
+    use crate::*;
+
+    #[test]
+    fn test_full_kex() {
+        let provctx = new_provctx_for_testing();
+
+        let client_kp = KeyPair::new(&provctx);
+
+        let (ct, ss) = client_kp.encapsulate_ex().unwrap();
+
+        let decapsulated_ss = client_kp.decapsulate(&ct).unwrap();
+
+        assert_eq!(ss, decapsulated_ss);
     }
 }
