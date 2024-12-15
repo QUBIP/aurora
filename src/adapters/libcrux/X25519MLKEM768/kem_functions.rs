@@ -2,7 +2,7 @@ use super::OurError as KEMError;
 use super::*;
 use crate::{adapters::libcrux::X25519MLKEM768::keymgmt_functions::KeyPair, handleResult};
 use bindings::ossl_param_st;
-use kem::Encapsulate;
+use kem::{Decapsulate, Encapsulate};
 use libc::{c_int, c_uchar, c_void};
 use rand_core::CryptoRngCore;
 
@@ -79,10 +79,26 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KemContext<'_> {
     ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
         trace!(target: log_target!(), "Called ");
         match self.peer_keypair {
-            Some(pk) => pk.encapsulate(rng),
+            Some(pkp) => pkp.encapsulate(rng),
             None => {
                 error!(target: log_target!(), "KemContext is missing a public key");
                 Err(anyhow!("Missing public key"))
+            }
+        }
+    }
+}
+
+impl Decapsulate<EncapsulatedKey, SharedSecret> for KemContext<'_> {
+    type Error = KEMError;
+
+    #[named]
+    fn decapsulate(&self, encapsulated_key: &EncapsulatedKey) -> Result<SharedSecret, Self::Error> {
+        trace!(target: log_target!(), "Called ");
+        match self.own_keypair {
+            Some(okp) => okp.decapsulate(encapsulated_key),
+            None => {
+                error!(target: log_target!(), "KemContext is missing a private key");
+                Err(anyhow!("Missing private key"))
             }
         }
     }
@@ -206,18 +222,67 @@ pub(super) extern "C" fn encapsulate(
 }
 
 #[named]
+fn u8_slice_try_from_raw_parts<'a>(p: *const c_uchar, len: usize) -> Result<&'a [u8], KEMError> {
+    trace!(target: log_target!(), "{}", "Called!");
+    if p.is_null() {
+        return Err(anyhow!("Passed a null pointer"));
+    }
+    if len == 0 {
+        return Err(anyhow!("Passed zero lenght"));
+    }
+    let r = unsafe { std::slice::from_raw_parts(p, len) };
+    Ok(r)
+}
+
+#[named]
+fn u8_mut_slice_try_from_raw_parts<'a>(
+    p: *mut c_uchar,
+    lenp: *mut usize,
+) -> Result<&'a mut [u8], KEMError> {
+    trace!(target: log_target!(), "{}", "Called!");
+    if p.is_null() || lenp.is_null() {
+        return Err(anyhow!("Passed a null pointer"));
+    }
+    let len = unsafe { *lenp };
+    if len == 0 {
+        return Err(anyhow!("Passed zero lenght"));
+    }
+    let r = unsafe { std::slice::from_raw_parts_mut(p, len) };
+    Ok(r)
+}
+
+#[named]
 pub(super) extern "C" fn decapsulate(
     vkemctx: *mut c_void,
-    _out: *mut c_uchar,
-    _outlen: *mut usize,
-    _in_: *const c_uchar,
-    _inlen: usize,
+    out: *mut c_uchar,
+    outlen: *mut usize,
+    inp: *const c_uchar,
+    inlen: usize,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
-    let _kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
 
-    todo!("Convert `in` in a suitable slice (it's the ciphertext), use kemctx to decapsulate it, handle errors, properly write the result to `out`");
+    let kemctx: &mut KemContext<'_> = handleResult!(vkemctx.try_into());
+    if out.is_null() && !outlen.is_null() {
+        let expected_out_len = match kemctx.own_keypair {
+            Some(kp) => handleResult!(kp.expected_ss_size()),
+            None => todo!(),
+        };
+        unsafe {
+            *outlen = expected_out_len;
+        }
+        return 1;
+    }
+    let ct_in_slice = handleResult!(u8_slice_try_from_raw_parts(inp, inlen));
+    let ct_vec = ct_in_slice.to_vec();
+    let ss_out = handleResult!(u8_mut_slice_try_from_raw_parts(out, outlen));
+
+    let ss = handleResult!(kemctx.decapsulate(&ct_vec));
+
+    ss_out.copy_from_slice(ss.as_slice());
+    return 1;
+
+    //todo!("Convert `in` in a suitable slice (it's the ciphertext), use kemctx to decapsulate it, handle errors, properly write the result to `out`");
 
     //let kem_ctx: &mut KemContext = unsafe { &mut *(ctx as *mut KemContext) };
 

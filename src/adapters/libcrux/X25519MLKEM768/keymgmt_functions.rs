@@ -125,6 +125,10 @@ impl KeyPair<'_> {
         self.encapsulate(&mut rng)
     }
 
+    pub(crate) fn expected_ss_size(&self) -> Result<usize, KMGMTError> {
+        return Ok(64);
+    }
+
     // No `decapsulate_ex`: decapsulate does not require extra randomness, so
     // we don't need a convenience method
 }
