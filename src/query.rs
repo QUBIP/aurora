@@ -6,7 +6,7 @@ use libc::{c_char, c_int, c_void};
 use rust_openssl_core_provider::bindings;
 use rust_openssl_core_provider::osslparams::OSSLParamError;
 
-use crate::adapters::libcrux::X25519MLKEM768Draft00 as X25519MLKEM768;
+use crate::adapters::libcrux::X25519MLKEM768;
 use crate::osslparams::{
     IntData, OSSLParam, OSSLParamData, UIntData, Utf8StringData, OSSL_PARAM_END,
 };

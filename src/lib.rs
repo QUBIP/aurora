@@ -180,3 +180,24 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a> {
         Ok(r)
     }
 }
+
+#[macro_export]
+macro_rules! handleResult {
+    ($e:expr) => { match ($e)
+        {
+            Ok(r) => r,
+            Err(e) => {
+                error!(target: log_target!(), "{}", e);
+                return ERROR_RET;
+            }
+        }
+    };
+    //($e:expr, $errhandler:expr) => { match ($e)
+    //    {
+    //        Ok(r) => r,
+    //        Err(e) => {
+    //            errhandler
+    //        }
+    //    }
+    //};
+}
