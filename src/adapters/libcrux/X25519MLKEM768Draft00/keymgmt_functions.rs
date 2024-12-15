@@ -544,19 +544,42 @@ pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const
 
 #[named]
 pub(super) unsafe extern "C" fn set_params(
-    _vkeydata: *mut c_void,
-    _params: *const ossl_param_st,
+    vkeydata: *mut c_void,
+    params: *const ossl_param_st,
 ) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
+    let keydata: &mut KeyPair = handleResult!(vkeydata.try_into());
+
+    // TODO: handle errors responsibly!!!
+    match ossl_param_locate_raw(
+        params as *mut ossl_param_st,
+        OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+    )
+    .as_ref()
+    {
+        Some(p) => {
+            let bytes: &[u8] = match p.get() {
+                Some(bytes) => bytes,
+                None => handleResult!(Err(anyhow!("Invalid ENCODED_PUBLIC_KEY"))),
+            };
+            debug!(target: log_target!(), "The received encoded public key is (len: {}): {:X?}", bytes.len(), bytes);
+
+            keydata.public = Some(handleResult!(libcrux_kem::PublicKey::decode(
+                libcrux_kem::Algorithm::X25519MlKem768Draft00,
+                bytes
+            )));
+        }
+        None => (),
+    }
 
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
-        todo!("set keymgmt params")
+        todo!("set remaining keymgmt params (if any)")
     }
-
     #[cfg(debug_assertions)] // code compiled only in development builds
     {
-        warn!(target: log_target!(), "{}", "TODO: set keymgmt params");
+        warn!(target: log_target!(), "{}", "TODO: set remaining keymgmt params (if any)");
 
         1
     }
