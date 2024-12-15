@@ -27,7 +27,15 @@ pub struct KeyPair<'a> {
 impl<'a> Debug for KeyPair<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let private = match &self.private {
-            Some(p) => format!("{:?}", p.encode()),
+            #[cfg(not(debug_assertions))] // code compiled only in release builds
+            Some(_) => {
+                todo!("remove private key printing also from development builds");
+                format!("{}", "present")
+            }
+            #[cfg(debug_assertions)] // code compiled only in development builds
+            Some(p) => {
+                format!("{:?}", p.encode())
+            }
             None => format!("{:?}", None::<()>),
         };
         let public = match &self.public {
