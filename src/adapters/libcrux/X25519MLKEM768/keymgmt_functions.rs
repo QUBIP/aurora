@@ -1,11 +1,18 @@
 use super::OurError as KMGMTError;
 use super::*;
 use crate::{handleResult, OpenSSLProvider};
-use bindings::{ossl_param_st, OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY};
+use bindings::{
+    ossl_param_st, OSSL_CALLBACK, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+    OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
+};
 use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
 use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
-use std::ffi::{c_int, c_void};
+use rust_openssl_core_provider::{keymgmt::selection::Selection, osslparams};
+use std::{
+    ffi::{c_int, c_void},
+    fmt::Debug,
+};
 
 pub struct PublicKey {
     pub ec_share: libcrux_kem::PublicKey,
@@ -18,6 +25,66 @@ pub struct PrivateKey {
 }
 
 impl PublicKey {
+    const MLKEM_LEN: usize = 1184;
+    const EC_LEN: usize = 32;
+
+    pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        debug_assert_eq!(bytes.len(), Self::MLKEM_LEN + Self::EC_LEN);
+        let bytes: [u8; Self::MLKEM_LEN + Self::EC_LEN] = bytes.try_into()?;
+        let mlkem = &bytes[..Self::MLKEM_LEN];
+        let ec = &bytes[Self::MLKEM_LEN..];
+
+        let mlkem = libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::MlKem768, mlkem)
+            .map_err(|e| anyhow!("libcrux_kem::PublicKey::decode (MLKEM768) returned {:?}", e))?;
+        let ec = libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::X25519, ec)
+            .map_err(|e| anyhow!("libcrux_kem::PublicKey::decode (X25519) returned {:?}", e))?;
+        Ok(Self {
+            mlkem_share: mlkem,
+            ec_share: ec,
+        })
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut out = self.mlkem_share.encode();
+        out.extend(self.ec_share.encode());
+        out
+    }
+}
+
+impl Encapsulate<EncapsulatedKey, SharedSecret> for PublicKey {
+    type Error = KMGMTError;
+
+    #[named]
+    fn encapsulate(
+        &self,
+        rng: &mut impl CryptoRngCore,
+    ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
+        trace!(target: log_target!(), "Called ");
+
+        let (mlkem_ss, mlkem_ct) = self.mlkem_share.encapsulate(rng).map_err(|e| {
+            anyhow!(
+                "libcrux_kem::PublicKey::encapsulate (MLKEM768) returned {:?}",
+                e
+            )
+        })?;
+        let (ec_ss, ec_ct) = self.ec_share.encapsulate(rng).map_err(|e| {
+            anyhow!(
+                "libcrux_kem::PublicKey::encapsulate (X25519) returned {:?}",
+                e
+            )
+        })?;
+
+        let mut ss = mlkem_ss.encode();
+        ss.extend(ec_ss.encode());
+
+        let mut ct = mlkem_ct.encode();
+        ct.extend(ec_ct.encode());
+
+        Ok((ct, ss))
+    }
+}
+
+impl PrivateKey {
     pub fn encode(&self) -> Vec<u8> {
         let mut out = self.mlkem_share.encode();
         out.extend(self.ec_share.encode());
@@ -32,8 +99,89 @@ pub struct KeyPair<'a> {
     provctx: &'a OpenSSLProvider<'a>,
 }
 
+impl<'a> Debug for KeyPair<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let private = match &self.private {
+            #[cfg(not(debug_assertions))] // code compiled only in release builds
+            Some(_) => {
+                todo!("remove private key printing also from development builds");
+                format!("{}", "present")
+            }
+            #[cfg(debug_assertions)] // code compiled only in development builds
+            Some(p) => {
+                format!("{:?}", p.encode())
+            }
+            None => format!("{:?}", None::<()>),
+        };
+        let public = match &self.public {
+            Some(p) => format!("{:?}", p.encode()),
+            None => format!("{:?}", None::<()>),
+        };
+        f.debug_struct("KeyPair")
+            .field("private", &private)
+            .field("public", &public)
+            .finish()
+    }
+}
+
 pub(crate) type EncapsulatedKey = Vec<u8>;
 pub(crate) type SharedSecret = Vec<u8>;
+
+struct InnerEncapsulatedKey {
+    ec_share: libcrux_kem::Ct,
+    mlkem_share: libcrux_kem::Ct,
+}
+struct InnerSharedSecret {
+    ec_share: libcrux_kem::Ss,
+    mlkem_share: libcrux_kem::Ss,
+}
+
+impl InnerEncapsulatedKey {
+    const MLKEM_LEN: usize = 1088;
+    const EC_LEN: usize = 32;
+
+    pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        debug_assert_eq!(bytes.len(), Self::MLKEM_LEN + Self::EC_LEN);
+        let bytes: [u8; Self::MLKEM_LEN + Self::EC_LEN] = bytes.try_into()?;
+        let mlkem = &bytes[..Self::MLKEM_LEN];
+        let ec = &bytes[Self::MLKEM_LEN..];
+
+        let mlkem = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::MlKem768, mlkem)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decode (MLKEM768) returned {:?}", e))?;
+        let ec = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::X25519, ec)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decode (X25519) returned {:?}", e))?;
+        Ok(Self {
+            mlkem_share: mlkem,
+            ec_share: ec,
+        })
+    }
+
+    pub fn decapsulate(&self, sk: &PrivateKey) -> Result<InnerSharedSecret, KMGMTError> {
+        let mlkem_share = self
+            .mlkem_share
+            .decapsulate(&sk.mlkem_share)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decapsulate (MLKEM768) returned {:?}", e))?;
+        let ec_share = self
+            .ec_share
+            .decapsulate(&sk.ec_share)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decapsulate (X25519) returned {:?}", e))?;
+        Ok(InnerSharedSecret {
+            ec_share,
+            mlkem_share,
+        })
+    }
+}
+
+impl InnerSharedSecret {
+    const MLKEM_LEN: usize = 32;
+    const EC_LEN: usize = 32;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut out = self.mlkem_share.encode();
+        out.extend(self.ec_share.encode());
+        out
+    }
+}
 
 impl Decapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     type Error = KMGMTError;
@@ -41,13 +189,12 @@ impl Decapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     #[named]
     fn decapsulate(&self, encapsulated_key: &EncapsulatedKey) -> Result<SharedSecret, Self::Error> {
         trace!(target: log_target!(), "Called ");
-        let ek = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::MlKem768, encapsulated_key)
-            .map_err(|e| anyhow!("libcrux_kem::Ct::decode returned {:?}", e))?;
+        let ek = InnerEncapsulatedKey::decode(encapsulated_key)?;
 
         match &self.private {
             Some(sk) => {
                 let ss = ek
-                    .decapsulate(&sk.mlkem_share)
+                    .decapsulate(sk)
                     .map_err(|e| anyhow!("libcrux_kem::EK::decapsulate() returned {:?}", e))?;
                 let ss = ss.encode();
                 Ok(ss)
@@ -70,10 +217,7 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
     ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
         trace!(target: log_target!(), "Called ");
         match &self.public {
-            Some(pk) => match pk.mlkem_share.encapsulate(rng) {
-                Ok((ss, ct)) => Ok((ct.encode(), ss.encode())),
-                Err(e) => Err(anyhow!("{:?}", e)),
-            },
+            Some(pk) => pk.encapsulate(rng),
             None => {
                 error!(target: log_target!(), "Keypair is missing a public key");
                 Err(anyhow!("Missing public key"))
@@ -138,17 +282,82 @@ impl KeyPair<'_> {
     }
 
     pub(crate) fn expected_ct_size(&self) -> Result<usize, KMGMTError> {
-        // FIXME: should not be hardcoded
-        return Ok(1088);
+        return Ok(InnerEncapsulatedKey::EC_LEN + InnerEncapsulatedKey::MLKEM_LEN);
     }
 
     pub(crate) fn expected_ss_size(&self) -> Result<usize, KMGMTError> {
         // FIXME: should not be hardcoded
-        return Ok(32);
+        return Ok(InnerSharedSecret::MLKEM_LEN + InnerSharedSecret::EC_LEN);
     }
 
     // No `decapsulate_ex`: decapsulate does not require extra randomness, so
     // we don't need a convenience method
+}
+
+impl<'a> KeyPair<'a> {
+    #[named]
+    fn new(provctx: &'a OpenSSLProvider) -> Self {
+        trace!(target: log_target!(), "Called");
+        KeyPair {
+            private: None,
+            public: None,
+            provctx: provctx,
+        }
+    }
+
+    #[named]
+    fn generate(provctx: &'a OpenSSLProvider) -> Self {
+        trace!(target: log_target!(), "Called");
+        let mut rng = {
+            #[cfg(not(debug_assertions))] // code compiled only in release builds
+            {
+                let _prng = self.provctx.get_rng();
+                todo!("Retrieve rng from provctx");
+            }
+            #[cfg(debug_assertions)] // code compiled only in development builds
+            {
+                // FIXME: clean this up and to the right thing above!
+                warn!(target: log_target!(), "{}", "Using OsRng!");
+                rand::rngs::OsRng
+            }
+        };
+
+        let (ec_priv, ec_pub) =
+            libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519, &mut rng).unwrap();
+        let (mlkem_priv, mlkem_pub) =
+            libcrux_kem::key_gen(libcrux_kem::Algorithm::MlKem768, &mut rng).unwrap();
+        #[cfg(not(debug_assertions))] // code compiled only in release builds
+        {
+            // FIXME: unwrap() should go away and errors properly handled
+            todo!("Remove unwrap");
+        }
+
+        KeyPair {
+            private: Some(PrivateKey {
+                ec_share: ec_priv,
+                mlkem_share: mlkem_priv,
+            }),
+            public: Some(PublicKey {
+                ec_share: ec_pub,
+                mlkem_share: mlkem_pub,
+            }),
+            provctx,
+        }
+    }
+
+    #[cfg(test)]
+    #[named]
+    fn generate_new(provctx: &'a OpenSSLProvider) -> Self {
+        trace!(target: log_target!(), "Called");
+        let genctx = GenCTX::new(provctx, Selection::KEYPAIR);
+        let r = genctx.generate();
+
+        Self {
+            private: r.private,
+            public: r.public,
+            provctx,
+        }
+    }
 }
 
 impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
@@ -184,41 +393,7 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    let mut rng = {
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            let _prng = self.provctx.get_rng();
-            todo!("Retrieve rng from provctx");
-        }
-        #[cfg(debug_assertions)] // code compiled only in development builds
-        {
-            // FIXME: clean this up and to the right thing above!
-            warn!(target: log_target!(), "{}", "Using OsRng!");
-            rand::rngs::OsRng
-        }
-    };
-
-    let (ec_priv, ec_pub) = libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519, &mut rng).unwrap();
-    let (mlkem_priv, mlkem_pub) =
-        libcrux_kem::key_gen(libcrux_kem::Algorithm::MlKem768, &mut rng).unwrap();
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        // FIXME: unwrap() should go away and errors properly handled
-        todo!("Remove unwrap");
-    }
-
-    let keypair = Box::new(KeyPair {
-        private: Some(PrivateKey {
-            ec_share: ec_priv,
-            mlkem_share: mlkem_priv,
-        }),
-        public: Some(PublicKey {
-            ec_share: ec_pub,
-            mlkem_share: mlkem_pub,
-        }),
-        provctx: provctx,
-    });
-
+    let keypair: Box<KeyPair<'_>> = Box::new(KeyPair::new(provctx));
     return Box::into_raw(keypair).cast();
 }
 
@@ -247,45 +422,11 @@ pub(super) unsafe extern "C" fn gen(
     trace!(target: log_target!(), "{}", "Called!");
     let genctx: &mut GenCTX<'_> = handleResult!(vgenctx.try_into());
 
-    let mut rng = {
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            let _prng = self.provctx.get_rng();
-            todo!("Retrieve rng from provctx");
-        }
-        #[cfg(debug_assertions)] // code compiled only in development builds
-        {
-            // FIXME: clean this up and to the right thing above!
-            warn!(target: log_target!(), "{}", "Using OsRng!");
-            rand::rngs::OsRng
-        }
-    };
-
-    let (ec_priv, ec_pub) = libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519, &mut rng).unwrap();
-    let (mlkem_priv, mlkem_pub) =
-        libcrux_kem::key_gen(libcrux_kem::Algorithm::MlKem768, &mut rng).unwrap();
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        // FIXME: unwrap() should go away and errors properly handled
-        todo!("Remove unwrap");
-    }
-
-    let keypair = Box::new(KeyPair {
-        private: Some(PrivateKey {
-            ec_share: ec_priv,
-            mlkem_share: mlkem_priv,
-        }),
-        public: Some(PublicKey {
-            ec_share: ec_pub,
-            mlkem_share: mlkem_pub,
-        }),
-        provctx: genctx.provctx,
-    });
+    let keypair: Box<KeyPair<'_>> = Box::new(genctx.generate());
 
     let keypair_ptr = Box::into_raw(keypair);
 
     return keypair_ptr.cast();
-    //todo!("perform keygen and call cb at regular intervals with progress indications")
 }
 
 #[named]
@@ -298,15 +439,27 @@ pub(super) unsafe extern "C" fn gen_cleanup(vgenctx: *mut c_void) {
 
 struct GenCTX<'a> {
     provctx: &'a OpenSSLProvider<'a>,
-    _selection: c_int,
+    selection: Selection,
 }
 
 impl<'a> GenCTX<'a> {
-    fn new(provctx: &'a OpenSSLProvider, selection: c_int) -> Self {
+    fn new(provctx: &'a OpenSSLProvider, selection: Selection) -> Self {
         Self {
             provctx: provctx,
-            _selection: selection,
+            selection: selection,
         }
+    }
+
+    #[named]
+    fn generate(&self) -> KeyPair<'_> {
+        trace!(target: log_target!(), "Called");
+        if !self.selection.contains(Selection::KEYPAIR) {
+            trace!(target: log_target!(), "Returning empty keypair due to selection bits {:?}", self.selection);
+            return KeyPair::new(self.provctx);
+        }
+        debug!(target: log_target!(), "Generating a new KeyPair");
+
+        KeyPair::generate(self.provctx)
     }
 }
 
@@ -330,20 +483,19 @@ impl<'a> TryFrom<*mut c_void> for &mut GenCTX<'a> {
 pub(super) unsafe extern "C" fn gen_init(
     vprovctx: *mut c_void,
     selection: c_int,
-    _params: *const ossl_param_st,
+    params: *const ossl_param_st,
 ) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
+    let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let selection: Selection = handleResult!((selection as u32).try_into());
     let newctx = Box::new(GenCTX::new(provctx, selection));
-    warn!(target: log_target!(), "Ignoring params!");
-    //todo!("set params on the context if params is not null")
+
+    if !params.is_null() {
+        warn!(target: log_target!(), "Ignoring params!");
+        //todo!("set params on the context if params is not null")
+    }
+
     let newctx_raw_ptr = Box::into_raw(newctx);
 
     return newctx_raw_ptr.cast();
@@ -370,23 +522,40 @@ pub(super) unsafe extern "C" fn export(
     todo!("extract values indicated by selection from keydata, create an OSSL_PARAM array with them, and call param_cb with that array as well as the given cbarg")
 }
 
+const HANDLED_KEY_TYPES: [ossl_param_st; 3] = [
+    ossl_param_st {
+        key: OSSL_PKEY_PARAM_PUB_KEY.as_ptr(),
+        data_type: OSSL_PARAM_OCTET_STRING,
+        data: std::ptr::null::<std::ffi::c_void>() as *mut std::ffi::c_void,
+        data_size: 0,
+        return_size: 0,
+    },
+    ossl_param_st {
+        key: OSSL_PKEY_PARAM_PRIV_KEY.as_ptr(),
+        data_type: OSSL_PARAM_OCTET_STRING,
+        data: std::ptr::null::<std::ffi::c_void>() as *mut std::ffi::c_void,
+        data_size: 0,
+        return_size: 0,
+    },
+    osslparams::OSSL_PARAM_END,
+];
+
 // I think using {import,export}_types_ex instead of the non-_ex variant means we only
 // support OSSL 3.2 and up, but I also think that's fine...?
 #[named]
 pub(super) unsafe extern "C" fn import_types_ex(
     vprovctx: *mut c_void,
-    _selection: c_int,
+    selection: c_int,
 ) -> *const ossl_param_st {
     const ERROR_RET: *const ossl_param_st = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
-    todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, for parameters that OSSL_FUNC_keymgmt_import() can handle")
+    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let selection: Selection = handleResult!((selection as u32).try_into());
+
+    if selection.intersects(Selection::KEYPAIR) {
+        return HANDLED_KEY_TYPES.as_ptr();
+    }
+    ERROR_RET
 }
 
 #[named]
@@ -520,19 +689,39 @@ pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const
 
 #[named]
 pub(super) unsafe extern "C" fn set_params(
-    _vkeydata: *mut c_void,
-    _params: *const ossl_param_st,
+    vkeydata: *mut c_void,
+    params: *const ossl_param_st,
 ) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
+    let keydata: &mut KeyPair = handleResult!(vkeydata.try_into());
+
+    // TODO: handle errors responsibly!!!
+    match ossl_param_locate_raw(
+        params as *mut ossl_param_st, // FIXME: this is a hack!
+        OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+    )
+    .as_ref()
+    {
+        Some(p) => {
+            let bytes: &[u8] = match p.get() {
+                Some(bytes) => bytes,
+                None => handleResult!(Err(anyhow!("Invalid ENCODED_PUBLIC_KEY"))),
+            };
+            debug!(target: log_target!(), "The received encoded public key is (len: {}): {:X?}", bytes.len(), bytes);
+
+            keydata.public = Some(handleResult!(PublicKey::decode(bytes)));
+        }
+        None => (),
+    }
 
     #[cfg(not(debug_assertions))] // code compiled only in release builds
     {
-        todo!("set keymgmt params")
+        todo!("set remaining keymgmt params (if any)")
     }
-
     #[cfg(debug_assertions)] // code compiled only in development builds
     {
-        warn!(target: log_target!(), "{}", "TODO: set keymgmt params");
+        warn!(target: log_target!(), "{}", "TODO: set remaining keymgmt params (if any)");
 
         1
     }
@@ -560,5 +749,51 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
         warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of settable keymgmt params");
 
         crate::osslparams::EMPTY_PARAMS.as_ptr()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::new_provctx_for_testing;
+
+    #[test]
+    fn test_loopback_kex() {
+        let provctx = new_provctx_for_testing();
+
+        let client_kp = KeyPair::generate_new(&provctx);
+
+        let (ct, ss) = client_kp.encapsulate_ex().unwrap();
+
+        let decapsulated_ss = client_kp.decapsulate(&ct).unwrap();
+
+        assert_eq!(ss, decapsulated_ss);
+    }
+
+    #[test]
+    fn test_full_kex() {
+        let provctx = new_provctx_for_testing();
+
+        let client_kp = KeyPair::generate_new(&provctx);
+
+        let client_keyshare = client_kp.public.as_ref().unwrap().encode();
+        // client sends its keyshare
+
+        // server decodes the received keyshare
+        let server_recv_keyshare = client_keyshare;
+        let server_decoded_keyshare = PublicKey::decode(&server_recv_keyshare).unwrap();
+        let serverside_kp = KeyPair {
+            private: None,
+            public: Some(server_decoded_keyshare),
+            provctx: &provctx,
+        };
+
+        let (ct, ss) = serverside_kp.encapsulate_ex().unwrap();
+        // server sends back CT as its keyshare
+        let server_keyshare = ct;
+
+        let decapsulated_ss = client_kp.decapsulate(&server_keyshare).unwrap();
+
+        assert_eq!(ss, decapsulated_ss);
     }
 }
