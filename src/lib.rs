@@ -54,7 +54,7 @@ pub struct OpenSSLProvider<'a> {
     _core_dispatch: *const OSSL_DISPATCH,
     pub name: &'a str,
     pub version: &'a str,
-    params: Vec<OSSLParam>,
+    params: Vec<OSSLParam<'a>>,
     param_array_ptr: Option<*mut [OSSL_PARAM]>,
     pub(crate) adapters_ctx: adapters::Contexts,
 }
@@ -133,9 +133,8 @@ impl<'a> OpenSSLProvider<'a> {
             None => {
                 let slice = self
                     .params
-                    .clone()
-                    .into_iter()
-                    .map(|p| (unsafe { *p.get_c_struct() }))
+                    .iter_mut()
+                    .map(|p| unsafe { *p.get_c_struct() })
                     .chain(std::iter::once(OSSL_PARAM_END))
                     .collect::<Vec<_>>()
                     .into_boxed_slice();

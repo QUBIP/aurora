@@ -115,9 +115,8 @@ pub(crate) extern "C" fn get_capabilities(
     // TODO: eliminate code duplication between here and OpenSSLProvider::get_params_array
     let tls_group_params_boxed_slice = Box::new(
         tls_group_params
-            .clone()
-            .into_iter()
-            .map(|p| (unsafe { *p.get_c_struct() }))
+            .iter_mut()
+            .map(|p| unsafe { *p.get_c_struct() })
             .chain(std::iter::once(OSSL_PARAM_END))
             .collect::<Vec<_>>(),
     )
