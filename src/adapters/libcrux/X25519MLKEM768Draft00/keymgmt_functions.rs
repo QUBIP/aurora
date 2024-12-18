@@ -2,7 +2,7 @@ use super::OurError as KMGMTError;
 use super::*;
 use crate::{handleResult, OpenSSLProvider};
 use bindings::{
-    ossl_param_st, OSSL_CALLBACK, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+    OSSL_CALLBACK, OSSL_PARAM, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
     OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
 };
 use kem::{Decapsulate, Encapsulate};
@@ -407,7 +407,7 @@ impl<'a> TryFrom<*mut c_void> for &mut GenCTX<'a> {
 pub(super) unsafe extern "C" fn gen_init(
     vprovctx: *mut c_void,
     selection: c_int,
-    params: *const ossl_param_st,
+    params: *const OSSL_PARAM,
 ) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
@@ -429,7 +429,7 @@ pub(super) unsafe extern "C" fn gen_init(
 pub(super) unsafe extern "C" fn import(
     _keydata: *mut c_void,
     _selection: c_int,
-    _params: *const ossl_param_st,
+    _params: *const OSSL_PARAM,
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
     todo!("import data indicated by selection into keydata with values taken from the params array")
@@ -446,15 +446,15 @@ pub(super) unsafe extern "C" fn export(
     todo!("extract values indicated by selection from keydata, create an OSSL_PARAM array with them, and call param_cb with that array as well as the given cbarg")
 }
 
-const HANDLED_KEY_TYPES: [ossl_param_st; 3] = [
-    ossl_param_st {
+const HANDLED_KEY_TYPES: [OSSL_PARAM; 3] = [
+    OSSL_PARAM {
         key: OSSL_PKEY_PARAM_PUB_KEY.as_ptr(),
         data_type: OSSL_PARAM_OCTET_STRING,
         data: std::ptr::null::<std::ffi::c_void>() as *mut std::ffi::c_void,
         data_size: 0,
         return_size: 0,
     },
-    ossl_param_st {
+    OSSL_PARAM {
         key: OSSL_PKEY_PARAM_PRIV_KEY.as_ptr(),
         data_type: OSSL_PARAM_OCTET_STRING,
         data: std::ptr::null::<std::ffi::c_void>() as *mut std::ffi::c_void,
@@ -470,8 +470,8 @@ const HANDLED_KEY_TYPES: [ossl_param_st; 3] = [
 pub(super) unsafe extern "C" fn import_types_ex(
     vprovctx: *mut c_void,
     selection: c_int,
-) -> *const ossl_param_st {
-    const ERROR_RET: *const ossl_param_st = std::ptr::null();
+) -> *const OSSL_PARAM {
+    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
     let selection: Selection = handleResult!((selection as u32).try_into());
@@ -486,8 +486,8 @@ pub(super) unsafe extern "C" fn import_types_ex(
 pub(super) unsafe extern "C" fn export_types_ex(
     vprovctx: *mut c_void,
     _selection: c_int,
-) -> *const ossl_param_st {
-    const ERROR_RET: *const ossl_param_st = std::ptr::null();
+) -> *const OSSL_PARAM {
+    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
         Ok(p) => p,
@@ -502,7 +502,7 @@ pub(super) unsafe extern "C" fn export_types_ex(
 #[named]
 pub(super) unsafe extern "C" fn gen_set_params(
     _vgenctx: *mut c_void,
-    _params: *const ossl_param_st,
+    _params: *const OSSL_PARAM,
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
 
@@ -522,8 +522,8 @@ pub(super) unsafe extern "C" fn gen_set_params(
 pub(super) unsafe extern "C" fn gen_settable_params(
     _vgenctx: *mut c_void,
     vprovctx: *mut c_void,
-) -> *const ossl_param_st {
-    const ERROR_RET: *const ossl_param_st = std::ptr::null();
+) -> *const OSSL_PARAM {
+    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
         Ok(p) => p,
@@ -549,7 +549,7 @@ pub(super) unsafe extern "C" fn gen_settable_params(
 #[named]
 pub(super) unsafe extern "C" fn get_params(
     vkeydata: *mut c_void,
-    params: *mut ossl_param_st,
+    params: *mut OSSL_PARAM,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
@@ -587,9 +587,9 @@ pub(super) unsafe extern "C" fn get_params(
 }
 
 #[named]
-pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
+pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     trace!(target: log_target!(), "{}", "Called!");
-    const ERROR_RET: *const ossl_param_st = std::ptr::null();
+    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
@@ -614,7 +614,7 @@ pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const
 #[named]
 pub(super) unsafe extern "C" fn set_params(
     vkeydata: *mut c_void,
-    params: *const ossl_param_st,
+    params: *const OSSL_PARAM,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
@@ -622,7 +622,7 @@ pub(super) unsafe extern "C" fn set_params(
 
     // TODO: handle errors responsibly!!!
     match ossl_param_locate_raw(
-        params as *mut ossl_param_st, // FIXME: this is a hack!
+        params as *mut OSSL_PARAM, // FIXME: this is a hack!
         OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
     )
     .as_ref()
@@ -652,8 +652,8 @@ pub(super) unsafe extern "C" fn set_params(
 }
 
 #[named]
-pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
-    const ERROR_RET: *const ossl_param_st = std::ptr::null();
+pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
+    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
         Ok(p) => p,

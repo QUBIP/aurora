@@ -1,8 +1,8 @@
 use crate::named;
 use crate::OpenSSLProvider;
 use bindings::forbidden;
-use bindings::ossl_param_st;
 use bindings::OSSL_DISPATCH;
+use bindings::OSSL_PARAM;
 use bindings::OSSL_PROV_PARAM_NAME;
 use libc::{c_int, c_void};
 use osslparams::OSSLParam;
@@ -57,8 +57,8 @@ pub unsafe extern "C" fn provider_teardown(vprovctx: *mut c_void) {
 }
 
 #[named]
-pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const ossl_param_st {
-    const ERROR_RET: *const ossl_param_st = std::ptr::null();
+pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
+    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
 
     let prov: &mut OpenSSLProvider<'_> = match vprovctx.try_into() {
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const ossl_p
 }
 
 #[named]
-pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut ossl_param_st) -> c_int {
+pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PARAM) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
     /* It's important to only cast the pointer, not Box it back up, because otherwise the provctx
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut ossl_par
     /* ... and then we ignore all that work and call C functions directly to write the name of the
      * provider to the appropriate C struct, because the ability to do this with the OSSLParam Rust
      * struct isn't implemented yet. */
-    let p: *mut ossl_param_st = forbidden::OSSL_PARAM_locate(params, OSSL_PROV_PARAM_NAME.as_ptr());
+    let p: *mut OSSL_PARAM = forbidden::OSSL_PARAM_locate(params, OSSL_PROV_PARAM_NAME.as_ptr());
     if !p.is_null() && forbidden::OSSL_PARAM_set_utf8_ptr(p, (prov).c_prov_name().as_ptr()) == 0 {
         return 0;
     }

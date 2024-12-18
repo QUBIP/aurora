@@ -27,7 +27,7 @@ pub(crate) mod random;
 pub(crate) mod tests;
 
 use bindings::dispatch_table_entry;
-use bindings::ossl_param_st;
+use bindings::OSSL_PARAM;
 use bindings::{
     OSSL_FUNC_provider_get_capabilities_fn, OSSL_FUNC_provider_get_params_fn,
     OSSL_FUNC_provider_gettable_params_fn, OSSL_FUNC_provider_query_operation_fn,
@@ -55,7 +55,7 @@ pub struct OpenSSLProvider<'a> {
     pub name: &'a str,
     pub version: &'a str,
     params: Vec<OSSLParam>,
-    param_array_ptr: Option<*mut [ossl_param_st]>,
+    param_array_ptr: Option<*mut [OSSL_PARAM]>,
     pub(crate) adapters_ctx: adapters::Contexts,
 }
 
@@ -126,7 +126,7 @@ impl<'a> OpenSSLProvider<'a> {
         Box::into_raw(ret).cast()
     }
 
-    fn get_params_array(&mut self) -> *const ossl_param_st {
+    fn get_params_array(&mut self) -> *const OSSL_PARAM {
         // This is kind of like a poor man's std::sync::Once
         let raw_ptr = match self.param_array_ptr {
             Some(raw_ptr) => raw_ptr,

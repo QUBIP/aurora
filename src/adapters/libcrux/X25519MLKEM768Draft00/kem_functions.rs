@@ -2,7 +2,7 @@ use super::keymgmt_functions::KeyPair;
 use super::OurError as KEMError;
 use super::*;
 use crate::{handleResult, named};
-use bindings::ossl_param_st;
+use bindings::OSSL_PARAM;
 use kem::{Decapsulate, Encapsulate};
 use libc::{c_int, c_uchar, c_void};
 use rand_core::CryptoRngCore;
@@ -145,7 +145,7 @@ impl<'a> KemContext<'a> {
 pub(super) extern "C" fn encapsulate_init(
     vkemctx: *mut c_void,
     vprovkey: *mut c_void,
-    _params: *mut ossl_param_st,
+    _params: *mut OSSL_PARAM,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
@@ -168,7 +168,7 @@ pub(super) extern "C" fn encapsulate_init(
 pub(super) extern "C" fn decapsulate_init(
     vkemctx: *mut c_void,
     vprovkey: *mut c_void,
-    _params: *mut ossl_param_st,
+    _params: *mut OSSL_PARAM,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
