@@ -188,6 +188,19 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a> {
     }
 }
 
+/// Match on a `Result`, evaluating to the wrapped value if it is `Ok` or
+/// returning `ERROR_RET` (which must already be defined) if it is `Err`.
+///
+/// This macro should be used in `extern "C"` functions that will be directly
+/// called by OpenSSL. In other functions, `Result`s should be handled in the
+/// usual Rust way.
+///
+/// If invoked with an `Err` value, this macro also calls [`log::error!`] to log
+/// the error.
+///
+/// Before invoking this macro, an identifier `ERROR_RET` must be in scope, and
+/// the type of its value must be the same as (or coercible to) the return type
+/// of the function in which `handleResult!` is being invoked.
 #[macro_export]
 macro_rules! handleResult {
     ($e:expr) => { match ($e)
