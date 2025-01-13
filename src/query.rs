@@ -12,8 +12,6 @@ use crate::osslparams::{
 };
 use bindings::OSSL_ALGORITHM;
 use bindings::OSSL_CALLBACK;
-use bindings::OSSL_OP_KEM;
-use bindings::OSSL_OP_KEYMGMT;
 use bindings::{
     OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID, OSSL_CAPABILITY_TLS_GROUP_IS_KEM,
     OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, OSSL_CAPABILITY_TLS_GROUP_MAX_TLS,
@@ -43,12 +41,13 @@ pub(crate) extern "C" fn query_operation(
         }
     }
 
-    /* this is still wrong, when thinking we will have multiple adapters, but works for now */
-    match operation_id as u32 {
-        x if x == OSSL_OP_KEM => provctx.adapters_ctx.libcrux.get_op_kem(),
-        x if x == OSSL_OP_KEYMGMT => provctx.adapters_ctx.libcrux.get_op_keymgmt(),
-        unsupported_op_id => {
-            trace!(target: log_target!(), "Unsupported operation_id: {}", unsupported_op_id);
+    match provctx
+        .adapters_ctx
+        .get_algorithms_by_op_id(operation_id as u32)
+    {
+        Some(algorithms) => algorithms,
+        None => {
+            trace!(target: log_target!(), "Unsupported operation_id: {}", operation_id);
             std::ptr::null()
         }
     }

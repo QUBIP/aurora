@@ -91,6 +91,8 @@ impl<'a> OpenSSLProvider<'a> {
             ))],
             adapters_ctx: adapters::Contexts::default(),
         }
+        // it's not ideal that here we return an object which is in an "invalid" state bc the
+        // adapters haven't been initialized yet
     }
 
     /// Retrieve a heap allocated `OSSL_DISPATCH` table associated with this provider instance.
