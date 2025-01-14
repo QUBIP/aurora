@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::bindings::OSSL_ALGORITHM;
 
 pub(crate) mod libcrux;
+pub(crate) mod libcrux_draft;
 
 #[derive(Debug, PartialEq)]
 pub struct AdapterContext {
@@ -108,6 +109,7 @@ impl Default for Contexts {
         };
         // initialize and register each adapter
         super_ctx.register(libcrux::LibcruxAdapter);
+        super_ctx.register(libcrux_draft::LibcruxDraftAdapter);
         // then finalize
         super_ctx.finalize();
         super_ctx
