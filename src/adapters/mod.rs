@@ -64,7 +64,7 @@ impl Contexts {
         */
     }
 
-    pub fn finalize(&mut self) {
+    fn finalize(&mut self) {
         // merge the hashmaps into one, where each operation ID maps to the concatenation of all the
         // vectors it mapped to in the different adapters' algorithm lists
         let hashmap_of_vecs: HashMap<u32, Vec<OSSL_ALGORITHM>> = self
@@ -93,7 +93,7 @@ impl Contexts {
         self.finalized = true;
     }
 
-    pub fn get_algorithms_by_op_id(&self, op: u32) -> Option<*const OSSL_ALGORITHM> {
+    pub(crate) fn get_algorithms_by_op_id(&self, op: u32) -> Option<*const OSSL_ALGORITHM> {
         // HashMap::get() returns an Option<&*const OSSL_ALGORITHM>, so we have to dereference
         self.algorithms.get(&op).map(|p| *p)
     }
@@ -108,8 +108,8 @@ impl Default for Contexts {
             finalized: false,
         };
         // initialize and register each adapter
-        super_ctx.register(libcrux::LibcruxAdapter);
-        super_ctx.register(libcrux_draft::LibcruxDraftAdapter);
+        libcrux::init(&mut super_ctx).expect("Failure initializing adapter `libcrux`");
+        libcrux_draft::init(&mut super_ctx).expect("Failure initializing adapter `libcrux_draft`");
         // then finalize
         super_ctx.finalize();
         super_ctx

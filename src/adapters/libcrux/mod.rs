@@ -6,6 +6,9 @@ use std::{collections::HashMap, ffi::CStr};
 
 use super::AdapterContextTrait;
 
+pub(crate) type OurError = anyhow::Error;
+pub(crate) use anyhow::anyhow;
+
 const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='libcrux'";
 
 #[allow(non_snake_case)]
@@ -37,4 +40,10 @@ impl AdapterContextTrait for LibcruxAdapter {
         algorithms.insert(OSSL_OP_KEYMGMT, keymgmt_algorithms);
         algorithms
     }
+}
+
+pub fn init(super_ctx: &mut super::Contexts) -> Result<(), OurError> {
+    let ourctx = LibcruxAdapter {};
+    super_ctx.register(ourctx);
+    Ok(())
 }
