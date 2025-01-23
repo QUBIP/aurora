@@ -5,6 +5,9 @@ use crate::bindings::OSSL_ALGORITHM;
 pub(crate) mod libcrux;
 pub(crate) mod libcrux_draft;
 
+mod traits;
+pub use traits::AdapterContextTrait;
+
 #[derive(Debug, PartialEq)]
 pub struct AdapterContext {
     algorithms: HashMap<u32, Vec<*const OSSL_ALGORITHM>>,
@@ -20,10 +23,6 @@ impl Default for AdapterContext {
             algorithms: Default::default(),
         }
     }
-}
-
-pub trait AdapterContextTrait {
-    fn get_algorithms(&self) -> HashMap<u32, Vec<OSSL_ALGORITHM>>;
 }
 
 pub(crate) struct Contexts {
