@@ -5,6 +5,8 @@ pub(crate) use ::function_name::named;
 use std::ffi::{CStr, CString};
 use std::sync::LazyLock;
 
+pub type Error = anyhow::Error;
+
 macro_rules! function_path {
     () => {
         concat!(module_path!(), "::", function_name!(), "()")
@@ -56,7 +58,7 @@ pub struct OpenSSLProvider<'a> {
     pub version: &'a str,
     params: Vec<OSSLParam<'a>>,
     param_array_ptr: Option<*mut [OSSL_PARAM]>,
-    pub(crate) adapters_ctx: adapters::Contexts,
+    pub(crate) adapters_ctx: adapters::AdaptersHandle,
 }
 
 /// We implement the Drop trait to make it explicit when a provider
@@ -89,7 +91,7 @@ impl<'a> OpenSSLProvider<'a> {
             params: vec![OSSLParam::Utf8Ptr(Utf8PtrData::new_null(
                 OSSL_PROV_PARAM_NAME,
             ))],
-            adapters_ctx: adapters::Contexts::default(),
+            adapters_ctx: adapters::AdaptersHandle::default(),
         }
         // it's not ideal that here we return an object which is in an "invalid" state bc the
         // adapters haven't been initialized yet
@@ -159,7 +161,7 @@ impl<'a> OpenSSLProvider<'a> {
 }
 
 impl<'a> TryFrom<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a> {
-    type Error = anyhow::Error;
+    type Error = Error;
 
     #[named]
     fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
@@ -175,7 +177,7 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a> {
 }
 
 impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a> {
-    type Error = anyhow::Error;
+    type Error = Error;
 
     #[named]
     fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {

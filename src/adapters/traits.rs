@@ -1,7 +1,7 @@
-use super::OSSL_ALGORITHM;
+use crate as aurora;
 
-use std::collections::HashMap;
+use aurora::adapters::AdaptersHandle;
 
 pub trait AdapterContextTrait {
-    fn get_algorithms(&self) -> HashMap<u32, Vec<OSSL_ALGORITHM>>;
+    fn register_algorithms(&self, handle: &mut AdaptersHandle) -> Result<(), aurora::Error>;
 }

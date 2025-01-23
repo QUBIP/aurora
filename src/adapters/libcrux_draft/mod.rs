@@ -1,7 +1,9 @@
-use crate::OpenSSLProvider;
+use crate as aurora;
+use rust_openssl_core_provider::bindings;
+
+use aurora::OpenSSLProvider;
 use bindings::{OSSL_ALGORITHM, OSSL_DISPATCH, OSSL_OP_KEM, OSSL_OP_KEYMGMT};
 use function_name::named;
-use rust_openssl_core_provider::bindings;
 use std::{collections::HashMap, ffi::CStr};
 
 use super::AdapterContextTrait;
@@ -18,6 +20,16 @@ pub(crate) mod X25519MLKEM768Draft00;
 pub(crate) struct LibcruxDraftAdapter;
 
 impl AdapterContextTrait for LibcruxDraftAdapter {
+    fn register_algorithms(
+        &self,
+        _handle: &mut super::AdaptersHandle,
+    ) -> Result<(), aurora::Error> {
+        todo!()
+    }
+}
+
+impl LibcruxDraftAdapter {
+    #[cfg(any())]
     #[named]
     fn get_algorithms(&self) -> HashMap<u32, Vec<OSSL_ALGORITHM>> {
         trace!(target: log_target!(), "{}", "Called!");
@@ -40,7 +52,7 @@ impl AdapterContextTrait for LibcruxDraftAdapter {
     }
 }
 
-pub fn init(super_ctx: &mut super::Contexts) -> Result<(), OurError> {
+pub fn init(super_ctx: &mut super::AdaptersHandle) -> Result<(), OurError> {
     let ourctx = LibcruxDraftAdapter {};
     super_ctx.register(ourctx);
     Ok(())

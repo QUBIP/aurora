@@ -25,15 +25,15 @@ impl Default for AdapterContext {
     }
 }
 
-pub(crate) struct Contexts {
+pub(crate) struct AdaptersHandle {
     pub contexts: Vec<Box<dyn AdapterContextTrait>>,
     pub algorithms: HashMap<u32, *const OSSL_ALGORITHM>,
     finalized: bool,
 }
 
-impl std::fmt::Debug for Contexts {
+impl std::fmt::Debug for AdaptersHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Contexts")
+        f.debug_struct("AdaptersHandle")
             .field(
                 "contexts",
                 &format!("(there are {} of them)", self.contexts.len()),
@@ -44,10 +44,10 @@ impl std::fmt::Debug for Contexts {
     }
 }
 
-impl Contexts {
+impl AdaptersHandle {
     pub fn register<T: AdapterContextTrait + std::fmt::Debug + 'static>(&mut self, ctx: T) {
         if self.finalized {
-            error!("Attempted to register new adapter on finalized Contexts struct");
+            error!("Attempted to register new adapter on finalized AdaptersHandle struct");
             return;
         }
 
@@ -63,6 +63,26 @@ impl Contexts {
         */
     }
 
+    #[cfg(not(any()))]
+    fn finalize(&mut self) {
+        if self.finalized {
+            error!("AdaptersHandle struct was already finalized!");
+            return;
+        }
+
+        #[cfg(not(debug_assertions))] // code compiled only in release builds
+        {
+            todo!();
+        }
+        #[cfg(debug_assertions)] // code compiled only in development builds
+        {
+            warn!("finalize is not implemented yet!");
+        }
+
+        self.finalized = true;
+    }
+
+    #[cfg(any())]
     fn finalize(&mut self) {
         // merge the hashmaps into one, where each operation ID maps to the concatenation of all the
         // vectors it mapped to in the different adapters' algorithm lists
@@ -98,8 +118,8 @@ impl Contexts {
     }
 }
 
-impl Default for Contexts {
-    // after default() returns, we should have a valid (fully initialized) Contexts struct
+impl Default for AdaptersHandle {
+    // after default() returns, we should have a valid (fully initialized) AdaptersHandle struct
     fn default() -> Self {
         let mut super_ctx = Self {
             contexts: Default::default(),
