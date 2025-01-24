@@ -14,19 +14,53 @@ use std::{
     fmt::Debug,
 };
 
-pub struct PrivateKey(libcrux_kem::PrivateKey);
-pub struct PublicKey(libcrux_kem::PublicKey);
+pub struct PublicKey {
+    pub ec_share: libcrux_kem::PublicKey,
+    pub mlkem_share: libcrux_kem::PublicKey,
+}
+
+pub struct PrivateKey {
+    pub ec_share: libcrux_kem::PrivateKey,
+    pub mlkem_share: libcrux_kem::PrivateKey,
+}
 
 impl PublicKey {
-    pub fn encode(&self) -> Vec<u8> {
-        self.0.encode()
-    }
+    const EC_LEN: usize = 65;
+    const MLKEM_LEN: usize = 1184;
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let i =
-            libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::X25519MlKem768Draft00, bytes)
-                .map_err(|e| anyhow!("libcrux_kem::PublicKey::decode returned {:?}", e))?;
-        Ok(Self(i))
+        debug_assert_eq!(bytes.len(), Self::EC_LEN + Self::MLKEM_LEN);
+        let bytes: [u8; Self::EC_LEN + Self::MLKEM_LEN] = bytes.try_into()?;
+        let ec = &bytes[..Self::EC_LEN];
+        let point_format = ec[0];
+        if point_format != 0x04 {
+            return Err(anyhow!(
+                "Invalid point format for EC share: {point_format:0X?}"
+            ));
+        }
+        let ec = &ec[1..];
+        let mlkem = &bytes[Self::EC_LEN..];
+
+        let mlkem = libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::MlKem768, mlkem)
+            .map_err(|e| anyhow!("libcrux_kem::PublicKey::decode (MLKEM768) returned {:?}", e))?;
+        let ec =
+            libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::Secp256r1, ec).map_err(|e| {
+                anyhow!(
+                    "libcrux_kem::PublicKey::decode (secp256r1) returned {:?}",
+                    e
+                )
+            })?;
+        Ok(Self {
+            mlkem_share: mlkem,
+            ec_share: ec,
+        })
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut out = vec![0x04];
+        out.extend(self.ec_share.encode());
+        out.extend(self.mlkem_share.encode());
+        out
     }
 }
 
@@ -39,16 +73,41 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for PublicKey {
         rng: &mut impl CryptoRngCore,
     ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
         trace!(target: log_target!(), "Called ");
-        match self.0.encapsulate(rng) {
-            Ok((ss, ct)) => Ok((ct.encode(), ss.encode())),
-            Err(e) => Err(anyhow!("{:?}", e)),
-        }
+
+        let (mlkem_ss, mlkem_ct) = self.mlkem_share.encapsulate(rng).map_err(|e| {
+            anyhow!(
+                "libcrux_kem::PublicKey::encapsulate (MLKEM768) returned {:?}",
+                e
+            )
+        })?;
+        let (ec_ss, ec_ct) = self.ec_share.encapsulate(rng).map_err(|e| {
+            anyhow!(
+                "libcrux_kem::PublicKey::encapsulate (secp256r1) returned {:?}",
+                e
+            )
+        })?;
+
+        let ss = InnerSharedSecret {
+            ec_share: ec_ss,
+            mlkem_share: mlkem_ss,
+        };
+        let ss = ss.encode();
+
+        let ct = InnerEncapsulatedKey {
+            ec_share: ec_ct,
+            mlkem_share: mlkem_ct,
+        };
+        let ct = ct.encode();
+
+        Ok((ct, ss))
     }
 }
 
 impl PrivateKey {
     pub fn encode(&self) -> Vec<u8> {
-        self.0.encode()
+        let mut out = self.ec_share.encode();
+        out.extend(self.mlkem_share.encode());
+        out
     }
 }
 
@@ -87,28 +146,74 @@ impl<'a> Debug for KeyPair<'a> {
 pub(crate) type EncapsulatedKey = Vec<u8>;
 pub(crate) type SharedSecret = Vec<u8>;
 
-struct InnerEncapsulatedKey(libcrux_kem::Ct);
-struct InnerSharedSecret(libcrux_kem::Ss);
+struct InnerEncapsulatedKey {
+    ec_share: libcrux_kem::Ct,
+    mlkem_share: libcrux_kem::Ct,
+}
+struct InnerSharedSecret {
+    ec_share: libcrux_kem::Ss,
+    mlkem_share: libcrux_kem::Ss,
+}
 
 impl InnerEncapsulatedKey {
+    const MLKEM_LEN: usize = 1088;
+    const EC_LEN: usize = 65;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut out = vec![0x04];
+        out.extend(self.ec_share.encode());
+        out.extend(self.mlkem_share.encode());
+        out
+    }
+
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let i = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::X25519MlKem768Draft00, bytes)
-            .map_err(|e| anyhow!("libcrux_kem::Ct::decode returned {:?}", e))?;
-        Ok(Self(i))
+        debug_assert_eq!(bytes.len(), Self::MLKEM_LEN + Self::EC_LEN);
+        let bytes: [u8; Self::MLKEM_LEN + Self::EC_LEN] = bytes.try_into()?;
+        let ec = &bytes[..Self::EC_LEN];
+        let point_format = ec[0];
+        if point_format != 0x04 {
+            return Err(anyhow!(
+                "Invalid point format for EC share: {point_format:0X?}"
+            ));
+        }
+        let ec = &ec[1..];
+        let mlkem = &bytes[Self::EC_LEN..];
+
+        let mlkem = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::MlKem768, mlkem)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decode (MLKEM768) returned {:?}", e))?;
+        let ec = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::Secp256r1, ec)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decode (secp256r1) returned {:?}", e))?;
+        Ok(Self {
+            mlkem_share: mlkem,
+            ec_share: ec,
+        })
     }
 
     pub fn decapsulate(&self, sk: &PrivateKey) -> Result<InnerSharedSecret, KMGMTError> {
-        let i = self
-            .0
-            .decapsulate(&sk.0)
-            .map_err(|e| anyhow!("libcrux_kem::Ct::decode returned {:?}", e))?;
-        Ok(InnerSharedSecret(i))
+        let mlkem_share = self
+            .mlkem_share
+            .decapsulate(&sk.mlkem_share)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decapsulate (MLKEM768) returned {:?}", e))?;
+        let ec_share = self
+            .ec_share
+            .decapsulate(&sk.ec_share)
+            .map_err(|e| anyhow!("libcrux_kem::Ct::decapsulate (secp256r1) returned {:?}", e))?;
+        Ok(InnerSharedSecret {
+            ec_share,
+            mlkem_share,
+        })
     }
 }
 
 impl InnerSharedSecret {
+    const MLKEM_LEN: usize = 32;
+    const EC_LEN: usize = 32;
+
     pub fn encode(&self) -> Vec<u8> {
-        self.0.encode()
+        let mut out = self.ec_share.encode();
+        out.truncate(Self::EC_LEN);
+        out.extend(self.mlkem_share.encode());
+        out
     }
 }
 
@@ -211,13 +316,12 @@ impl KeyPair<'_> {
     }
 
     pub(crate) fn expected_ct_size(&self) -> Result<usize, KMGMTError> {
-        // FIXME: should not be hardcoded
-        return Ok(1120);
+        return Ok(InnerEncapsulatedKey::EC_LEN + InnerEncapsulatedKey::MLKEM_LEN);
     }
 
     pub(crate) fn expected_ss_size(&self) -> Result<usize, KMGMTError> {
         // FIXME: should not be hardcoded
-        return Ok(64);
+        return Ok(InnerSharedSecret::MLKEM_LEN + InnerSharedSecret::EC_LEN);
     }
 
     // No `decapsulate_ex`: decapsulate does not require extra randomness, so
@@ -252,20 +356,26 @@ impl<'a> KeyPair<'a> {
             }
         };
 
-        let (s, p) =
-            libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
+        let (ec_priv, ec_pub) =
+            libcrux_kem::key_gen(libcrux_kem::Algorithm::Secp256r1, &mut rng).unwrap();
+        let (mlkem_priv, mlkem_pub) =
+            libcrux_kem::key_gen(libcrux_kem::Algorithm::MlKem768, &mut rng).unwrap();
         #[cfg(not(debug_assertions))] // code compiled only in release builds
         {
             // FIXME: unwrap() should go away and errors properly handled
             todo!("Remove unwrap");
         }
 
-        let (s, p) = (PrivateKey(s), PublicKey(p));
-
-        Self {
-            private: Some(s),
-            public: Some(p),
-            provctx: provctx,
+        KeyPair {
+            private: Some(PrivateKey {
+                ec_share: ec_priv,
+                mlkem_share: mlkem_priv,
+            }),
+            public: Some(PublicKey {
+                ec_share: ec_pub,
+                mlkem_share: mlkem_pub,
+            }),
+            provctx,
         }
     }
 

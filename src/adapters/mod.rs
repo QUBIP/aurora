@@ -109,15 +109,6 @@ impl AdaptersHandle {
             return;
         }
 
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            todo!();
-        }
-        #[cfg(debug_assertions)] // code compiled only in development builds
-        {
-            warn!("finalize is not implemented yet!");
-        }
-
         // allocate a C array with OSSL_ALGORITHM_END for each operation ID
         self.algorithms = std::mem::take(&mut self.alg_iters)
             .into_iter()

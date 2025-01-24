@@ -62,10 +62,7 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for PublicKey {
         trace!(target: log_target!(), "Called ");
 
         let (mlkem_ss, mlkem_ct) = self.mlkem_share.encapsulate(rng).map_err(|e| {
-            anyhow!(
-                "libcrux_kem::PublicKey::encapsulate (MLKEM768) returned {:?}",
-                e
-            )
+            anyhow!("libcrux_kem::PublicKey::encapsulate (MLKEM768) returned {e:?}")
         })?;
         let (ec_ss, ec_ct) = self.ec_share.encapsulate(rng).map_err(|e| {
             anyhow!(
@@ -74,11 +71,17 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for PublicKey {
             )
         })?;
 
-        let mut ss = mlkem_ss.encode();
-        ss.extend(ec_ss.encode());
+        let ss = InnerSharedSecret {
+            ec_share: ec_ss,
+            mlkem_share: mlkem_ss,
+        };
+        let ss = ss.encode();
 
-        let mut ct = mlkem_ct.encode();
-        ct.extend(ec_ct.encode());
+        let ct = InnerEncapsulatedKey {
+            ec_share: ec_ct,
+            mlkem_share: mlkem_ct,
+        };
+        let ct = ct.encode();
 
         Ok((ct, ss))
     }
@@ -139,6 +142,12 @@ struct InnerSharedSecret {
 impl InnerEncapsulatedKey {
     const MLKEM_LEN: usize = 1088;
     const EC_LEN: usize = 32;
+
+    pub fn encode(&self) -> Vec<u8> {
+        let mut out = self.mlkem_share.encode();
+        out.extend(self.ec_share.encode());
+        out
+    }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
         debug_assert_eq!(bytes.len(), Self::MLKEM_LEN + Self::EC_LEN);
@@ -286,7 +295,6 @@ impl KeyPair<'_> {
     }
 
     pub(crate) fn expected_ss_size(&self) -> Result<usize, KMGMTError> {
-        // FIXME: should not be hardcoded
         return Ok(InnerSharedSecret::MLKEM_LEN + InnerSharedSecret::EC_LEN);
     }
 

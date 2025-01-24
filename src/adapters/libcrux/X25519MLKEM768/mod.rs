@@ -39,6 +39,14 @@ pub(crate) const NAME: &CStr = c"X25519MLKEM768";
 // Ensure proper null-terminated C string
 pub(super) const DESCRIPTION: &CStr = c"X25519MLKEM768 from libcrux using NISEC combiner";
 
+/// The name of the group as given in the
+/// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+pub(crate) const IANA_GROUP_NAME: &CStr = c"X25519MLKEM768";
+
+/// The TLS group id value as given in the
+/// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+pub(crate) const IANA_GROUP_ID: u32 = 4588;
+
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/master/man7/provider-kem/
 pub(super) const KEM_FUNCTIONS: [OSSL_DISPATCH; 7] = [
