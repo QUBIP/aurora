@@ -1,5 +1,5 @@
 use super::*;
-use bindings::dispatch_table_entry;
+use bindings::{dispatch_table_entry, OSSL_DISPATCH};
 use bindings::{OSSL_FUNC_kem_decapsulate_fn, OSSL_FUNC_KEM_DECAPSULATE};
 use bindings::{OSSL_FUNC_kem_decapsulate_init_fn, OSSL_FUNC_KEM_DECAPSULATE_INIT};
 use bindings::{OSSL_FUNC_kem_encapsulate_fn, OSSL_FUNC_KEM_ENCAPSULATE};

@@ -1,14 +1,13 @@
 use crate as aurora;
 
+use aurora::adapters::AdapterContextTrait;
+use aurora::bindings;
 use aurora::OpenSSLProvider;
 use bindings::{OSSL_ALGORITHM, OSSL_DISPATCH, OSSL_OP_KEM, OSSL_OP_KEYMGMT};
 use function_name::named;
-use rust_openssl_core_provider::bindings;
-use std::{collections::HashMap, ffi::CStr};
+use std::ffi::CStr;
 
-use super::AdapterContextTrait;
-
-pub(crate) type OurError = anyhow::Error;
+pub(crate) type OurError = aurora::Error;
 pub(crate) use anyhow::anyhow;
 
 const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='libcrux'";
@@ -19,14 +18,30 @@ pub(crate) mod X25519MLKEM768;
 pub(crate) mod X25519MLKEM768Draft00;
 
 #[derive(Debug)]
-pub(crate) struct LibcruxAdapter;
+struct LibcruxAdapter;
 
 impl AdapterContextTrait for LibcruxAdapter {
-    fn register_algorithms(
-        &self,
-        _handle: &mut super::AdaptersHandle,
-    ) -> Result<(), aurora::Error> {
-        todo!()
+    #[named]
+    fn register_algorithms(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        let kem_algorithms = Box::new([OSSL_ALGORITHM {
+            algorithm_names: X25519MLKEM768::NAMES.as_ptr(),
+            property_definition: PROPERTY_DEFINITION.as_ptr(),
+            implementation: X25519MLKEM768::KEM_FUNCTIONS.as_ptr(),
+            algorithm_description: X25519MLKEM768::DESCRIPTION.as_ptr(),
+        }]);
+        handle.register_algorithms(OSSL_OP_KEM, kem_algorithms.into_iter())?;
+
+        let keymgmt_algorithms = Box::new([OSSL_ALGORITHM {
+            algorithm_names: X25519MLKEM768::NAMES.as_ptr(),
+            property_definition: PROPERTY_DEFINITION.as_ptr(),
+            implementation: X25519MLKEM768::KMGMT_FUNCTIONS.as_ptr(),
+            algorithm_description: X25519MLKEM768::DESCRIPTION.as_ptr(),
+        }]);
+        handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
+
+        Ok(())
     }
 }
 
@@ -54,8 +69,10 @@ impl LibcruxAdapter {
     }
 }
 
-pub fn init(super_ctx: &mut super::AdaptersHandle) -> Result<(), OurError> {
+#[named]
+pub fn init(handle: &mut super::AdaptersHandle) -> Result<(), OurError> {
+    trace!(target: log_target!(), "{}", "Called!");
     let ourctx = LibcruxAdapter {};
-    super_ctx.register(ourctx);
+    handle.register(ourctx);
     Ok(())
 }
