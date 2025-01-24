@@ -1,7 +1,5 @@
-#![allow(dead_code)]
-
 use super::*;
-use bindings::dispatch_table_entry;
+use bindings::{dispatch_table_entry, OSSL_DISPATCH};
 use bindings::{OSSL_FUNC_kem_decapsulate_fn, OSSL_FUNC_KEM_DECAPSULATE};
 use bindings::{OSSL_FUNC_kem_decapsulate_init_fn, OSSL_FUNC_KEM_DECAPSULATE_INIT};
 use bindings::{OSSL_FUNC_kem_encapsulate_fn, OSSL_FUNC_KEM_ENCAPSULATE};
@@ -28,6 +26,9 @@ use bindings::{OSSL_FUNC_keymgmt_settable_params_fn, OSSL_FUNC_KEYMGMT_SETTABLE_
 mod kem_functions;
 mod keymgmt_functions;
 
+pub(crate) type OurError = anyhow::Error;
+pub(crate) use anyhow::anyhow;
+
 // Ensure proper null-terminated C string
 // https://docs.openssl.org/master/man7/provider/#algorithm-naming
 pub(super) const NAMES: &CStr = c"X25519MLKEM768Draft00";
@@ -36,8 +37,15 @@ pub(super) const NAMES: &CStr = c"X25519MLKEM768Draft00";
 pub(crate) const NAME: &CStr = c"X25519MLKEM768Draft00";
 
 // Ensure proper null-terminated C string
-pub(super) const DESCRIPTION: &CStr =
-    c"X25519MLKEM768Draft00 from libcrux draft adapter using NISEC combiner";
+pub(super) const DESCRIPTION: &CStr = c"X25519MLKEM768Draft00 from libcrux (libcrux_draft adapter)";
+
+/// The name of the group as given in the
+/// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+pub(crate) const IANA_GROUP_NAME: &CStr = c"X25519Kyber768Draft00";
+
+/// The TLS group id value as given in the
+/// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+pub(crate) const IANA_GROUP_ID: u32 = 25497;
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/master/man7/provider-kem/

@@ -8,6 +8,7 @@ use rust_openssl_core_provider::osslparams::OSSLParamError;
 
 use crate::adapters::libcrux::SecP256r1MLKEM768;
 use crate::adapters::libcrux::X25519MLKEM768;
+use crate::adapters::libcrux_draft::X25519MLKEM768Draft00;
 use crate::osslparams::{
     IntData, OSSLParam, OSSLParamData, UIntData, Utf8StringData, OSSL_PARAM_END,
 };
@@ -99,6 +100,20 @@ pub(crate) extern "C" fn get_capabilities(
             OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS)),
             OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_IS_KEM)),
         ],
+        vec![
+            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_NAME)),
+            OSSLParam::Utf8String(Utf8StringData::new_null(
+                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
+            )),
+            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_ALG)),
+            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_ID)),
+            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS)),
+            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS)),
+            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS)),
+            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS)),
+            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS)),
+            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_IS_KEM)),
+        ],
     ];
 
     #[rustfmt::skip]
@@ -123,6 +138,21 @@ pub(crate) extern "C" fn get_capabilities(
         {
             use SecP256r1MLKEM768 as Group;
             let tls_group_params = &mut tls_groups_params[1];
+            tls_group_params[0].set(Group::IANA_GROUP_NAME)?; // IANA group name
+            tls_group_params[1].set(Group::NAME)?; // group name according to the provider
+            tls_group_params[2].set(Group::NAME)?; // keymgmt algorithm name
+            tls_group_params[3].set(Group::IANA_GROUP_ID)?;     // group ID
+            tls_group_params[4].set(192 as u32)?;        // number of bits of security
+            tls_group_params[5].set(0x0304)?;            // min TLS: v1.3
+            tls_group_params[6].set(0)?;                 // max TLS: no set version
+            tls_group_params[7].set(-1)?;                // min DTLS (do not use this group at all with DTLS)
+            tls_group_params[8].set(-1)?;                // max DTLS (do not use this group at all with DTLS)
+            tls_group_params[9].set(1 as u32)?;          // is KEM: yes
+        }
+
+        {
+            use X25519MLKEM768Draft00 as Group;
+            let tls_group_params = &mut tls_groups_params[2];
             tls_group_params[0].set(Group::IANA_GROUP_NAME)?; // IANA group name
             tls_group_params[1].set(Group::NAME)?; // group name according to the provider
             tls_group_params[2].set(Group::NAME)?; // keymgmt algorithm name

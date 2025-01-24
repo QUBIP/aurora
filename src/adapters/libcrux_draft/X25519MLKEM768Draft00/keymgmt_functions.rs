@@ -14,19 +14,19 @@ use std::{
     fmt::Debug,
 };
 
-pub struct PrivateKey(libcrux_kem::PrivateKey);
 pub struct PublicKey(libcrux_kem::PublicKey);
+pub struct PrivateKey(libcrux_kem::PrivateKey);
 
 impl PublicKey {
-    pub fn encode(&self) -> Vec<u8> {
-        self.0.encode()
-    }
-
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
         let i =
             libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::X25519MlKem768Draft00, bytes)
                 .map_err(|e| anyhow!("libcrux_kem::PublicKey::decode returned {:?}", e))?;
         Ok(Self(i))
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.encode()
     }
 }
 
@@ -39,10 +39,19 @@ impl Encapsulate<EncapsulatedKey, SharedSecret> for PublicKey {
         rng: &mut impl CryptoRngCore,
     ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
         trace!(target: log_target!(), "Called ");
-        match self.0.encapsulate(rng) {
-            Ok((ss, ct)) => Ok((ct.encode(), ss.encode())),
-            Err(e) => Err(anyhow!("{:?}", e)),
-        }
+
+        let (ss, ct) = self
+            .0
+            .encapsulate(rng)
+            .map_err(|e| anyhow!("libcrux_kem::PublicKey::encapsulate returned {e:?}"))?;
+
+        let ss = InnerSharedSecret(ss);
+        let ss = ss.encode();
+
+        let ct = InnerEncapsulatedKey(ct);
+        let ct = ct.encode();
+
+        Ok((ct, ss))
     }
 }
 
@@ -91,6 +100,10 @@ struct InnerEncapsulatedKey(libcrux_kem::Ct);
 struct InnerSharedSecret(libcrux_kem::Ss);
 
 impl InnerEncapsulatedKey {
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.encode()
+    }
+
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
         let i = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::X25519MlKem768Draft00, bytes)
             .map_err(|e| anyhow!("libcrux_kem::Ct::decode returned {:?}", e))?;

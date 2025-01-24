@@ -6,7 +6,7 @@ use crate as aurora;
 use crate::bindings::OSSL_ALGORITHM;
 
 pub(crate) mod libcrux;
-//pub(crate) mod libcrux_draft;
+pub(crate) mod libcrux_draft;
 
 mod traits;
 pub use traits::AdapterContextTrait;
@@ -147,7 +147,7 @@ impl Default for AdaptersHandle {
         };
         // initialize and register each adapter
         libcrux::init(&mut handle).expect("Failure initializing adapter `libcrux`");
-        //libcrux_draft::init(&mut super_ctx).expect("Failure initializing adapter `libcrux_draft`");
+        libcrux_draft::init(&mut handle).expect("Failure initializing adapter `libcrux_draft`");
 
         let mut contexts = std::mem::take(&mut handle.contexts); // Temporarily move out
 
