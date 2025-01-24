@@ -73,6 +73,6 @@ impl LibcruxAdapter {
 pub fn init(handle: &mut super::AdaptersHandle) -> Result<(), OurError> {
     trace!(target: log_target!(), "{}", "Called!");
     let ourctx = LibcruxAdapter {};
-    handle.register(ourctx);
+    handle.register_adapter(ourctx);
     Ok(())
 }

@@ -50,7 +50,7 @@ impl std::fmt::Debug for AdaptersHandle {
 
 impl AdaptersHandle {
     #[named]
-    pub fn register<T: AdapterContextTrait + std::fmt::Debug + 'static>(&mut self, ctx: T) {
+    pub fn register_adapter<T: AdapterContextTrait + std::fmt::Debug + 'static>(&mut self, ctx: T) {
         trace!(target: log_target!(), "{}", "Called!");
         if self.finalized {
             error!("Attempted to register new adapter on finalized AdaptersHandle struct");
