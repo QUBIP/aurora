@@ -44,6 +44,7 @@ impl AdapterContextTrait for LibcruxAdapter {
                 }
             },
         ]);
+        // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEM, kem_algorithms.into_iter())?;
 
         let keymgmt_algorithms = Box::new([
@@ -66,6 +67,7 @@ impl AdapterContextTrait for LibcruxAdapter {
                 }
             },
         ]);
+        // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
 
         Ok(())
