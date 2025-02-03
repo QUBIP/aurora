@@ -17,7 +17,7 @@ pretty_env_logger = ["dep:pretty_env_logger"]
 function_name = "0.3"
 libc = "0.2"
 log = "0.4"
-rust-openssl-core-provider = { path = "../rust-openssl-core-provider" }
+openssl_provider_forge = { path = "../openssl-provider-forge-rs" }
 pretty_env_logger = { version = "0.5", optional = true }
 libcrux-kem = "0.0.2-alpha.3"
 rand = "0.8"

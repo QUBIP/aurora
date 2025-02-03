@@ -1,3 +1,4 @@
+use crate::forge::{bindings, osslparams};
 use crate::named;
 use crate::OpenSSLProvider;
 use bindings::forbidden;
@@ -6,7 +7,6 @@ use bindings::OSSL_PARAM;
 use bindings::OSSL_PROV_PARAM_NAME;
 use libc::{c_int, c_void};
 use osslparams::OSSLParam;
-use rust_openssl_core_provider::{bindings, osslparams};
 
 use crate::{PROV_NAME, PROV_VER};
 

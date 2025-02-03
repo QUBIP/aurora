@@ -1,10 +1,10 @@
 use std::ffi::CStr;
 
+use crate::forge::bindings;
+use crate::forge::osslparams::OSSLParamError;
 use crate::named;
 use crate::OpenSSLProvider;
 use libc::{c_char, c_int, c_void};
-use rust_openssl_core_provider::bindings;
-use rust_openssl_core_provider::osslparams::OSSLParamError;
 
 use crate::adapters::libcrux::SecP256r1MLKEM768;
 use crate::adapters::libcrux::X25519MLKEM768;

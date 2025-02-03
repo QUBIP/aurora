@@ -1,5 +1,7 @@
 use super::OurError as KMGMTError;
 use super::*;
+use crate::forge::osslparams::ossl_param_locate_raw;
+use crate::forge::{keymgmt::selection::Selection, osslparams};
 use crate::{handleResult, OpenSSLProvider};
 use bindings::{
     OSSL_CALLBACK, OSSL_PARAM, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
@@ -7,8 +9,6 @@ use bindings::{
 };
 use kem::{Decapsulate, Encapsulate};
 use rand_core::CryptoRngCore;
-use rust_openssl_core_provider::osslparams::ossl_param_locate_raw;
-use rust_openssl_core_provider::{keymgmt::selection::Selection, osslparams};
 use std::{
     ffi::{c_int, c_void},
     fmt::Debug,

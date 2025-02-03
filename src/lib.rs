@@ -19,7 +19,8 @@ macro_rules! log_target {
     };
 }
 
-use rust_openssl_core_provider::{bindings, osslparams};
+use forge::{bindings, osslparams};
+pub use openssl_provider_forge as forge;
 pub(crate) mod adapters;
 mod init;
 mod query;
