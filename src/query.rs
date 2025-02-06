@@ -214,3 +214,47 @@ pub(crate) extern "C" fn get_capabilities(
         1
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_query_usage() {
+        use crate::adapters::libcrux::X25519MLKEM768 as Group;
+        use crate::bindings;
+        use bindings::{
+            OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID,
+            OSSL_CAPABILITY_TLS_GROUP_IS_KEM, OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS,
+            OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
+            OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
+            OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+        };
+        use Group::capabilities::tls_group as Caps;
+
+        let v = vec![
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, Caps::GROUP_NAME),
+            OSSLParam::new_const_utf8string(
+                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
+                Caps::GROUP_NAME_INTERNAL,
+            ),
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, Caps::GROUP_ALG),
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &Caps::IANA_GROUP_ID),
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS, &192u32),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &0x0304),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &0),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &-1),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &-1),
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &1u32),
+            OSSL_PARAM_END,
+        ];
+
+        let first = std::ptr::from_ref(v.first().unwrap());
+        let params = OSSLParam::try_from(first).unwrap();
+
+        for p in params {
+            println!("{p:?}");
+            assert_ne!(p.get_data_type(), None);
+        }
+    }
+}
