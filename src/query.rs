@@ -122,47 +122,50 @@ pub(crate) extern "C" fn get_capabilities(
     let result: Result<(), OSSLParamError> = (|tls_groups_params: &mut Vec<Vec<OSSLParam>>| {
         {
             use X25519MLKEM768 as Group;
+            use Group::capabilities::tls_group as Caps;
             let tls_group_params = &mut tls_groups_params[0];
-            tls_group_params[0].set(Group::IANA_GROUP_NAME)?; // IANA group name
-            tls_group_params[1].set(Group::NAME)?; // group name according to the provider
-            tls_group_params[2].set(Group::NAME)?; // keymgmt algorithm name
-            tls_group_params[3].set(Group::IANA_GROUP_ID)?;     // group ID
-            tls_group_params[4].set(192 as u32)?;        // number of bits of security
-            tls_group_params[5].set(0x0304)?;            // min TLS: v1.3
-            tls_group_params[6].set(0)?;                 // max TLS: no set version
-            tls_group_params[7].set(-1)?;                // min DTLS (do not use this group at all with DTLS)
-            tls_group_params[8].set(-1)?;                // max DTLS (do not use this group at all with DTLS)
-            tls_group_params[9].set(1 as u32)?;          // is KEM: yes
+            tls_group_params[0].set(Caps::GROUP_NAME)?; // IANA group name
+            tls_group_params[1].set(Caps::GROUP_NAME_INTERNAL)?; // group name according to the provider
+            tls_group_params[2].set(Caps::GROUP_ALG)?; // keymgmt algorithm name
+            tls_group_params[3].set(Caps::IANA_GROUP_ID)?;     // group ID
+            tls_group_params[4].set(Caps::SECURITY_BITS)?;        // number of bits of security
+            tls_group_params[5].set(Caps::MIN_TLS)?;            // min TLS: v1.3
+            tls_group_params[6].set(Caps::MAX_TLS)?;                 // max TLS: no set version
+            tls_group_params[7].set(Caps::MIN_DTLS)?;                // min DTLS (do not use this group at all with DTLS)
+            tls_group_params[8].set(Caps::MAX_DTLS)?;                // max DTLS (do not use this group at all with DTLS)
+            tls_group_params[9].set(Caps::IS_KEM)?;          // is KEM: yes
         }
 
         {
             use SecP256r1MLKEM768 as Group;
+            use Group::capabilities::tls_group as Caps;
             let tls_group_params = &mut tls_groups_params[1];
-            tls_group_params[0].set(Group::IANA_GROUP_NAME)?; // IANA group name
-            tls_group_params[1].set(Group::NAME)?; // group name according to the provider
-            tls_group_params[2].set(Group::NAME)?; // keymgmt algorithm name
-            tls_group_params[3].set(Group::IANA_GROUP_ID)?;     // group ID
-            tls_group_params[4].set(192 as u32)?;        // number of bits of security
-            tls_group_params[5].set(0x0304)?;            // min TLS: v1.3
-            tls_group_params[6].set(0)?;                 // max TLS: no set version
-            tls_group_params[7].set(-1)?;                // min DTLS (do not use this group at all with DTLS)
-            tls_group_params[8].set(-1)?;                // max DTLS (do not use this group at all with DTLS)
-            tls_group_params[9].set(1 as u32)?;          // is KEM: yes
+            tls_group_params[0].set(Caps::GROUP_NAME)?; // IANA group name
+            tls_group_params[1].set(Caps::GROUP_NAME_INTERNAL)?; // group name according to the provider
+            tls_group_params[2].set(Caps::GROUP_ALG)?; // keymgmt algorithm name
+            tls_group_params[3].set(Caps::IANA_GROUP_ID)?;     // group ID
+            tls_group_params[4].set(Caps::SECURITY_BITS)?;        // number of bits of security
+            tls_group_params[5].set(Caps::MIN_TLS)?;            // min TLS: v1.3
+            tls_group_params[6].set(Caps::MAX_TLS)?;                 // max TLS: no set version
+            tls_group_params[7].set(Caps::MIN_DTLS)?;                // min DTLS (do not use this group at all with DTLS)
+            tls_group_params[8].set(Caps::MAX_DTLS)?;                // max DTLS (do not use this group at all with DTLS)
+            tls_group_params[9].set(Caps::IS_KEM)?;          // is KEM: yes
         }
 
         {
             use X25519MLKEM768Draft00 as Group;
+            use Group::capabilities::tls_group as Caps;
             let tls_group_params = &mut tls_groups_params[2];
-            tls_group_params[0].set(Group::IANA_GROUP_NAME)?; // IANA group name
-            tls_group_params[1].set(Group::NAME)?; // group name according to the provider
-            tls_group_params[2].set(Group::NAME)?; // keymgmt algorithm name
-            tls_group_params[3].set(Group::IANA_GROUP_ID)?;     // group ID
-            tls_group_params[4].set(192 as u32)?;        // number of bits of security
-            tls_group_params[5].set(0x0304)?;            // min TLS: v1.3
-            tls_group_params[6].set(0)?;                 // max TLS: no set version
-            tls_group_params[7].set(-1)?;                // min DTLS (do not use this group at all with DTLS)
-            tls_group_params[8].set(-1)?;                // max DTLS (do not use this group at all with DTLS)
-            tls_group_params[9].set(1 as u32)?;          // is KEM: yes
+            tls_group_params[0].set(Caps::GROUP_NAME)?; // IANA group name
+            tls_group_params[1].set(Caps::GROUP_NAME_INTERNAL)?; // group name according to the provider
+            tls_group_params[2].set(Caps::GROUP_ALG)?; // keymgmt algorithm name
+            tls_group_params[3].set(Caps::IANA_GROUP_ID)?;     // group ID
+            tls_group_params[4].set(Caps::SECURITY_BITS)?;        // number of bits of security
+            tls_group_params[5].set(Caps::MIN_TLS)?;            // min TLS: v1.3
+            tls_group_params[6].set(Caps::MAX_TLS)?;                 // max TLS: no set version
+            tls_group_params[7].set(Caps::MIN_DTLS)?;                // min DTLS (do not use this group at all with DTLS)
+            tls_group_params[8].set(Caps::MAX_DTLS)?;                // max DTLS (do not use this group at all with DTLS)
+            tls_group_params[9].set(Caps::IS_KEM)?;          // is KEM: yes
         }
 
         Ok(())
