@@ -39,13 +39,47 @@ pub(crate) const NAME: &CStr = c"X25519MLKEM768";
 // Ensure proper null-terminated C string
 pub(super) const DESCRIPTION: &CStr = c"X25519MLKEM768 from libcrux using NISEC combiner";
 
-/// The name of the group as given in the
-/// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
-pub(crate) const IANA_GROUP_NAME: &CStr = c"X25519MLKEM768";
+/// number of bits of security
+pub(crate) const SECURITY_BITS: u32 = 192;
 
-/// The TLS group id value as given in the
-/// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
-pub(crate) const IANA_GROUP_ID: u32 = 4588;
+pub(crate) mod capabilities {
+    use super::CStr;
+
+    pub(crate) mod tls_group {
+        use super::*;
+
+        /// The name of the group as given in the
+        /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+        pub(crate) const IANA_GROUP_NAME: &CStr = c"X25519MLKEM768";
+
+        /// The TLS group id value as given in the
+        /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+        pub(crate) const IANA_GROUP_ID: u32 = 4588;
+
+        /// An alias for `IANA_GROUP_NAME`
+        pub(crate) use self::IANA_GROUP_NAME as GROUP_NAME;
+
+        /// group name according to this provider
+        pub(crate) use super::super::NAME as GROUP_NAME_INTERNAL;
+
+        /// keymgmt algorithm name
+        pub(crate) use super::super::NAME as GROUP_ALG;
+
+        /// min TLS: v1.3
+        pub(crate) const MIN_TLS: i32 = 0x0304;
+        /// max TLS: no set version
+        pub(crate) const MAX_TLS: i32 = 0;
+        /// min DTLS (do not use this group at all with DTLS)
+        pub(crate) const MIN_DTLS: i32 = -1;
+        /// max DTLS (do not use this group at all with DTLS)
+        pub(crate) const MAX_DTLS: i32 = -1;
+        /// is KEM: yes
+        pub(crate) const IS_KEM: u32 = 1;
+
+        /// number of bits of security
+        pub(crate) use super::super::SECURITY_BITS;
+    }
+}
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/master/man7/provider-kem/
