@@ -89,9 +89,14 @@ impl AdaptersHandle {
 
         match self.alg_iters.entry(op_id) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
-                let i = Box::new(std::iter::empty());
-                let i = std::mem::replace(entry.get_mut(), i);
-                *entry.get_mut() = Box::new(i.chain(algs));
+                // Move the currently existing boxed iterator out of the map.
+                // (Moving it like this is the way around "does not live long enough" errors.)
+                // We have to insert something to take its place; an empty iterator suffices.
+                let current_box = entry.insert(Box::new(std::iter::empty()));
+
+                // Chain the new algorithms onto the existing boxed iterator, and put it back into
+                // the hashmap, discarding the empty iterator that temporarily took its place.
+                let _ = entry.insert(Box::new(current_box.chain(algs)));
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
                 entry.insert(Box::new(algs));
