@@ -1,7 +1,6 @@
 use std::ffi::CStr;
 
 use crate::forge::bindings;
-use crate::forge::osslparams::OSSLParamError;
 use crate::named;
 use crate::OpenSSLProvider;
 use libc::{c_char, c_int, c_void};
@@ -9,17 +8,13 @@ use libc::{c_char, c_int, c_void};
 use crate::adapters::libcrux::SecP256r1MLKEM768;
 use crate::adapters::libcrux::X25519MLKEM768;
 use crate::adapters::libcrux_draft::X25519MLKEM768Draft00;
-use crate::osslparams::{
-    IntData, OSSLParam, OSSLParamData, UIntData, Utf8StringData, OSSL_PARAM_END,
-};
-use bindings::OSSL_ALGORITHM;
-use bindings::OSSL_CALLBACK;
+use crate::osslparams::{OSSLParam, OSSL_PARAM_END};
 use bindings::{
-    OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID, OSSL_CAPABILITY_TLS_GROUP_IS_KEM,
-    OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, OSSL_CAPABILITY_TLS_GROUP_MAX_TLS,
-    OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, OSSL_CAPABILITY_TLS_GROUP_MIN_TLS,
-    OSSL_CAPABILITY_TLS_GROUP_NAME, OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-    OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+    OSSL_ALGORITHM, OSSL_CALLBACK, OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID,
+    OSSL_CAPABILITY_TLS_GROUP_IS_KEM, OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS,
+    OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
+    OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
+    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
 };
 
 #[named]
@@ -71,126 +66,116 @@ pub(crate) extern "C" fn get_capabilities(
             return 0;
         }
     };
-    let mut tls_groups_params = vec![
-        vec![
-            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_NAME)),
-            OSSLParam::Utf8String(Utf8StringData::new_null(
-                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-            )),
-            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_ALG)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_ID)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_IS_KEM)),
-        ],
-        vec![
-            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_NAME)),
-            OSSLParam::Utf8String(Utf8StringData::new_null(
-                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-            )),
-            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_ALG)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_ID)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_IS_KEM)),
-        ],
-        vec![
-            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_NAME)),
-            OSSLParam::Utf8String(Utf8StringData::new_null(
-                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-            )),
-            OSSLParam::Utf8String(Utf8StringData::new_null(OSSL_CAPABILITY_TLS_GROUP_ALG)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_ID)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS)),
-            OSSLParam::Int(IntData::new_null(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS)),
-            OSSLParam::UInt(UIntData::new_null(OSSL_CAPABILITY_TLS_GROUP_IS_KEM)),
-        ],
+    let tls_groups_params = vec![
+        {
+            use Group::capabilities::tls_group as C;
+            use X25519MLKEM768 as Group;
+
+            vec![
+                // IANA group name
+                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, C::GROUP_NAME),
+                // group name according to the provider
+                OSSLParam::new_const_utf8string(
+                    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
+                    C::GROUP_NAME_INTERNAL,
+                ),
+                // keymgmt algorithm name
+                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, C::GROUP_ALG),
+                // IANA group ID
+                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &C::IANA_GROUP_ID),
+                // number of bits of security
+                OSSLParam::new_const_uint(
+                    OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+                    &C::SECURITY_BITS,
+                ),
+                // min TLS version
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &C::MIN_TLS),
+                // min TLS version
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &C::MAX_TLS),
+                // min DTLS
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &C::MIN_DTLS),
+                // max DTLS
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &C::MAX_DTLS),
+                // is KEM
+                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
+                // IMPORTANT: always terminate a params array!!!
+                OSSL_PARAM_END,
+            ]
+        },
+        {
+            use Group::capabilities::tls_group as C;
+            use SecP256r1MLKEM768 as Group;
+
+            vec![
+                // IANA group name
+                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, C::GROUP_NAME),
+                // group name according to the provider
+                OSSLParam::new_const_utf8string(
+                    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
+                    C::GROUP_NAME_INTERNAL,
+                ),
+                // keymgmt algorithm name
+                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, C::GROUP_ALG),
+                // IANA group ID
+                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &C::IANA_GROUP_ID),
+                // number of bits of security
+                OSSLParam::new_const_uint(
+                    OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+                    &C::SECURITY_BITS,
+                ),
+                // min TLS version
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &C::MIN_TLS),
+                // min TLS version
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &C::MAX_TLS),
+                // min DTLS
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &C::MIN_DTLS),
+                // max DTLS
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &C::MAX_DTLS),
+                // is KEM
+                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
+                // IMPORTANT: always terminate a params array!!!
+                OSSL_PARAM_END,
+            ]
+        },
+        {
+            use Group::capabilities::tls_group as C;
+            use X25519MLKEM768Draft00 as Group;
+
+            vec![
+                // IANA group name
+                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, C::GROUP_NAME),
+                // group name according to the provider
+                OSSLParam::new_const_utf8string(
+                    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
+                    C::GROUP_NAME_INTERNAL,
+                ),
+                // keymgmt algorithm name
+                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, C::GROUP_ALG),
+                // IANA group ID
+                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &C::IANA_GROUP_ID),
+                // number of bits of security
+                OSSLParam::new_const_uint(
+                    OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+                    &C::SECURITY_BITS,
+                ),
+                // min TLS version
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &C::MIN_TLS),
+                // min TLS version
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &C::MAX_TLS),
+                // min DTLS
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &C::MIN_DTLS),
+                // max DTLS
+                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &C::MAX_DTLS),
+                // is KEM
+                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
+                // IMPORTANT: always terminate a params array!!!
+                OSSL_PARAM_END,
+            ]
+        },
     ];
 
-    #[rustfmt::skip]
-    // oqs-provider keeps these values in a struct in an array that seems to be generated at build
-    // time and not actually committed into the repo in a readable format; I dug them up with gdb.
-    let result: Result<(), OSSLParamError> = (|tls_groups_params: &mut Vec<Vec<OSSLParam>>| {
-        {
-            use X25519MLKEM768 as Group;
-            use Group::capabilities::tls_group as Caps;
-            let tls_group_params = &mut tls_groups_params[0];
-            tls_group_params[0].set(Caps::GROUP_NAME)?; // IANA group name
-            tls_group_params[1].set(Caps::GROUP_NAME_INTERNAL)?; // group name according to the provider
-            tls_group_params[2].set(Caps::GROUP_ALG)?; // keymgmt algorithm name
-            tls_group_params[3].set(Caps::IANA_GROUP_ID)?;     // group ID
-            tls_group_params[4].set(Caps::SECURITY_BITS)?;        // number of bits of security
-            tls_group_params[5].set(Caps::MIN_TLS)?;            // min TLS: v1.3
-            tls_group_params[6].set(Caps::MAX_TLS)?;                 // max TLS: no set version
-            tls_group_params[7].set(Caps::MIN_DTLS)?;                // min DTLS (do not use this group at all with DTLS)
-            tls_group_params[8].set(Caps::MAX_DTLS)?;                // max DTLS (do not use this group at all with DTLS)
-            tls_group_params[9].set(Caps::IS_KEM)?;          // is KEM: yes
-        }
-
-        {
-            use SecP256r1MLKEM768 as Group;
-            use Group::capabilities::tls_group as Caps;
-            let tls_group_params = &mut tls_groups_params[1];
-            tls_group_params[0].set(Caps::GROUP_NAME)?; // IANA group name
-            tls_group_params[1].set(Caps::GROUP_NAME_INTERNAL)?; // group name according to the provider
-            tls_group_params[2].set(Caps::GROUP_ALG)?; // keymgmt algorithm name
-            tls_group_params[3].set(Caps::IANA_GROUP_ID)?;     // group ID
-            tls_group_params[4].set(Caps::SECURITY_BITS)?;        // number of bits of security
-            tls_group_params[5].set(Caps::MIN_TLS)?;            // min TLS: v1.3
-            tls_group_params[6].set(Caps::MAX_TLS)?;                 // max TLS: no set version
-            tls_group_params[7].set(Caps::MIN_DTLS)?;                // min DTLS (do not use this group at all with DTLS)
-            tls_group_params[8].set(Caps::MAX_DTLS)?;                // max DTLS (do not use this group at all with DTLS)
-            tls_group_params[9].set(Caps::IS_KEM)?;          // is KEM: yes
-        }
-
-        {
-            use X25519MLKEM768Draft00 as Group;
-            use Group::capabilities::tls_group as Caps;
-            let tls_group_params = &mut tls_groups_params[2];
-            tls_group_params[0].set(Caps::GROUP_NAME)?; // IANA group name
-            tls_group_params[1].set(Caps::GROUP_NAME_INTERNAL)?; // group name according to the provider
-            tls_group_params[2].set(Caps::GROUP_ALG)?; // keymgmt algorithm name
-            tls_group_params[3].set(Caps::IANA_GROUP_ID)?;     // group ID
-            tls_group_params[4].set(Caps::SECURITY_BITS)?;        // number of bits of security
-            tls_group_params[5].set(Caps::MIN_TLS)?;            // min TLS: v1.3
-            tls_group_params[6].set(Caps::MAX_TLS)?;                 // max TLS: no set version
-            tls_group_params[7].set(Caps::MIN_DTLS)?;                // min DTLS (do not use this group at all with DTLS)
-            tls_group_params[8].set(Caps::MAX_DTLS)?;                // max DTLS (do not use this group at all with DTLS)
-            tls_group_params[9].set(Caps::IS_KEM)?;          // is KEM: yes
-        }
-
-        Ok(())
-    })(&mut tls_groups_params);
-
-    match result {
-        Ok(_) => (),
-        Err(e) => {
-            error!(target: log_target!(), "Got {:?}", e);
-            return 0;
-        }
-    }
-
     // TODO: eliminate code duplication between here and OpenSSLProvider::get_params_array
-    let tls_group_params_boxed_slices = tls_groups_params
-        .iter_mut()
-        .map(|tls_group_params| {
-            tls_group_params
-                .iter_mut()
-                .map(|p| unsafe { *p.get_c_struct() })
-                .chain(std::iter::once(OSSL_PARAM_END))
-                .collect::<Vec<_>>()
-                .into_boxed_slice()
-        })
-        .collect::<Vec<_>>();
+    let tls_group_params_boxed_slices = tls_groups_params.into_boxed_slice();
     if unsafe { CStr::from_ptr(capability) } == c"TLS-GROUP" {
         match cb {
             Some(cb_fn) => {
@@ -217,35 +202,48 @@ pub(crate) extern "C" fn get_capabilities(
 
 #[cfg(test)]
 mod tests {
+    use crate::adapters::libcrux::SecP256r1MLKEM768::capabilities::tls_group::MIN_TLS;
+
     use super::*;
 
     #[test]
     fn test_query_usage() {
-        use crate::adapters::libcrux::X25519MLKEM768 as Group;
-        use crate::bindings;
-        use bindings::{
+        use crate::bindings::{
             OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID,
             OSSL_CAPABILITY_TLS_GROUP_IS_KEM, OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS,
             OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
             OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
             OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
         };
-        use Group::capabilities::tls_group as Caps;
+
+        use crate::adapters::libcrux::X25519MLKEM768 as Group;
+        use Group::capabilities::tls_group as C;
 
         let v = vec![
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, Caps::GROUP_NAME),
+            // IANA group name
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, C::GROUP_NAME),
+            // group name according to the provider
             OSSLParam::new_const_utf8string(
                 OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-                Caps::GROUP_NAME_INTERNAL,
+                C::GROUP_NAME_INTERNAL,
             ),
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, Caps::GROUP_ALG),
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &Caps::IANA_GROUP_ID),
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS, &192u32),
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &0x0304),
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &0),
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &-1),
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &-1),
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &1u32),
+            // keymgmt algorithm name
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, C::GROUP_ALG),
+            // IANA group ID
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &C::IANA_GROUP_ID),
+            // number of bits of security
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS, &C::SECURITY_BITS),
+            // min TLS version: v1.3
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &C::MIN_TLS),
+            // min TLS version: no set version
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &C::MAX_TLS),
+            // min DTLS (do not use this group at all with DTLS)
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &C::MIN_DTLS),
+            // max DTLS (do not use this group at all with DTLS)
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &C::MAX_DTLS),
+            // is KEM: yes
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
+            // IMPORTANT: always terminate a params array!!!
             OSSL_PARAM_END,
         ];
 
