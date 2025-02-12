@@ -4,18 +4,12 @@ use crate::forge::bindings;
 use crate::named;
 use crate::OpenSSLProvider;
 use libc::{c_char, c_int, c_void};
+use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
 
 use crate::adapters::libcrux::SecP256r1MLKEM768;
 use crate::adapters::libcrux::X25519MLKEM768;
 use crate::adapters::libcrux_draft::X25519MLKEM768Draft00;
-use crate::osslparams::{OSSLParam, OSSL_PARAM_END};
-use bindings::{
-    OSSL_ALGORITHM, OSSL_CALLBACK, OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID,
-    OSSL_CAPABILITY_TLS_GROUP_IS_KEM, OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS,
-    OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
-    OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
-    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
-};
+use bindings::{OSSL_ALGORITHM, OSSL_CALLBACK};
 
 #[named]
 pub(crate) extern "C" fn query_operation(
@@ -68,109 +62,16 @@ pub(crate) extern "C" fn get_capabilities(
     };
     let tls_groups_params = vec![
         {
-            use Group::capabilities::tls_group as C;
             use X25519MLKEM768 as Group;
-
-            vec![
-                // IANA group name
-                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, C::GROUP_NAME),
-                // group name according to the provider
-                OSSLParam::new_const_utf8string(
-                    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-                    C::GROUP_NAME_INTERNAL,
-                ),
-                // keymgmt algorithm name
-                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, C::GROUP_ALG),
-                // IANA group ID
-                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &C::IANA_GROUP_ID),
-                // number of bits of security
-                OSSLParam::new_const_uint(
-                    OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
-                    &C::SECURITY_BITS,
-                ),
-                // min TLS version
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &C::MIN_TLS),
-                // min TLS version
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &C::MAX_TLS),
-                // min DTLS
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &C::MIN_DTLS),
-                // max DTLS
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &C::MAX_DTLS),
-                // is KEM
-                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
-                // IMPORTANT: always terminate a params array!!!
-                OSSL_PARAM_END,
-            ]
+            Group::capabilities::tls_group::OSSL_PARAM_ARRAY
         },
         {
-            use Group::capabilities::tls_group as C;
             use SecP256r1MLKEM768 as Group;
-
-            vec![
-                // IANA group name
-                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, C::GROUP_NAME),
-                // group name according to the provider
-                OSSLParam::new_const_utf8string(
-                    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-                    C::GROUP_NAME_INTERNAL,
-                ),
-                // keymgmt algorithm name
-                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, C::GROUP_ALG),
-                // IANA group ID
-                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &C::IANA_GROUP_ID),
-                // number of bits of security
-                OSSLParam::new_const_uint(
-                    OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
-                    &C::SECURITY_BITS,
-                ),
-                // min TLS version
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &C::MIN_TLS),
-                // min TLS version
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &C::MAX_TLS),
-                // min DTLS
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &C::MIN_DTLS),
-                // max DTLS
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &C::MAX_DTLS),
-                // is KEM
-                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
-                // IMPORTANT: always terminate a params array!!!
-                OSSL_PARAM_END,
-            ]
+            Group::capabilities::tls_group::OSSL_PARAM_ARRAY
         },
         {
-            use Group::capabilities::tls_group as C;
             use X25519MLKEM768Draft00 as Group;
-
-            vec![
-                // IANA group name
-                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, C::GROUP_NAME),
-                // group name according to the provider
-                OSSLParam::new_const_utf8string(
-                    OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-                    C::GROUP_NAME_INTERNAL,
-                ),
-                // keymgmt algorithm name
-                OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, C::GROUP_ALG),
-                // IANA group ID
-                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &C::IANA_GROUP_ID),
-                // number of bits of security
-                OSSLParam::new_const_uint(
-                    OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
-                    &C::SECURITY_BITS,
-                ),
-                // min TLS version
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &C::MIN_TLS),
-                // min TLS version
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &C::MAX_TLS),
-                // min DTLS
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &C::MIN_DTLS),
-                // max DTLS
-                OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &C::MAX_DTLS),
-                // is KEM
-                OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
-                // IMPORTANT: always terminate a params array!!!
-                OSSL_PARAM_END,
-            ]
+            Group::capabilities::tls_group::OSSL_PARAM_ARRAY
         },
     ];
 
@@ -181,7 +82,9 @@ pub(crate) extern "C" fn get_capabilities(
             Some(cb_fn) => {
                 for slice in tls_group_params_boxed_slices {
                     trace!(target: log_target!(), "Current slice is {:?}", &slice);
-                    let slicep = slice.as_ptr();
+                    let first: &bindings::OSSL_PARAM =
+                        slice.first().unwrap_or(&CONST_OSSL_PARAM::END);
+                    let slicep: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
                     trace!(target: log_target!(), "Calling cb({:0x?}, {:0x?})", &slicep, arg);
                     let ret = unsafe { cb_fn(slicep, arg) };
                     trace!(target: log_target!(), "cb({:0x?}, {:0x?}) returned {:?}", &slicep, arg, ret);
@@ -202,8 +105,6 @@ pub(crate) extern "C" fn get_capabilities(
 
 #[cfg(test)]
 mod tests {
-    use crate::adapters::libcrux::SecP256r1MLKEM768::capabilities::tls_group::MIN_TLS;
-
     use super::*;
 
     #[test]
@@ -214,9 +115,11 @@ mod tests {
             OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
             OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
             OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+            OSSL_PARAM,
         };
 
         use crate::adapters::libcrux::X25519MLKEM768 as Group;
+        use crate::osslparams::OSSLParam;
         use Group::capabilities::tls_group as C;
 
         let v = vec![
@@ -244,10 +147,10 @@ mod tests {
             // is KEM: yes
             OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &C::IS_KEM),
             // IMPORTANT: always terminate a params array!!!
-            OSSL_PARAM_END,
+            CONST_OSSL_PARAM::END,
         ];
 
-        let first = std::ptr::from_ref(v.first().unwrap());
+        let first: *const OSSL_PARAM = std::ptr::from_ref(v.first().unwrap());
         let params = OSSLParam::try_from(first).unwrap();
 
         for p in params {

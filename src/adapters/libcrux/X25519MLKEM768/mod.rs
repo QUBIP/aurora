@@ -78,6 +78,44 @@ pub(crate) mod capabilities {
 
         /// number of bits of security
         pub(crate) use super::super::SECURITY_BITS;
+
+        use crate::bindings::{
+            OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID,
+            OSSL_CAPABILITY_TLS_GROUP_IS_KEM, OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS,
+            OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
+            OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
+            OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+        };
+        use openssl_provider_forge::osslparams;
+        use osslparams::{OSSLParam, CONST_OSSL_PARAM};
+
+        pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] = &[
+            // IANA group name
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, GROUP_NAME),
+            // group name according to the provider
+            OSSLParam::new_const_utf8string(
+                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
+                GROUP_NAME_INTERNAL,
+            ),
+            // keymgmt algorithm name
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, GROUP_ALG),
+            // IANA group ID
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &IANA_GROUP_ID),
+            // number of bits of security
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS, &SECURITY_BITS),
+            // min TLS version
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &MIN_TLS),
+            // min TLS version
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &MAX_TLS),
+            // min DTLS
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &MIN_DTLS),
+            // max DTLS
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &MAX_DTLS),
+            // is KEM
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &IS_KEM),
+            // IMPORTANT: always terminate a params array!!!
+            CONST_OSSL_PARAM::END,
+        ];
     }
 }
 
