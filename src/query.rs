@@ -5,11 +5,7 @@ use crate::named;
 use crate::OpenSSLProvider;
 use libc::{c_char, c_int, c_void};
 use openssl_provider_forge::osslcb::OSSLCallback;
-use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
 
-use crate::adapters::libcrux::SecP256r1MLKEM768;
-use crate::adapters::libcrux::X25519MLKEM768;
-use crate::adapters::libcrux_draft::X25519MLKEM768Draft00;
 use bindings::{OSSL_ALGORITHM, OSSL_CALLBACK};
 
 #[named]
@@ -57,7 +53,7 @@ pub(crate) extern "C" fn get_capabilities(
 
     trace!(target: log_target!(), "{}", "Called!");
 
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -80,41 +76,65 @@ pub(crate) extern "C" fn get_capabilities(
         }
     };
 
-    let tls_groups_params = vec![
-        {
-            use X25519MLKEM768 as Group;
-            Group::capabilities::tls_group::OSSL_PARAM_ARRAY
-        },
-        {
-            use SecP256r1MLKEM768 as Group;
-            Group::capabilities::tls_group::OSSL_PARAM_ARRAY
-        },
-        {
-            use X25519MLKEM768Draft00 as Group;
-            Group::capabilities::tls_group::OSSL_PARAM_ARRAY
-        },
-    ];
-    let tls_group_params_boxed_slices = tls_groups_params.into_boxed_slice();
+    #[cfg(any())]
+    {
+        todo!()
+        //match provctx
+        //    .adapters_ctx
+        //    .get_capabilities(operation_id as u32)
+        //{
+        //    Some(algorithms) => algorithms,
+        //    None => {
+        //        trace!(target: log_target!(), "Unsupported operation_id: {}", operation_id);
+        //        std::ptr::null()
+        //    }
+        //}
+    }
+    #[cfg(not(any()))]
+    {
+        use crate::adapters::libcrux::SecP256r1MLKEM768;
+        use crate::adapters::libcrux::X25519MLKEM768;
+        use crate::adapters::libcrux_draft::X25519MLKEM768Draft00;
+        use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
 
-    // TODO: eliminate code duplication between here and OpenSSLProvider::get_params_array
-    if capability == c"TLS-GROUP" {
-        for slice in tls_group_params_boxed_slices {
-            trace!(target: log_target!(), "Current slice is {:?}", &slice);
-            let first: &bindings::OSSL_PARAM = slice.first().unwrap_or(&CONST_OSSL_PARAM::END);
-            let slicep: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
-            trace!(target: log_target!(), "Calling cb({:0x?}, {:0x?})", &slicep, arg);
-            let ret = cb.call(slicep);
-            trace!(target: log_target!(), "cb({:0x?}, {:0x?}) returned {:?}", &slicep, arg, ret);
-            if ret == 0 {
-                trace!(target: log_target!(), "Callback returned 0");
-                return FAILURE;
+        let _ = provctx;
+
+        let tls_groups_params = vec![
+            {
+                use X25519MLKEM768 as Group;
+                Group::capabilities::tls_group::OSSL_PARAM_ARRAY
+            },
+            {
+                use SecP256r1MLKEM768 as Group;
+                Group::capabilities::tls_group::OSSL_PARAM_ARRAY
+            },
+            {
+                use X25519MLKEM768Draft00 as Group;
+                Group::capabilities::tls_group::OSSL_PARAM_ARRAY
+            },
+        ];
+        let tls_group_params_boxed_slices = tls_groups_params.into_boxed_slice();
+
+        // TODO: eliminate code duplication between here and OpenSSLProvider::get_params_array
+        if capability == c"TLS-GROUP" {
+            for slice in tls_group_params_boxed_slices {
+                trace!(target: log_target!(), "Current slice is {:?}", &slice);
+                let first: &bindings::OSSL_PARAM = slice.first().unwrap_or(&CONST_OSSL_PARAM::END);
+                let slicep: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
+                trace!(target: log_target!(), "Calling cb({:0x?}, {:0x?})", &slicep, arg);
+                let ret = cb.call(slicep);
+                trace!(target: log_target!(), "cb({:0x?}, {:0x?}) returned {:?}", &slicep, arg, ret);
+                if ret == 0 {
+                    trace!(target: log_target!(), "Callback returned 0");
+                    return FAILURE;
+                }
             }
+            trace!(target: log_target!(), "Iterated over all groups. Returning SUCCESS");
+            return SUCCESS;
+        } else {
+            debug!(target: log_target!(), "Unknown capability: {capability:?}");
+            return SUCCESS;
         }
-        trace!(target: log_target!(), "Iterated over all groups. Returning SUCCESS");
-        return SUCCESS;
-    } else {
-        debug!(target: log_target!(), "Unknown capability: {capability:?}");
-        return SUCCESS;
     }
 }
 
