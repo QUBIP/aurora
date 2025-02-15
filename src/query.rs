@@ -76,21 +76,29 @@ pub(crate) extern "C" fn get_capabilities(
         }
     };
 
-    #[cfg(any())]
-    {
-        todo!()
-        //match provctx
-        //    .adapters_ctx
-        //    .get_capabilities(operation_id as u32)
-        //{
-        //    Some(algorithms) => algorithms,
-        //    None => {
-        //        trace!(target: log_target!(), "Unsupported operation_id: {}", operation_id);
-        //        std::ptr::null()
-        //    }
-        //}
-    }
     #[cfg(not(any()))]
+    {
+        match provctx.adapters_ctx.get_capabilities(capability) {
+            Some(params_lists) => {
+                for params_list in params_lists {
+                    trace!(target: log_target!(), "Calling cb({params_list:0x?})");
+                    let ret = cb.call(params_list);
+                    trace!(target: log_target!(), "cb({params_list:0x?}) returned {ret:?}");
+                    if ret == 0 {
+                        trace!(target: log_target!(), "Callback returned 0");
+                        return FAILURE;
+                    }
+                }
+                trace!(target: log_target!(), "Iterated over all params list. Returning SUCCESS");
+                return SUCCESS;
+            }
+            None => {
+                debug!(target: log_target!(), "Unknown capability: {capability:?}");
+                return SUCCESS;
+            }
+        }
+    }
+    #[cfg(any())]
     {
         use crate::adapters::libcrux::SecP256r1MLKEM768;
         use crate::adapters::libcrux::X25519MLKEM768;
@@ -141,6 +149,7 @@ pub(crate) extern "C" fn get_capabilities(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
 
     #[test]
     fn test_query_usage() {
