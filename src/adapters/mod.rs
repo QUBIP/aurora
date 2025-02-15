@@ -10,7 +10,9 @@ use std::ffi::CStr;
 
 use anyhow::anyhow;
 
+#[expect(dead_code)]
 mod libcrux;
+
 mod libcrux_draft;
 
 mod traits;
@@ -216,7 +218,7 @@ impl Default for AdaptersHandle {
             finalized: false,
         };
         // initialize and register each adapter
-        libcrux::init(&mut handle).expect("Failure initializing adapter `libcrux`");
+        //libcrux::init(&mut handle).expect("Failure initializing adapter `libcrux`");
         libcrux_draft::init(&mut handle).expect("Failure initializing adapter `libcrux_draft`");
 
         let mut contexts = std::mem::take(&mut handle.contexts); // Temporarily move out
