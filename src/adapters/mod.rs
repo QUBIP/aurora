@@ -10,8 +10,8 @@ use std::ffi::CStr;
 
 use anyhow::anyhow;
 
-pub(crate) mod libcrux;
-pub(crate) mod libcrux_draft;
+mod libcrux;
+mod libcrux_draft;
 
 mod traits;
 pub use traits::AdapterContextTrait;
