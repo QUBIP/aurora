@@ -12,6 +12,7 @@ use anyhow::anyhow;
 
 mod libcrux;
 mod libcrux_draft;
+mod pqclean;
 
 mod traits;
 pub use traits::AdapterContextTrait;
@@ -218,6 +219,7 @@ impl Default for AdaptersHandle {
         // initialize and register each adapter
         libcrux::init(&mut handle).expect("Failure initializing adapter `libcrux`");
         libcrux_draft::init(&mut handle).expect("Failure initializing adapter `libcrux_draft`");
+        pqclean::init(&mut handle).expect("Failure initializing adapter `pqclean`");
 
         let mut contexts = std::mem::take(&mut handle.contexts); // Temporarily move out
 
