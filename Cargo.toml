@@ -1,6 +1,6 @@
 [package]
 name = "aurora"
-version.workspace = true
+version = "0.7.0"
 edition = "2021"
 
 [lib]
