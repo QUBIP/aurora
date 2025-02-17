@@ -86,6 +86,7 @@ impl AdapterContextTrait for LibcruxAdapter {
         ];
         for a in tlsgroups {
             use crate::osslparams::CONST_OSSL_PARAM;
+
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);
             let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
             handle.register_capability(c"TLS-GROUP", ptr)?;
