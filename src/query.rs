@@ -4,7 +4,7 @@ use crate::forge::bindings;
 use crate::named;
 use crate::OpenSSLProvider;
 use libc::{c_char, c_int, c_void};
-use openssl_provider_forge::osslcb::OSSLCallback;
+use openssl_provider_forge::ossl_callback::OSSLCallback;
 
 use bindings::{OSSL_ALGORITHM, OSSL_CALLBACK};
 
