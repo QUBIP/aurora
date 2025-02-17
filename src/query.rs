@@ -57,7 +57,7 @@ pub(crate) extern "C" fn get_capabilities(
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
-            return 0;
+            return FAILURE;
         }
     };
 
