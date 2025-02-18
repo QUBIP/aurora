@@ -23,3 +23,17 @@ don't hesitate to _report them_.
    a) published a fix, or
    b) declined to address the vulnerability for whatever reason,
    you are free to publicly disclose it.
+
+## GPG keys
+
+### `security@romen.dev`
+
+- Key ID: `0xF2C6707B23AD7E39`
+- Fingerprint: `F628 7C98 A405 3CC0 8BCC  F129 F2C6 707B 23AD 7E39`
+- [Download](./keys/security_romen_dev.asc)
+
+### `coc@romen.dev`
+
+- Key ID: `0xDDE6AE69A49F648A`
+- Fingerprint: `4022 B158 B9EF 85FA A8C0  B675 DDE6 AE69 A49F 648A`
+- [Download](./keys/coc_romen_dev.asc)

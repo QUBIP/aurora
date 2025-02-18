@@ -145,6 +145,7 @@ Reach out to the maintainers at one of the following places:
 - [GitHub issues](https://github.com/qubip/aurora/issues/new?assignees=&labels=question&template=04_SUPPORT_QUESTION.md&title=support%3A+)
 - <security@romen.dev> to disclose security issues according to our [security documentation](docs/SECURITY.md).
 - <coc@romen.dev> to report violations of our [Code of Conduct](docs/CODE_OF_CONDUCT.md).
+- Details about the GPG keys to encrypt reports are included in our [security documentation](docs/SECURITY.md).
 
 ## Project assistance
 
