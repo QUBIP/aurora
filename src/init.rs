@@ -107,9 +107,9 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PAR
         };
 
         if key == OSSL_PROV_PARAM_NAME {
-            let name = prov.c_prov_name();
+            let str = prov.c_prov_name();
 
-            match p.set(name) {
+            match p.set(str) {
                 Ok(_) => (),
                 Err(e) => {
                     error!(target: log_target!(), "Cannot set OSSL_PROV_PARAM_NAME {p:?}: {e:?}");
@@ -117,9 +117,9 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PAR
                 }
             }
         } else if key == OSSL_PROV_PARAM_VERSION {
-            let version = prov.c_prov_version();
+            let str = prov.c_prov_version();
 
-            match p.set(version) {
+            match p.set(str) {
                 Ok(_) => (),
                 Err(e) => {
                     error!(target: log_target!(), "Cannot set OSSL_PROV_PARAM_VERSION {p:?}: {e:?}");
