@@ -36,8 +36,8 @@ use bindings::{
     OSSL_FUNC_provider_gettable_params_fn, OSSL_FUNC_provider_query_operation_fn,
     OSSL_FUNC_provider_teardown_fn, OSSL_DISPATCH, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS,
     OSSL_FUNC_PROVIDER_GET_CAPABILITIES, OSSL_FUNC_PROVIDER_GET_PARAMS,
-    OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_NAME,
-    OSSL_PROV_PARAM_VERSION,
+    OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_BUILDINFO,
+    OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION,
 };
 use init::OSSL_CORE_HANDLE;
 use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
@@ -80,6 +80,7 @@ impl<'a> Drop for OpenSSLProvider<'a> {
 
 pub static PROV_NAME: &str = env!("CARGO_PKG_NAME");
 pub static PROV_VER: &str = env!("CARGO_PKG_VERSION");
+pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
 impl<'a> OpenSSLProvider<'a> {
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: *const OSSL_DISPATCH) -> Self {
@@ -93,6 +94,7 @@ impl<'a> OpenSSLProvider<'a> {
             params: vec![
                 OSSLParam::Utf8Ptr(Utf8PtrData::new_null(OSSL_PROV_PARAM_NAME)),
                 OSSLParam::Utf8Ptr(Utf8PtrData::new_null(OSSL_PROV_PARAM_VERSION)),
+                OSSLParam::Utf8Ptr(Utf8PtrData::new_null(OSSL_PROV_PARAM_BUILDINFO)),
             ],
             adapters_ctx: adapters::AdaptersHandle::default(),
         }
@@ -165,7 +167,16 @@ impl<'a> OpenSSLProvider<'a> {
     pub fn c_prov_version(&self) -> &CStr {
         #[expect(clippy::let_and_return)]
         static L: LazyLock<CString> = LazyLock::new(|| {
-            let _s = CString::new(crate::PROV_VER).expect("Error parsing cPROV_NAME");
+            let _s = CString::new(crate::PROV_VER).expect("Error parsing cPROV_VER");
+            _s
+        });
+        L.as_ref()
+    }
+
+    pub fn c_prov_buildinfo(&self) -> &CStr {
+        #[expect(clippy::let_and_return)]
+        static L: LazyLock<CString> = LazyLock::new(|| {
+            let _s = CString::new(crate::PROV_BUILDINFO).expect("Error parsing cPROV_BUILDINFO");
             _s
         });
         L.as_ref()

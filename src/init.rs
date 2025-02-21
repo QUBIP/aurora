@@ -3,7 +3,7 @@ use crate::named;
 use crate::OpenSSLProvider;
 use bindings::OSSL_DISPATCH;
 use bindings::OSSL_PARAM;
-use bindings::{OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION};
+use bindings::{OSSL_PROV_PARAM_BUILDINFO, OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION};
 use libc::{c_int, c_void};
 use osslparams::OSSLParam;
 
@@ -123,6 +123,16 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PAR
                 Ok(_) => (),
                 Err(e) => {
                     error!(target: log_target!(), "Cannot set OSSL_PROV_PARAM_VERSION {p:?}: {e:?}");
+                    return FAILURE;
+                }
+            }
+        } else if key == OSSL_PROV_PARAM_BUILDINFO {
+            let str = prov.c_prov_buildinfo();
+
+            match p.set(str) {
+                Ok(_) => (),
+                Err(e) => {
+                    error!(target: log_target!(), "Cannot set OSSL_PROV_PARAM_BUILDINFO {p:?}: {e:?}");
                     return FAILURE;
                 }
             }
