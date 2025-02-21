@@ -1,7 +1,6 @@
 use crate::forge::{bindings, osslparams};
 use crate::named;
 use crate::OpenSSLProvider;
-use bindings::forbidden;
 use bindings::OSSL_DISPATCH;
 use bindings::OSSL_PARAM;
 use bindings::OSSL_PROV_PARAM_NAME;
@@ -73,8 +72,11 @@ pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_P
 
 #[named]
 pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PARAM) -> c_int {
-    const ERROR_RET: c_int = 0;
+    const FAILURE: c_int = 0;
+    const SUCCESS: c_int = 1;
+
     trace!(target: log_target!(), "{}", "Called!");
+
     /* It's important to only cast the pointer, not Box it back up, because otherwise the provctx
      * object would get dropped at the end of this function (and the compiler wouldn't even warn
      * us about it, because this code is marked unsafe!). */
@@ -82,33 +84,38 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PAR
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
+            return FAILURE;
         }
     };
 
-    /* Here we build a vec of OSSLParam structs which are type-safe wrappers around pointers to the
-     * actual C structs in the params array... */
-    let mut v: Vec<OSSLParam> = Vec::new();
-    let mut i = 0;
-    loop {
-        let p = params.offset(i);
-        if (*p).key.is_null() {
-            break;
-        } else {
-            match OSSLParam::try_from(p) {
-                Ok(param) => v.push(param),
-                Err(_) => eprintln!("Unimplemented param data type: {:?}", (*p).data_type),
+    let params = match OSSLParam::try_from(params) {
+        Ok(params) => params,
+        Err(e) => {
+            error!(target: log_target!(), "Failed decoding params: {:?}", e);
+            return FAILURE;
+        }
+    };
+
+    for mut p in params {
+        let key = match p.get_key() {
+            Some(key) => key,
+            None => {
+                error!(target: log_target!(), "Param without valid key {:?}", p);
+                return FAILURE;
+            }
+        };
+
+        if key == OSSL_PROV_PARAM_NAME {
+            let name = prov.c_prov_name();
+
+            match p.set(name) {
+                Ok(_) => (),
+                Err(e) => {
+                    error!(target: log_target!(), "Cannot set OSSL_PROV_PARAM_NAME {p:?}: {e:?}");
+                    return FAILURE;
+                }
             }
         }
-        i += 1;
     }
-
-    /* ... and then we ignore all that work and call C functions directly to write the name of the
-     * provider to the appropriate C struct, because the ability to do this with the OSSLParam Rust
-     * struct isn't implemented yet. */
-    let p: *mut OSSL_PARAM = forbidden::OSSL_PARAM_locate(params, OSSL_PROV_PARAM_NAME.as_ptr());
-    if !p.is_null() && forbidden::OSSL_PARAM_set_utf8_ptr(p, (prov).c_prov_name().as_ptr()) == 0 {
-        return 0;
-    }
-    1
+    SUCCESS
 }
