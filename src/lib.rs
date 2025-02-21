@@ -37,6 +37,7 @@ use bindings::{
     OSSL_FUNC_provider_teardown_fn, OSSL_DISPATCH, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS,
     OSSL_FUNC_PROVIDER_GET_CAPABILITIES, OSSL_FUNC_PROVIDER_GET_PARAMS,
     OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_NAME,
+    OSSL_PROV_PARAM_VERSION,
 };
 use init::OSSL_CORE_HANDLE;
 use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
@@ -89,9 +90,10 @@ impl<'a> OpenSSLProvider<'a> {
             name: PROV_NAME,
             version: PROV_VER,
             param_array_ptr: None,
-            params: vec![OSSLParam::Utf8Ptr(Utf8PtrData::new_null(
-                OSSL_PROV_PARAM_NAME,
-            ))],
+            params: vec![
+                OSSLParam::Utf8Ptr(Utf8PtrData::new_null(OSSL_PROV_PARAM_NAME)),
+                OSSLParam::Utf8Ptr(Utf8PtrData::new_null(OSSL_PROV_PARAM_VERSION)),
+            ],
             adapters_ctx: adapters::AdaptersHandle::default(),
         }
         // it's not ideal that here we return an object which is in an "invalid" state bc the
@@ -155,6 +157,15 @@ impl<'a> OpenSSLProvider<'a> {
         #[expect(clippy::let_and_return)]
         static L: LazyLock<CString> = LazyLock::new(|| {
             let _s = CString::new(crate::PROV_NAME).expect("Error parsing cPROV_NAME");
+            _s
+        });
+        L.as_ref()
+    }
+
+    pub fn c_prov_version(&self) -> &CStr {
+        #[expect(clippy::let_and_return)]
+        static L: LazyLock<CString> = LazyLock::new(|| {
+            let _s = CString::new(crate::PROV_VER).expect("Error parsing cPROV_NAME");
             _s
         });
         L.as_ref()

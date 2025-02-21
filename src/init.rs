@@ -3,7 +3,7 @@ use crate::named;
 use crate::OpenSSLProvider;
 use bindings::OSSL_DISPATCH;
 use bindings::OSSL_PARAM;
-use bindings::OSSL_PROV_PARAM_NAME;
+use bindings::{OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION};
 use libc::{c_int, c_void};
 use osslparams::OSSLParam;
 
@@ -57,14 +57,15 @@ pub unsafe extern "C" fn provider_teardown(vprovctx: *mut c_void) {
 
 #[named]
 pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
-    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
+    const FAILURE: *const OSSL_PARAM = std::ptr::null();
+
     trace!(target: log_target!(), "{}", "Called!");
 
     let prov: &mut OpenSSLProvider<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
+            return FAILURE;
         }
     };
     prov.get_params_array()
@@ -112,6 +113,16 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PAR
                 Ok(_) => (),
                 Err(e) => {
                     error!(target: log_target!(), "Cannot set OSSL_PROV_PARAM_NAME {p:?}: {e:?}");
+                    return FAILURE;
+                }
+            }
+        } else if key == OSSL_PROV_PARAM_VERSION {
+            let version = prov.c_prov_version();
+
+            match p.set(version) {
+                Ok(_) => (),
+                Err(e) => {
+                    error!(target: log_target!(), "Cannot set OSSL_PROV_PARAM_VERSION {p:?}: {e:?}");
                     return FAILURE;
                 }
             }
