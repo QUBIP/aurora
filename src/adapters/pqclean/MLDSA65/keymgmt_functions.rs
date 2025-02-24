@@ -13,18 +13,14 @@ use std::{
 };
 
 #[derive(PartialEq)]
-pub struct PublicKey {
-    pub public_key: pqcrypto_mldsa::mldsa65::PublicKey,
-}
+pub struct PublicKey(pqcrypto_mldsa::mldsa65::PublicKey);
 
 #[derive(PartialEq)]
-pub struct PrivateKey {
-    pub private_key: pqcrypto_mldsa::mldsa65::SecretKey,
-}
+pub struct PrivateKey(pqcrypto_mldsa::mldsa65::SecretKey);
 
 impl PublicKey {
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let key =
+        let k =
             <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(
                 bytes,
             )
@@ -34,27 +30,25 @@ impl PublicKey {
                     e
                 )
             })?;
-        Ok(Self { public_key: key })
+        Ok(Self(k))
     }
 
     pub fn encode(&self) -> Vec<u8> {
-        <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(
-            &self.public_key,
-        )
-        .to_vec()
+        let Self(ref k) = self;
+        <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(k)
+            .to_vec()
     }
 }
 
 impl PrivateKey {
     pub fn encode(&self) -> Vec<u8> {
-        <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::as_bytes(
-            &self.private_key,
-        )
-        .to_vec()
+        let Self(ref k) = self;
+        <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::as_bytes(k)
+            .to_vec()
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let key =
+        let k =
             <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(
                 bytes,
             )
@@ -64,7 +58,7 @@ impl PrivateKey {
                     e
                 )
             })?;
-        Ok(Self { private_key: key })
+        Ok(Self(k))
     }
 }
 
@@ -120,8 +114,8 @@ impl<'a> KeyPair<'a> {
         let (pk, sk) = pqcrypto_mldsa::mldsa65::keypair();
 
         KeyPair {
-            private: Some(PrivateKey { private_key: sk }),
-            public: Some(PublicKey { public_key: pk }),
+            private: Some(PrivateKey(sk)),
+            public: Some(PublicKey(pk)),
             provctx,
         }
     }

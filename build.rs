@@ -3,7 +3,7 @@ use std::process::Command;
 
 fn get_git_describe() -> Result<String, Box<dyn Error>> {
     let output = Command::new("git")
-        .args(&["describe", "--tags"])
+        .args(["describe", "--tags"])
         .output()
         .expect("Failed to execute git describe");
 
