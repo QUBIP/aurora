@@ -7,91 +7,46 @@ use bindings::{
     OSSL_CALLBACK, OSSL_PARAM, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
     OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
 };
-use kem::{Decapsulate, Encapsulate};
-use rand_core::CryptoRngCore;
 use std::{
     ffi::{c_int, c_void},
     fmt::Debug,
 };
 
+#[derive (PartialEq)]
 pub struct PublicKey {
-    pub ec_share: libcrux_kem::PublicKey,
-    pub mlkem_share: libcrux_kem::PublicKey,
+    pub public_key: pqcrypto_mldsa::mldsa65::PublicKey,
 }
 
+#[derive (PartialEq)]
 pub struct PrivateKey {
-    pub ec_share: libcrux_kem::PrivateKey,
-    pub mlkem_share: libcrux_kem::PrivateKey,
+    pub private_key: pqcrypto_mldsa::mldsa65::SecretKey,
 }
 
 impl PublicKey {
-    const MLKEM_LEN: usize = 1184;
-    const EC_LEN: usize = 32;
-
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        debug_assert_eq!(bytes.len(), Self::MLKEM_LEN + Self::EC_LEN);
-        let bytes: [u8; Self::MLKEM_LEN + Self::EC_LEN] = bytes.try_into()?;
-        let mlkem = &bytes[..Self::MLKEM_LEN];
-        let ec = &bytes[Self::MLKEM_LEN..];
-
-        let mlkem = libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::MlKem768, mlkem)
-            .map_err(|e| anyhow!("libcrux_kem::PublicKey::decode (MLKEM768) returned {:?}", e))?;
-        let ec = libcrux_kem::PublicKey::decode(libcrux_kem::Algorithm::X25519, ec)
-            .map_err(|e| anyhow!("libcrux_kem::PublicKey::decode (X25519) returned {:?}", e))?;
+        let key = <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(bytes)
+            .map_err(|e| anyhow!("pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}", e))?;
         Ok(Self {
-            mlkem_share: mlkem,
-            ec_share: ec,
+            public_key: key,
         })
     }
 
     pub fn encode(&self) -> Vec<u8> {
-        let mut out = self.mlkem_share.encode();
-        out.extend(self.ec_share.encode());
-        out
-    }
-}
-
-impl Encapsulate<EncapsulatedKey, SharedSecret> for PublicKey {
-    type Error = KMGMTError;
-
-    #[named]
-    fn encapsulate(
-        &self,
-        rng: &mut impl CryptoRngCore,
-    ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
-        trace!(target: log_target!(), "Called ");
-
-        let (mlkem_ss, mlkem_ct) = self.mlkem_share.encapsulate(rng).map_err(|e| {
-            anyhow!("libcrux_kem::PublicKey::encapsulate (MLKEM768) returned {e:?}")
-        })?;
-        let (ec_ss, ec_ct) = self.ec_share.encapsulate(rng).map_err(|e| {
-            anyhow!(
-                "libcrux_kem::PublicKey::encapsulate (X25519) returned {:?}",
-                e
-            )
-        })?;
-
-        let ss = InnerSharedSecret {
-            ec_share: ec_ss,
-            mlkem_share: mlkem_ss,
-        };
-        let ss = ss.encode();
-
-        let ct = InnerEncapsulatedKey {
-            ec_share: ec_ct,
-            mlkem_share: mlkem_ct,
-        };
-        let ct = ct.encode();
-
-        Ok((ct, ss))
+        <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(&self.public_key).to_vec()
     }
 }
 
 impl PrivateKey {
     pub fn encode(&self) -> Vec<u8> {
-        let mut out = self.mlkem_share.encode();
-        out.extend(self.ec_share.encode());
-        out
+        <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::as_bytes(&self.private_key).to_vec()
+    }
+
+    pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        let key = <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(bytes)
+            .map_err(|e| anyhow!("pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA65) returned {:?}", e))?;
+        Ok(Self {
+            private_key: key,
+        })
     }
 }
 
@@ -127,181 +82,6 @@ impl<'a> Debug for KeyPair<'a> {
     }
 }
 
-pub(crate) type EncapsulatedKey = Vec<u8>;
-pub(crate) type SharedSecret = Vec<u8>;
-
-struct InnerEncapsulatedKey {
-    ec_share: libcrux_kem::Ct,
-    mlkem_share: libcrux_kem::Ct,
-}
-struct InnerSharedSecret {
-    ec_share: libcrux_kem::Ss,
-    mlkem_share: libcrux_kem::Ss,
-}
-
-impl InnerEncapsulatedKey {
-    const MLKEM_LEN: usize = 1088;
-    const EC_LEN: usize = 32;
-
-    pub fn encode(&self) -> Vec<u8> {
-        let mut out = self.mlkem_share.encode();
-        out.extend(self.ec_share.encode());
-        out
-    }
-
-    pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        debug_assert_eq!(bytes.len(), Self::MLKEM_LEN + Self::EC_LEN);
-        let bytes: [u8; Self::MLKEM_LEN + Self::EC_LEN] = bytes.try_into()?;
-        let mlkem = &bytes[..Self::MLKEM_LEN];
-        let ec = &bytes[Self::MLKEM_LEN..];
-
-        let mlkem = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::MlKem768, mlkem)
-            .map_err(|e| anyhow!("libcrux_kem::Ct::decode (MLKEM768) returned {:?}", e))?;
-        let ec = libcrux_kem::Ct::decode(libcrux_kem::Algorithm::X25519, ec)
-            .map_err(|e| anyhow!("libcrux_kem::Ct::decode (X25519) returned {:?}", e))?;
-        Ok(Self {
-            mlkem_share: mlkem,
-            ec_share: ec,
-        })
-    }
-
-    pub fn decapsulate(&self, sk: &PrivateKey) -> Result<InnerSharedSecret, KMGMTError> {
-        let mlkem_share = self
-            .mlkem_share
-            .decapsulate(&sk.mlkem_share)
-            .map_err(|e| anyhow!("libcrux_kem::Ct::decapsulate (MLKEM768) returned {:?}", e))?;
-        let ec_share = self
-            .ec_share
-            .decapsulate(&sk.ec_share)
-            .map_err(|e| anyhow!("libcrux_kem::Ct::decapsulate (X25519) returned {:?}", e))?;
-        Ok(InnerSharedSecret {
-            ec_share,
-            mlkem_share,
-        })
-    }
-}
-
-impl InnerSharedSecret {
-    const MLKEM_LEN: usize = 32;
-    const EC_LEN: usize = 32;
-
-    pub fn encode(&self) -> Vec<u8> {
-        let mut out = self.mlkem_share.encode();
-        out.extend(self.ec_share.encode());
-        out
-    }
-}
-
-impl Decapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
-    type Error = KMGMTError;
-
-    #[named]
-    fn decapsulate(&self, encapsulated_key: &EncapsulatedKey) -> Result<SharedSecret, Self::Error> {
-        trace!(target: log_target!(), "Called ");
-        let ek = InnerEncapsulatedKey::decode(encapsulated_key)?;
-
-        match &self.private {
-            Some(sk) => {
-                let ss = ek
-                    .decapsulate(sk)
-                    .map_err(|e| anyhow!("libcrux_kem::EK::decapsulate() returned {:?}", e))?;
-                let ss = ss.encode();
-                Ok(ss)
-            }
-            None => {
-                error!(target: log_target!(), "Keypair is missing a private key");
-                Err(anyhow!("Missing private key"))
-            }
-        }
-    }
-}
-
-impl Encapsulate<EncapsulatedKey, SharedSecret> for KeyPair<'_> {
-    type Error = KMGMTError;
-
-    #[named]
-    fn encapsulate(
-        &self,
-        rng: &mut impl CryptoRngCore,
-    ) -> Result<(EncapsulatedKey, SharedSecret), Self::Error> {
-        trace!(target: log_target!(), "Called ");
-        match &self.public {
-            Some(pk) => pk.encapsulate(rng),
-            None => {
-                error!(target: log_target!(), "Keypair is missing a public key");
-                Err(anyhow!("Missing public key"))
-            }
-        }
-    }
-}
-
-impl KeyPair<'_> {
-    /// A convenience method to encapsulate a shared secret and generate a
-    /// ciphertext (encapsulated key).
-    ///
-    /// # Description
-    ///
-    /// This function performs key encapsulation by securely generating a
-    /// shared secret and the corresponding encapsulated key.
-    /// It uses the pseudorandom number generator (PRNG) associated with this
-    /// `KeyPair` (from the associated Provider Context).
-    ///
-    /// # Returns
-    ///
-    /// On success, returns a tuple containing:
-    /// - `EncapsulatedKey`: The ciphertext to be transmitted to the other peer.
-    /// - `SharedSecret`: The shared secret derived during the encapsulation.
-    ///
-    /// On failure, returns an `Error`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use your_crate::{KeyPair, EncapsulatedKey, SharedSecret, Error};
-    /// # fn main() -> Result<(), Error> {
-    /// let keypair = KeyPair::new();
-    /// let (encapsulated_key, shared_secret) = keypair.encapsulate_ex()?;
-    /// // Use the `encapsulated_key` and `shared_secret` as needed.
-    /// # Ok(())
-    /// # }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if key encapsulation fails.
-    #[named]
-    pub fn encapsulate_ex(&self) -> Result<(EncapsulatedKey, SharedSecret), KMGMTError> {
-        trace!(target: log_target!(), "Called ");
-
-        let mut rng = {
-            #[cfg(not(debug_assertions))] // code compiled only in release builds
-            {
-                let _prng = self.provctx.get_rng();
-                todo!("Retrieve rng from provctx");
-            }
-            #[cfg(debug_assertions)] // code compiled only in development builds
-            {
-                // FIXME: clean this up and to the right thing above!
-                warn!(target: log_target!(), "{}", "Using OsRng!");
-                rand::rngs::OsRng
-            }
-        };
-
-        self.encapsulate(&mut rng)
-    }
-
-    pub(crate) fn expected_ct_size(&self) -> Result<usize, KMGMTError> {
-        return Ok(InnerEncapsulatedKey::EC_LEN + InnerEncapsulatedKey::MLKEM_LEN);
-    }
-
-    pub(crate) fn expected_ss_size(&self) -> Result<usize, KMGMTError> {
-        return Ok(InnerSharedSecret::MLKEM_LEN + InnerSharedSecret::EC_LEN);
-    }
-
-    // No `decapsulate_ex`: decapsulate does not require extra randomness, so
-    // we don't need a convenience method
-}
-
 impl<'a> KeyPair<'a> {
     #[named]
     fn new(provctx: &'a OpenSSLProvider) -> Self {
@@ -316,38 +96,17 @@ impl<'a> KeyPair<'a> {
     #[named]
     fn generate(provctx: &'a OpenSSLProvider) -> Self {
         trace!(target: log_target!(), "Called");
-        let mut rng = {
-            #[cfg(not(debug_assertions))] // code compiled only in release builds
-            {
-                let _prng = self.provctx.get_rng();
-                todo!("Retrieve rng from provctx");
-            }
-            #[cfg(debug_assertions)] // code compiled only in development builds
-            {
-                // FIXME: clean this up and to the right thing above!
-                warn!(target: log_target!(), "{}", "Using OsRng!");
-                rand::rngs::OsRng
-            }
-        };
 
-        let (ec_priv, ec_pub) =
-            libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519, &mut rng).unwrap();
-        let (mlkem_priv, mlkem_pub) =
-            libcrux_kem::key_gen(libcrux_kem::Algorithm::MlKem768, &mut rng).unwrap();
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            // FIXME: unwrap() should go away and errors properly handled
-            todo!("Remove unwrap");
-        }
+        // Isn't it weird that this operation can't fail? What does the pqclean implementation do if
+        // it can't find a randomness source or it can't allocate memory or something?
+        let (pk, sk) = pqcrypto_mldsa::mldsa65::keypair();
 
         KeyPair {
             private: Some(PrivateKey {
-                ec_share: ec_priv,
-                mlkem_share: mlkem_priv,
+                private_key: sk,
             }),
             public: Some(PublicKey {
-                ec_share: ec_pub,
-                mlkem_share: mlkem_pub,
+                public_key: pk,
             }),
             provctx,
         }
@@ -766,42 +525,25 @@ mod tests {
     use crate::tests::new_provctx_for_testing;
 
     #[test]
-    fn test_loopback_kex() {
+    fn test_roundtrip_encode_decode() {
         let provctx = new_provctx_for_testing();
 
-        let client_kp = KeyPair::generate_new(&provctx);
+        let keypair = KeyPair::generate_new(&provctx);
 
-        let (ct, ss) = client_kp.encapsulate_ex().unwrap();
+        match (keypair.public, keypair.private) {
+            (None, None) => panic!("No public or private key generated"),
+            (None, Some(_)) => panic!("No public key generated"),
+            (Some(_), None) => panic!("No private key generated"),
+            (Some(pk), Some(sk)) => {
+                let encoded_pk = pk.encode();
+                let roundtripped_pk = PublicKey::decode(&encoded_pk).unwrap();
+                // we can't use assert_eq! without having a Debug impl for both arguments
+                assert!(pk == roundtripped_pk);
 
-        let decapsulated_ss = client_kp.decapsulate(&ct).unwrap();
-
-        assert_eq!(ss, decapsulated_ss);
-    }
-
-    #[test]
-    fn test_full_kex() {
-        let provctx = new_provctx_for_testing();
-
-        let client_kp = KeyPair::generate_new(&provctx);
-
-        let client_keyshare = client_kp.public.as_ref().unwrap().encode();
-        // client sends its keyshare
-
-        // server decodes the received keyshare
-        let server_recv_keyshare = client_keyshare;
-        let server_decoded_keyshare = PublicKey::decode(&server_recv_keyshare).unwrap();
-        let serverside_kp = KeyPair {
-            private: None,
-            public: Some(server_decoded_keyshare),
-            provctx: &provctx,
-        };
-
-        let (ct, ss) = serverside_kp.encapsulate_ex().unwrap();
-        // server sends back CT as its keyshare
-        let server_keyshare = ct;
-
-        let decapsulated_ss = client_kp.decapsulate(&server_keyshare).unwrap();
-
-        assert_eq!(ss, decapsulated_ss);
+                let encoded_sk = sk.encode();
+                let roundtripped_sk = PrivateKey::decode(&encoded_sk).unwrap();
+                assert!(sk == roundtripped_sk);
+            },
+        }
     }
 }
