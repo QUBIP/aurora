@@ -12,41 +12,59 @@ use std::{
     fmt::Debug,
 };
 
-#[derive (PartialEq)]
+#[derive(PartialEq)]
 pub struct PublicKey {
     pub public_key: pqcrypto_mldsa::mldsa65::PublicKey,
 }
 
-#[derive (PartialEq)]
+#[derive(PartialEq)]
 pub struct PrivateKey {
     pub private_key: pqcrypto_mldsa::mldsa65::SecretKey,
 }
 
 impl PublicKey {
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let key = <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(bytes)
-            .map_err(|e| anyhow!("pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}", e))?;
-        Ok(Self {
-            public_key: key,
-        })
+        let key =
+            <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(
+                bytes,
+            )
+            .map_err(|e| {
+                anyhow!(
+                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
+                    e
+                )
+            })?;
+        Ok(Self { public_key: key })
     }
 
     pub fn encode(&self) -> Vec<u8> {
-        <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(&self.public_key).to_vec()
+        <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(
+            &self.public_key,
+        )
+        .to_vec()
     }
 }
 
 impl PrivateKey {
     pub fn encode(&self) -> Vec<u8> {
-        <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::as_bytes(&self.private_key).to_vec()
+        <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::as_bytes(
+            &self.private_key,
+        )
+        .to_vec()
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let key = <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(bytes)
-            .map_err(|e| anyhow!("pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA65) returned {:?}", e))?;
-        Ok(Self {
-            private_key: key,
-        })
+        let key =
+            <pqcrypto_mldsa::mldsa65::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(
+                bytes,
+            )
+            .map_err(|e| {
+                anyhow!(
+                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA65) returned {:?}",
+                    e
+                )
+            })?;
+        Ok(Self { private_key: key })
     }
 }
 
@@ -102,12 +120,8 @@ impl<'a> KeyPair<'a> {
         let (pk, sk) = pqcrypto_mldsa::mldsa65::keypair();
 
         KeyPair {
-            private: Some(PrivateKey {
-                private_key: sk,
-            }),
-            public: Some(PublicKey {
-                public_key: pk,
-            }),
+            private: Some(PrivateKey { private_key: sk }),
+            public: Some(PublicKey { public_key: pk }),
             provctx,
         }
     }
@@ -543,7 +557,7 @@ mod tests {
                 let encoded_sk = sk.encode();
                 let roundtripped_sk = PrivateKey::decode(&encoded_sk).unwrap();
                 assert!(sk == roundtripped_sk);
-            },
+            }
         }
     }
 }
