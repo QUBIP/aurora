@@ -96,3 +96,37 @@ fn u8_mut_slice_try_from_raw_parts<'a>(
     let r = unsafe { std::slice::from_raw_parts_mut(p, len) };
     Ok(r)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::new_provctx_for_testing;
+
+    #[test]
+    #[cfg(any())]
+    fn test_sign_and_verify_success() {
+        // generate keypair
+        // sign a message with it
+        // verify the signature
+    }
+
+    #[test]
+    #[should_panic]
+    #[cfg(any())]
+    fn test_sign_and_verify_wrong_key_failure() {
+        // generate keypair
+        // sign a message with it
+        // generate another keypair
+        // confirm that verification with the new key fails
+    }
+
+    #[test]
+    #[should_panic]
+    #[cfg(any())]
+    fn test_sign_and_verify_tampered_sig_failure() {
+        // generate keypair
+        // sign a message with it
+        // flip a bit in the signature
+        // confirm that verification fails
+    }
+}
