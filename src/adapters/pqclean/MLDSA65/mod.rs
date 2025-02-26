@@ -18,8 +18,11 @@ use bindings::{OSSL_FUNC_keymgmt_import_types_ex_fn, OSSL_FUNC_KEYMGMT_IMPORT_TY
 use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
 use bindings::{OSSL_FUNC_keymgmt_set_params_fn, OSSL_FUNC_KEYMGMT_SET_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_settable_params_fn, OSSL_FUNC_KEYMGMT_SETTABLE_PARAMS};
+use bindings::{OSSL_FUNC_signature_freectx_fn, OSSL_FUNC_SIGNATURE_FREECTX};
+use bindings::{OSSL_FUNC_signature_newctx_fn, OSSL_FUNC_SIGNATURE_NEWCTX};
 
 mod keymgmt_functions;
+mod signature_functions;
 
 pub(crate) type OurError = anyhow::Error;
 pub(crate) use anyhow::anyhow;
@@ -118,37 +121,16 @@ pub(crate) mod capabilities {
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/3.2/man7/provider-signature/
-#[cfg(any())]
-pub(super) const SIG_FUNCTIONS: [OSSL_DISPATCH; 7] = [
+pub(super) const SIG_FUNCTIONS: [OSSL_DISPATCH; 3] = [
     dispatch_table_entry!(
-        OSSL_FUNC_KEM_NEWCTX,
-        OSSL_FUNC_kem_newctx_fn,
-        kem_functions::newctx
+        OSSL_FUNC_SIGNATURE_NEWCTX,
+        OSSL_FUNC_signature_newctx_fn,
+        signature_functions::newctx
     ),
     dispatch_table_entry!(
-        OSSL_FUNC_KEM_FREECTX,
-        OSSL_FUNC_kem_freectx_fn,
-        kem_functions::freectx
-    ),
-    dispatch_table_entry!(
-        OSSL_FUNC_KEM_ENCAPSULATE_INIT,
-        OSSL_FUNC_kem_encapsulate_init_fn,
-        kem_functions::encapsulate_init
-    ),
-    dispatch_table_entry!(
-        OSSL_FUNC_KEM_ENCAPSULATE,
-        OSSL_FUNC_kem_encapsulate_fn,
-        kem_functions::encapsulate
-    ),
-    dispatch_table_entry!(
-        OSSL_FUNC_KEM_DECAPSULATE_INIT,
-        OSSL_FUNC_kem_decapsulate_init_fn,
-        kem_functions::decapsulate_init
-    ),
-    dispatch_table_entry!(
-        OSSL_FUNC_KEM_DECAPSULATE,
-        OSSL_FUNC_kem_decapsulate_fn,
-        kem_functions::decapsulate
+        OSSL_FUNC_SIGNATURE_FREECTX,
+        OSSL_FUNC_signature_freectx_fn,
+        signature_functions::freectx
     ),
     OSSL_DISPATCH::END,
 ];
