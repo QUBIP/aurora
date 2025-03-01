@@ -1,12 +1,17 @@
 use super::keymgmt_functions::KeyPair;
 use super::OurError as SignatureError;
 use super::*;
-use crate::named;
-use libc::{c_uchar, c_void};
+use crate::{handleResult, named};
+use bindings::OSSL_PARAM;
+use libc::{c_int, c_uchar, c_void};
+use pqcrypto_traits::sign::SignedMessage;
+
+pub(crate) const SIGNATURE_LENGTH: usize = 3309;
 
 #[expect(dead_code)]
 struct SignatureContext<'a> {
     keypair: Option<&'a KeyPair<'a>>,
+    signed_message: Option<&'a pqcrypto_mldsa::mldsa65::SignedMessage>,
     provctx: *mut c_void,
 }
 
@@ -35,6 +40,28 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &SignatureContext<'a> {
     }
 }
 
+impl<'a> SignatureContext<'a> {
+    #[cfg(test)]
+    pub fn new(provctx: &OpenSSLProvider) -> Self {
+        SignatureContext {
+            keypair: None,
+            signed_message: None,
+            // this looks awful, but it's just for testing
+            provctx: provctx as *const OpenSSLProvider as *mut c_void,
+        }
+    }
+
+    pub fn set_keypair(&mut self, keypair: &'a KeyPair) -> anyhow::Result<()> {
+        match (&keypair.public, &keypair.private) {
+            (None, None) => Err(anyhow!("Empty keypair")),
+            _ => {
+                self.keypair = Some(keypair);
+                Ok(())
+            }
+        }
+    }
+}
+
 #[named]
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void, propq: *const c_uchar) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
@@ -52,6 +79,7 @@ pub(super) extern "C" fn newctx(vprovctx: *mut c_void, propq: *const c_uchar) ->
 
     let sig_ctx = Box::new(SignatureContext {
         keypair: None,
+        signed_message: None,
         provctx: vprovctx,
     });
     Box::into_raw(sig_ctx).cast()
@@ -63,6 +91,99 @@ pub(super) extern "C" fn freectx(vsigctx: *mut c_void) {
     if !vsigctx.is_null() {
         let sig_ctx: Box<SignatureContext> = unsafe { Box::from_raw(vsigctx.cast()) };
         drop(sig_ctx);
+    }
+}
+
+impl<'a> SignatureContext<'a> {
+    pub fn sign_init(&mut self, keypair: &'a KeyPair) -> anyhow::Result<()> {
+        self.set_keypair(keypair)
+    }
+
+    pub fn sign(&mut self, msg: &[u8]) -> Result<pqcrypto_mldsa::mldsa65::SignedMessage, &str> {
+        if let Some(keypair) = self.keypair {
+            if let Some(sk) = &keypair.private {
+                let signed_msg = pqcrypto_mldsa::mldsa65::sign(msg, &sk.0);
+                return Ok(signed_msg);
+            }
+        }
+        return Err("Unable to sign message (likely cause: no private key)");
+    }
+}
+
+#[named]
+pub(super) extern "C" fn sign_init(
+    vsigctx: *mut c_void,
+    vprovkey: *mut c_void,
+    params: *const OSSL_PARAM,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    const SUCCESS_RET: c_int = 1;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    let _ = params;
+    warn!("Ignoring *params");
+
+    let sig_ctx: &mut SignatureContext<'_> = handleResult!(vsigctx.try_into());
+    let keypair: &mut KeyPair = handleResult!(vprovkey.try_into());
+
+    let r = sig_ctx.sign_init(keypair).map_or_else(
+        |e| {
+            error!(target: log_target!(), "sign_init() failed with {:?}", e);
+            ERROR_RET
+        },
+        |_ok| SUCCESS_RET,
+    );
+
+    return r;
+}
+
+#[named]
+pub(super) extern "C" fn sign(
+    vsigctx: *mut c_void,
+    sig: *mut c_uchar,
+    siglen: *mut usize,
+    sigsize: usize,
+    tbs: *const c_uchar,
+    tbslen: usize,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    const SUCCESS_RET: c_int = 1;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    let sig_ctx: &mut SignatureContext<'_> = handleResult!(vsigctx.try_into());
+
+    // if sig is null, this is just a request for the maximum sig length
+    if sig.is_null() {
+        // write the max byte length of a signature to *siglen
+        unsafe { siglen.as_mut() }.map(|p| {
+            *p = SIGNATURE_LENGTH;
+        });
+        return SUCCESS_RET;
+    }
+
+    // otherwise, we actually have something to sign, so let's sign it
+    let tbs_slice = handleResult!(u8_slice_try_from_raw_parts(tbs, tbslen));
+    match sig_ctx.sign(tbs_slice) {
+        Ok(signed_msg) => {
+            // check that the signature fits in sigsize bytes
+            // (this check could be moved before `let tbs_slice = ...`, if we wanted...)
+            let nr_bytes = signed_msg.len();
+            if nr_bytes > sigsize {
+                // error because our signature is longer than permitted :(
+                error!("signature of {} bytes doesn't fit in {}", nr_bytes, sigsize);
+                return ERROR_RET;
+            } else {
+                // write the signature to the provided memory address
+                unsafe {
+                    std::ptr::copy(signed_msg.as_bytes().as_ptr(), sig, nr_bytes);
+                }
+                return SUCCESS_RET;
+            }
+        }
+        Err(e) => {
+            error!(target: log_target!(), "sign() failed with {:?}", e);
+            ERROR_RET
+        }
     }
 }
 
@@ -103,6 +224,22 @@ fn u8_mut_slice_try_from_raw_parts<'a>(
 mod tests {
     use super::*;
     use crate::tests::new_provctx_for_testing;
+
+    #[test]
+    fn test_sign() {
+        // generate a keypair
+        let provctx = new_provctx_for_testing();
+        let keypair = KeyPair::generate_new(&provctx);
+        let mut sigctx = SignatureContext::new(&provctx);
+        // sign a message
+        let msg: [u8; 5] = [1, 2, 3, 4, 5];
+        sigctx.sign_init(&keypair).unwrap();
+        let signed_msg = sigctx.sign(&msg).unwrap();
+        assert_eq!(signed_msg.len(), SIGNATURE_LENGTH + msg.len());
+        // the sig is prepended to the msg, so we compare the last bytes (here the last 5)
+        assert_eq!(signed_msg.as_bytes()[signed_msg.len() - msg.len()..], msg);
+        // (this test succeeds if we've gotten this far without anything exploding)
+    }
 
     #[test]
     #[cfg(any())]
