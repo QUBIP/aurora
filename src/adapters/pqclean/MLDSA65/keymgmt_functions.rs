@@ -12,11 +12,13 @@ use std::{
     fmt::Debug,
 };
 
+// The wrapped key from the pqcrypto crate has to be public, or else we can't access it to use it
+// with the pqcrypto sign and verify functions.
 #[derive(PartialEq)]
-pub struct PublicKey(pqcrypto_mldsa::mldsa65::PublicKey);
+pub struct PublicKey(pub pqcrypto_mldsa::mldsa65::PublicKey);
 
 #[derive(PartialEq)]
-pub struct PrivateKey(pqcrypto_mldsa::mldsa65::SecretKey);
+pub struct PrivateKey(pub pqcrypto_mldsa::mldsa65::SecretKey);
 
 impl PublicKey {
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
@@ -122,7 +124,7 @@ impl<'a> KeyPair<'a> {
 
     #[cfg(test)]
     #[named]
-    fn generate_new(provctx: &'a OpenSSLProvider) -> Self {
+    pub(crate) fn generate_new(provctx: &'a OpenSSLProvider) -> Self {
         trace!(target: log_target!(), "Called");
         let genctx = GenCTX::new(provctx, Selection::KEYPAIR);
         let r = genctx.generate();
