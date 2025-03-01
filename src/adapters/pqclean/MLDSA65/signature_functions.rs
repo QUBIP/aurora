@@ -6,7 +6,7 @@ use libc::{c_uchar, c_void};
 
 #[expect(dead_code)]
 struct SignatureContext<'a> {
-    own_keypair: Option<&'a KeyPair<'a>>,
+    keypair: Option<&'a KeyPair<'a>>,
     provctx: *mut c_void,
 }
 
@@ -49,7 +49,7 @@ pub(super) extern "C" fn newctx(vprovctx: *mut c_void, _propq: *const c_uchar) -
 
     warn!("Ignoring *propq");
     let sig_ctx = Box::new(SignatureContext {
-        own_keypair: None,
+        keypair: None,
         provctx: vprovctx,
     });
     Box::into_raw(sig_ctx).cast()
