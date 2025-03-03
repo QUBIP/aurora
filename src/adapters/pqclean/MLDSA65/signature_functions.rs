@@ -378,4 +378,27 @@ mod tests {
         sigctx.verify_init(&keypair).unwrap();
         assert!(sigctx.verify(&detached_sig, &msg).is_err());
     }
+
+    #[test]
+    fn test_sign_and_verify_tampered_msg_failure() {
+        // generate keypair
+        let provctx = new_provctx_for_testing();
+        let keypair = KeyPair::generate_new(&provctx);
+        let mut sigctx = SignatureContext::new(&provctx);
+        // sign a message with it
+        let msg: [u8; 5] = [1, 2, 3, 4, 5];
+        sigctx.sign_init(&keypair).unwrap();
+        let signed_msg = sigctx.sign(&msg).unwrap();
+        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LENGTH];
+        // construct a different message of the same length
+        let other_msg: [u8; 5] = [1, 2, 3, 8, 5];
+        // confirm that verification fails
+        sigctx.verify_init(&keypair).unwrap();
+        assert!(sigctx.verify(&detached_sig, &other_msg).is_err());
+        // construct a longer message with the same initial contents
+        let other_msg: [u8; 6] = [1, 2, 3, 4, 5, 6];
+        // confirm that verification fails
+        sigctx.verify_init(&keypair).unwrap();
+        assert!(sigctx.verify(&detached_sig, &other_msg).is_err());
+    }
 }
