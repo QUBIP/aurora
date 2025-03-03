@@ -343,13 +343,21 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    #[cfg(any())]
     fn test_sign_and_verify_wrong_key_failure() {
         // generate keypair
+        let provctx = new_provctx_for_testing();
+        let keypair = KeyPair::generate_new(&provctx);
+        let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
+        let msg: [u8; 5] = [1, 2, 3, 4, 5];
+        sigctx.sign_init(&keypair).unwrap();
+        let signed_msg = sigctx.sign(&msg).unwrap();
+        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LENGTH];
         // generate another keypair
+        let other_keypair = KeyPair::generate_new(&provctx);
         // confirm that verification with the new key fails
+        sigctx.verify_init(&other_keypair).unwrap();
+        assert!(sigctx.verify(detached_sig, &msg).is_err());
     }
 
     #[test]
