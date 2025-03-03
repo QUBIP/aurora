@@ -22,6 +22,8 @@ use bindings::{OSSL_FUNC_signature_freectx_fn, OSSL_FUNC_SIGNATURE_FREECTX};
 use bindings::{OSSL_FUNC_signature_newctx_fn, OSSL_FUNC_SIGNATURE_NEWCTX};
 use bindings::{OSSL_FUNC_signature_sign_fn, OSSL_FUNC_SIGNATURE_SIGN};
 use bindings::{OSSL_FUNC_signature_sign_init_fn, OSSL_FUNC_SIGNATURE_SIGN_INIT};
+use bindings::{OSSL_FUNC_signature_verify_fn, OSSL_FUNC_SIGNATURE_VERIFY};
+use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_INIT};
 
 mod keymgmt_functions;
 mod signature_functions;
@@ -123,7 +125,7 @@ pub(crate) mod capabilities {
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/3.2/man7/provider-signature/
-pub(super) const SIG_FUNCTIONS: [OSSL_DISPATCH; 5] = [
+pub(super) const SIG_FUNCTIONS: [OSSL_DISPATCH; 7] = [
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_NEWCTX,
         OSSL_FUNC_signature_newctx_fn,
@@ -143,6 +145,16 @@ pub(super) const SIG_FUNCTIONS: [OSSL_DISPATCH; 5] = [
         OSSL_FUNC_SIGNATURE_SIGN,
         OSSL_FUNC_signature_sign_fn,
         signature_functions::sign
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_VERIFY_INIT,
+        OSSL_FUNC_signature_verify_init_fn,
+        signature_functions::verify_init
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_VERIFY,
+        OSSL_FUNC_signature_verify_fn,
+        signature_functions::verify
     ),
     OSSL_DISPATCH::END,
 ];

@@ -2,9 +2,10 @@ use super::keymgmt_functions::KeyPair;
 use super::OurError as SignatureError;
 use super::*;
 use crate::{handleResult, named};
+use anyhow::bail;
 use bindings::OSSL_PARAM;
 use libc::{c_int, c_uchar, c_void};
-use pqcrypto_traits::sign::SignedMessage;
+use pqcrypto_traits::sign::{DetachedSignature, SignedMessage};
 
 pub(crate) const SIGNATURE_LENGTH: usize = 3309;
 
@@ -108,6 +109,23 @@ impl<'a> SignatureContext<'a> {
         }
         return Err("Unable to sign message (likely cause: no private key)");
     }
+
+    pub fn verify_init(&mut self, keypair: &'a KeyPair) -> anyhow::Result<()> {
+        self.set_keypair(keypair)
+    }
+
+    pub fn verify(&mut self, sig: &[u8], msg: &[u8]) -> anyhow::Result<()> {
+        if let Some(keypair) = self.keypair {
+            if let Some(pk) = &keypair.public {
+                let sig = pqcrypto_mldsa::mldsa65::DetachedSignature::from_bytes(sig)?;
+                let res = pqcrypto_mldsa::mldsa65::verify_detached_signature(&sig, msg, &pk.0)?;
+                return Ok(res);
+            } else {
+                bail!("No public key available for verification");
+            }
+        }
+        bail!("Unable to verify message")
+    }
 }
 
 #[named]
@@ -188,6 +206,70 @@ pub(super) extern "C" fn sign(
 }
 
 #[named]
+pub(super) extern "C" fn verify_init(
+    vsigctx: *mut c_void,
+    vprovkey: *mut c_void,
+    params: *const OSSL_PARAM,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    const SUCCESS_RET: c_int = 1;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    let _ = params;
+    warn!("Ignoring *params");
+
+    let sig_ctx: &mut SignatureContext<'_> = handleResult!(vsigctx.try_into());
+    let keypair: &mut KeyPair = handleResult!(vprovkey.try_into());
+
+    let r = sig_ctx.verify_init(keypair).map_or_else(
+        |e| {
+            error!(target: log_target!(), "verify_init() failed with {:?}", e);
+            ERROR_RET
+        },
+        |_ok| SUCCESS_RET,
+    );
+
+    return r;
+}
+
+#[named]
+pub(super) extern "C" fn verify(
+    vsigctx: *mut c_void,
+    sig: *const c_uchar,
+    siglen: usize,
+    tbs: *const c_uchar,
+    tbslen: usize,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    const SUCCESS_RET: c_int = 1;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    let sig_ctx: &mut SignatureContext<'_> = handleResult!(vsigctx.try_into());
+
+    if sig.is_null() {
+        error!("null signature");
+        return ERROR_RET;
+    }
+
+    if tbs.is_null() {
+        error!("null message");
+        return ERROR_RET;
+    }
+
+    let sig_slice = handleResult!(u8_slice_try_from_raw_parts(sig, siglen));
+    let msg_slice = handleResult!(u8_slice_try_from_raw_parts(tbs, tbslen));
+    match sig_ctx.verify(sig_slice, msg_slice) {
+        Ok(_) => {
+            return SUCCESS_RET;
+        }
+        Err(e) => {
+            error!(target: log_target!(), "verify() failed with {:?}", e);
+            ERROR_RET
+        }
+    }
+}
+
+#[named]
 fn u8_slice_try_from_raw_parts<'a>(
     p: *const c_uchar,
     len: usize,
@@ -242,11 +324,22 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any())]
     fn test_sign_and_verify_success() {
         // generate keypair
+        let provctx = new_provctx_for_testing();
+        let keypair = KeyPair::generate_new(&provctx);
+        let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
+        let msg: [u8; 5] = [1, 2, 3, 4, 5];
+        sigctx.sign_init(&keypair).unwrap();
+        let signed_msg = sigctx.sign(&msg).unwrap();
+        assert_eq!(signed_msg.len(), SIGNATURE_LENGTH + msg.len());
+        // the sig is prepended to the msg, so we compare the last bytes (here the last 5)
+        assert_eq!(signed_msg.as_bytes()[signed_msg.len() - msg.len()..], msg);
         // verify the signature
+        sigctx.verify_init(&keypair).unwrap();
+        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LENGTH];
+        assert!(sigctx.verify(detached_sig, &msg).is_ok());
     }
 
     #[test]
