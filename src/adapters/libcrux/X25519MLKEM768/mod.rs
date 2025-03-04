@@ -91,28 +91,31 @@ pub(crate) mod capabilities {
 
         pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] = &[
             // IANA group name
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, GROUP_NAME),
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, Some(GROUP_NAME)),
             // group name according to the provider
             OSSLParam::new_const_utf8string(
                 OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-                GROUP_NAME_INTERNAL,
+                Some(GROUP_NAME_INTERNAL),
             ),
             // keymgmt algorithm name
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, GROUP_ALG),
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, Some(GROUP_ALG)),
             // IANA group ID
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &IANA_GROUP_ID),
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, Some(&IANA_GROUP_ID)),
             // number of bits of security
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS, &SECURITY_BITS),
+            OSSLParam::new_const_uint(
+                OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+                Some(&SECURITY_BITS),
+            ),
             // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &MIN_TLS),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, Some(&MIN_TLS)),
             // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &MAX_TLS),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, Some(&MAX_TLS)),
             // min DTLS
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &MIN_DTLS),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, Some(&MIN_DTLS)),
             // max DTLS
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &MAX_DTLS),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, Some(&MAX_DTLS)),
             // is KEM
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &IS_KEM),
+            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, Some(&IS_KEM)),
             // IMPORTANT: always terminate a params array!!!
             CONST_OSSL_PARAM::END,
         ];

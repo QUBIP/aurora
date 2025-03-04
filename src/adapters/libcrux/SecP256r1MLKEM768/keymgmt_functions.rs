@@ -718,7 +718,7 @@ pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const
     };
 
     static LIST: &[CONST_OSSL_PARAM] = &[
-        OSSLParam::new_null_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY),
+        OSSLParam::new_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, None),
         CONST_OSSL_PARAM::END,
     ];
 
@@ -784,7 +784,7 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
     };
 
     static LIST: &[CONST_OSSL_PARAM] = &[
-        OSSLParam::new_null_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY),
+        OSSLParam::new_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, None),
         CONST_OSSL_PARAM::END,
     ];
 
