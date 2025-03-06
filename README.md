@@ -16,7 +16,7 @@
 <div align="center">
 <br />
 
-[![Project license](https://img.shields.io/github/license/qubip/aurora.svg?style=flat-square)](LICENSE)
+[![Project license](https://img.shields.io/github/license/qubip/aurora.svg?style=flat-square)][LICENSE]
 
 [![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square)](https://github.com/qubip/aurora/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
 [![code with love by qubip](https://img.shields.io/badge/%3C%2F%3E%20with%20%E2%99%A5%20by-qubip%2Fnisec-ff1414.svg?style=flat-square)](https://github.com/orgs/QUBIP/teams/nisec)
@@ -183,10 +183,12 @@ _For more information and to report security issues, please refer to our [securi
 
 This project is licensed under the **Apache Software License 2.0**.
 
-See [LICENSE](LICENSE) for more information.
+See [LICENSE][LICENSE] for more information.
+
+[LICENSE]: LICENSE
 
 ## Acknowledgements
 
-This work has been developed within the QUBIP project (https://www.qubip.eu),
+This work has been developed within the QUBIP project (<https://www.qubip.eu>),
 funded by the European Union under the Horizon Europe framework programme
 [grant agreement no. 101119746](https://doi.org/10.3030/101119746).
