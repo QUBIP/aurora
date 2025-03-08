@@ -22,13 +22,13 @@ test-code:
     #- cargo install cargo-tarpaulin
     #- cargo tarpaulin --ignore-tests
 
+test-doc:
+  stage: test
+  script:
+    - cargo doc --document-private-items
+
 lint-code:
   stage: lint
-  before_script:
-    # Spit out relevant info
-    - rustc --version
-    - cargo --version
-    - openssl version -a
   script:
     #- rustup component add rustfmt
     - cargo fmt -- --check
