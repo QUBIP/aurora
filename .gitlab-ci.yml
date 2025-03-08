@@ -1,0 +1,41 @@
+image: "nisectuni/qubip-ossl-rust-runner:latest-nix"
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+default:
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+
+    # Spit out relevant info
+    - rustc --version
+    - cargo --version
+    - openssl version -a
+
+stages:
+  - lint
+  - test
+
+test-code:
+  stage: test
+  script:
+    - cargo test
+    #- cargo install cargo-tarpaulin
+    #- cargo tarpaulin --ignore-tests
+
+lint-code:
+  stage: lint
+  before_script:
+    # Spit out relevant info
+    - rustc --version
+    - cargo --version
+    - openssl version -a
+  script:
+    #- rustup component add rustfmt
+    - cargo fmt -- --check
+    #- rustup component add clippy
+    #- cargo clippy -- -D warnings
+# audit-code:
+#   stage: test
+#   script:
+#     - cargo install cargo-audit
+#     - cargo audit
