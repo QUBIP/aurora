@@ -1,0 +1,59 @@
+---
+name: Rust tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  lint-code:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read
+    container: "nisectuni/qubip-ossl-rust-runner:latest-nix"
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v1
+      - name: "Check rustc version"
+        run: rustc --version
+      - name: "Check cargo version"
+        run: cargo --version
+      - name: "Check openssl version"
+        run: openssl version -a
+      - run: cargo fmt -- --check
+  test-code:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read
+    container: "nisectuni/qubip-ossl-rust-runner:latest-nix"
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v1
+      - name: "Check rustc version"
+        run: rustc --version
+      - name: "Check cargo version"
+        run: cargo --version
+      - name: "Check openssl version"
+        run: openssl version -a
+      - name: "Execute cargo test"
+        run: cargo test
+  build-doc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read
+    container: "nisectuni/qubip-ossl-rust-runner:latest-nix"
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v1
+      - name: "Check rustc version"
+        run: rustc --version
+      - name: "Check cargo version"
+        run: cargo --version
+      - name: "Check openssl version"
+        run: openssl version -a
+      - run: cargo doc --document-private-items
