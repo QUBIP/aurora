@@ -399,7 +399,8 @@ dependencies = [
 
 [[package]]
 name = "openssl_provider_forge"
-version = "0.8.1-dev"
+version = "0.8.0"
+source = "git+https://github.com/qubip/openssl-provider-forge-rs?tag=v0.8.0#ff34afb2442c190067453ba655dd57bc45023d83"
 dependencies = [
  "anyhow",
  "bindgen",
