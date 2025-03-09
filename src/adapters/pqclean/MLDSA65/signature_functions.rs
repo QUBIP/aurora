@@ -7,6 +7,8 @@ use bindings::OSSL_PARAM;
 use libc::{c_int, c_uchar, c_void};
 use pqcrypto_traits::sign::{DetachedSignature, SignedMessage};
 
+type OurResult<T> = anyhow::Result<T, SignatureError>;
+
 pub(crate) const SIGNATURE_LENGTH: usize = 3309;
 
 #[expect(dead_code)]
@@ -96,8 +98,12 @@ pub(super) extern "C" fn freectx(vsigctx: *mut c_void) {
 }
 
 impl<'a> SignatureContext<'a> {
-    pub fn sign_init(&mut self, keypair: &'a KeyPair) -> anyhow::Result<()> {
-        self.set_keypair(keypair)
+    pub fn sign_init(&mut self, keypair: &'a KeyPair) -> OurResult<()> {
+        if keypair.private.is_some() {
+            self.set_keypair(keypair)
+        } else {
+            Err(anyhow!("sign_init() requires secret key"))
+        }
     }
 
     pub fn sign(&mut self, msg: &[u8]) -> Result<pqcrypto_mldsa::mldsa65::SignedMessage, &str> {
@@ -110,8 +116,12 @@ impl<'a> SignatureContext<'a> {
         return Err("Unable to sign message (likely cause: no private key)");
     }
 
-    pub fn verify_init(&mut self, keypair: &'a KeyPair) -> anyhow::Result<()> {
-        self.set_keypair(keypair)
+    pub fn verify_init(&mut self, keypair: &'a KeyPair) -> OurResult<()> {
+        if keypair.public.is_some() {
+            self.set_keypair(keypair)
+        } else {
+            Err(anyhow!("verify_init() requires public key"))
+        }
     }
 
     pub fn verify(&mut self, sig: &[u8], msg: &[u8]) -> anyhow::Result<()> {
