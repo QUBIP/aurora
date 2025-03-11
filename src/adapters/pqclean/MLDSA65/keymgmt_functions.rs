@@ -1,11 +1,10 @@
 use super::OurError as KMGMTError;
 use super::*;
-use crate::forge::osslparams::ossl_param_locate_raw;
-use crate::forge::{keymgmt::selection::Selection, osslparams};
+use crate::forge::{bindings, keymgmt::selection::Selection, osslparams::*};
 use crate::{handleResult, OpenSSLProvider};
 use bindings::{
-    OSSL_CALLBACK, OSSL_PARAM, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
-    OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
+    OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, OSSL_PKEY_PARAM_PRIV_KEY,
+    OSSL_PKEY_PARAM_PUB_KEY,
 };
 use std::{
     ffi::{c_int, c_void},
@@ -314,7 +313,7 @@ const HANDLED_KEY_TYPES: [OSSL_PARAM; 3] = [
         data_size: 0,
         return_size: 0,
     },
-    osslparams::OSSL_PARAM_END,
+    OSSL_PARAM::END,
 ];
 
 // I think using {import,export}_types_ex instead of the non-_ex variant means we only
@@ -405,38 +404,46 @@ pub(super) unsafe extern "C" fn get_params(
     params: *mut OSSL_PARAM,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
+    const SUCCESS: c_int = 1;
+
     trace!(target: log_target!(), "{}", "Called!");
     let keydata: &KeyPair = handleResult!(vkeydata.try_into());
 
-    // TODO: handle errors responsibly!!!
-    match ossl_param_locate_raw(params, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY).as_mut() {
-        Some(p) => {
+    let params = match OSSLParam::try_from(params) {
+        Ok(params) => params,
+        Err(e) => {
+            error!(target: log_target!(), "Failed decoding params: {:?}", e);
+            return ERROR_RET;
+        }
+    };
+
+    for mut p in params {
+        let key = match p.get_key() {
+            Some(key) => key,
+            None => {
+                error!(target: log_target!(), "Param without valid key {:?}", p);
+                return ERROR_RET;
+            }
+        };
+
+        if key == OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY {
             match &keydata.public {
                 Some(pubkey) => {
                     let bytes = pubkey.encode();
                     // might be nice to impl OSSLParamSetter<&Vec<u8>> and avoid .as_slice()
                     let _ = p.set(bytes.as_slice()); // set(&bytes)
                 }
-                None => (),
+                #[expect(unreachable_code)]
+                None => {
+                    unreachable!("Unexpectedly the public key was empty?");
+                    return ERROR_RET;
+                }
             }
+        } else {
+            debug!(target: log_target!(), "Ignoring param {:?}", key);
         }
-        None => (),
     }
-
-    // Based on stepping through the code with gdb, OSSL also asks for params with the keys "bits",
-    // "security-bits", and "max-size", but I'm not sure if responding to those is necessary.
-
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        todo!("get remaining keymgmt params (if any)")
-    }
-
-    #[cfg(debug_assertions)] // code compiled only in development builds
-    {
-        warn!(target: log_target!(), "{}", "TODO: get remaining keymgmt params (if any)");
-
-        1
-    }
+    return SUCCESS;
 }
 
 #[named]
@@ -451,17 +458,15 @@ pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const
         }
     };
 
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        todo!("return pointer to array of gettable keymgmt params")
-    }
+    static LIST: &[CONST_OSSL_PARAM] = &[
+        OSSLParam::new_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, None),
+        CONST_OSSL_PARAM::END,
+    ];
 
-    #[cfg(debug_assertions)] // code compiled only in development builds
-    {
-        warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of gettable keymgmt params");
+    let first: &bindings::OSSL_PARAM = &LIST[0];
+    let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
 
-        crate::osslparams::EMPTY_PARAMS.as_ptr()
-    }
+    return ptr;
 }
 
 #[named]
@@ -470,17 +475,29 @@ pub(super) unsafe extern "C" fn set_params(
     params: *const OSSL_PARAM,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
+    const SUCCESS: c_int = 1;
+
     trace!(target: log_target!(), "{}", "Called!");
     let keydata: &mut KeyPair = handleResult!(vkeydata.try_into());
 
-    // TODO: handle errors responsibly!!!
-    match ossl_param_locate_raw(
-        params as *mut OSSL_PARAM, // FIXME: this is a hack!
-        OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
-    )
-    .as_ref()
-    {
-        Some(p) => {
+    let params = match OSSLParam::try_from(params) {
+        Ok(params) => params,
+        Err(e) => {
+            error!(target: log_target!(), "Failed decoding params: {:?}", e);
+            return ERROR_RET;
+        }
+    };
+
+    for p in params {
+        let key = match p.get_key() {
+            Some(key) => key,
+            None => {
+                error!(target: log_target!(), "Param without valid key {:?}", p);
+                return ERROR_RET;
+            }
+        };
+
+        if key == OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY {
             let bytes: &[u8] = match p.get() {
                 Some(bytes) => bytes,
                 None => handleResult!(Err(anyhow!("Invalid ENCODED_PUBLIC_KEY"))),
@@ -488,20 +505,11 @@ pub(super) unsafe extern "C" fn set_params(
             debug!(target: log_target!(), "The received encoded public key is (len: {}): {:X?}", bytes.len(), bytes);
 
             keydata.public = Some(handleResult!(PublicKey::decode(bytes)));
+        } else {
+            debug!(target: log_target!(), "Ignoring param {:?}", key);
         }
-        None => (),
     }
-
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        todo!("set remaining keymgmt params (if any)")
-    }
-    #[cfg(debug_assertions)] // code compiled only in development builds
-    {
-        warn!(target: log_target!(), "{}", "TODO: set remaining keymgmt params (if any)");
-
-        1
-    }
+    return SUCCESS;
 }
 
 #[named]
@@ -516,17 +524,15 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
         }
     };
 
-    #[cfg(not(debug_assertions))] // code compiled only in release builds
-    {
-        todo!("return pointer to array of settable keymgmt params")
-    }
+    static LIST: &[CONST_OSSL_PARAM] = &[
+        OSSLParam::new_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, None),
+        CONST_OSSL_PARAM::END,
+    ];
 
-    #[cfg(debug_assertions)] // code compiled only in development builds
-    {
-        warn!(target: log_target!(), "{}", "TODO: return pointer to (non-empty) array of settable keymgmt params");
+    let first: &bindings::OSSL_PARAM = &LIST[0];
+    let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
 
-        crate::osslparams::EMPTY_PARAMS.as_ptr()
-    }
+    return ptr;
 }
 
 #[cfg(test)]
