@@ -33,7 +33,7 @@ pub(crate) use anyhow::anyhow;
 
 // Ensure proper null-terminated C string
 // https://docs.openssl.org/master/man7/provider/#algorithm-naming
-pub(super) const NAMES: &CStr = c"ML-DSA-65:2.16.840.1.101.3.4.3.18:id-ml-dsa-65";
+pub(super) const NAMES: &CStr = c"ML-DSA-65:2.16.840.1.101.3.4.3.18:id-ml-dsa-65:mldsa65";
 
 /// NAME should be a substring of NAMES
 pub(crate) const NAME: &CStr = c"ML-DSA-65";
