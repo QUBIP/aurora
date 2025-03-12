@@ -3,7 +3,7 @@ use crate as aurora;
 use aurora::adapters::AdapterContextTrait;
 use aurora::bindings;
 use aurora::OpenSSLProvider;
-use bindings::{OSSL_ALGORITHM, OSSL_OP_KEM, OSSL_OP_KEYMGMT};
+use bindings::{OSSL_ALGORITHM, OSSL_OP_KEYMGMT};
 use function_name::named;
 use std::ffi::CStr;
 
