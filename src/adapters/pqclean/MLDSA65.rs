@@ -44,79 +44,84 @@ pub(super) const DESCRIPTION: &CStr = c"ML-DSA-65 from pqclean";
 /// number of bits of security
 pub(crate) const SECURITY_BITS: u32 = 192;
 
-#[cfg(any())]
 pub(crate) mod capabilities {
     use super::CStr;
 
-    #[cfg(any())]
-    pub(crate) mod tls_group {
+    pub(crate) mod tls_sigalg {
         use super::*;
 
-        /// The name of the group as given in the
-        /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
-        pub(crate) const IANA_GROUP_NAME: &CStr = c"X25519MLKEM768";
+        // Values come from providers/common/capabilities.c in OpenSSL
+        /// The name of the signature algorithm as given in the IANA TLS Signature Scheme registry as "Description":
+        /// [IANA TLS Signature Scheme registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme).
+        /// (Except, ML-DSA-65 isn't listed there yet, so we have to use the
+        /// values from providers/common/capabilities.c in OpenSSL.)
+        pub(crate) const SIGALG_NAME_IANA: &CStr = c"ML-DSA-65";
 
-        /// The TLS group id value as given in the
-        /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
-        pub(crate) const IANA_GROUP_ID: u32 = 4588;
+        /// Another name the algorithm is known by.
+        pub(crate) const SIGALG_NAME: &CStr = c"mldsa65";
 
-        /// An alias for `IANA_GROUP_NAME`
-        pub(crate) use self::IANA_GROUP_NAME as GROUP_NAME;
+        /// The OID of the algorithm.
+        pub(crate) const SIGALG_OID: &CStr = c"2.16.840.1.101.3.4.3.18";
 
-        /// group name according to this provider
-        pub(crate) use super::super::NAME as GROUP_NAME_INTERNAL;
+        /// The TLS algorithm ID value as given in the IANA TLS SignatureScheme registry.
+        /// (Same note as on `IANA_SIGALG_NAME`.)
+        pub(crate) const SIGALG_CODEPOINT: u32 = 2309; // 0x0905
 
-        /// keymgmt algorithm name
-        pub(crate) use super::super::NAME as GROUP_ALG;
+        /// The number of security bits.
+        pub(crate) use super::super::SECURITY_BITS;
 
         /// min TLS: v1.3
         pub(crate) const MIN_TLS: i32 = 0x0304;
         /// max TLS: no set version
         pub(crate) const MAX_TLS: i32 = 0;
-        /// min DTLS (do not use this group at all with DTLS)
-        pub(crate) const MIN_DTLS: i32 = -1;
-        /// max DTLS (do not use this group at all with DTLS)
-        pub(crate) const MAX_DTLS: i32 = -1;
-        /// is KEM: yes
-        pub(crate) const IS_KEM: u32 = 1;
 
-        /// number of bits of security
-        pub(crate) use super::super::SECURITY_BITS;
+        // There aren't any OSSL_CAPABILITY_TLS_SIGALG_{MAX,MIN}_DTLS constants in OpenSSL 3.2, so
+        // we currently don't generate any bindings for those constants, and they can't be used
+        // unless we manually defined them. But later versions of OpenSSL will have them, so the
+        // values are here for later.
+        /// min DTLS (do not use this signature algorithm at all with DTLS)
+        pub(crate) const MIN_DTLS: i32 = -1;
+        /// max DTLS (do not use this signature algorithm at all with DTLS)
+        pub(crate) const MAX_DTLS: i32 = -1;
 
         use crate::bindings::{
-            OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID,
-            OSSL_CAPABILITY_TLS_GROUP_IS_KEM, OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS,
-            OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
-            OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
-            OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
+            OSSL_CAPABILITY_TLS_SIGALG_CODE_POINT, OSSL_CAPABILITY_TLS_SIGALG_IANA_NAME,
+            OSSL_CAPABILITY_TLS_SIGALG_MAX_TLS, OSSL_CAPABILITY_TLS_SIGALG_MIN_TLS,
+            OSSL_CAPABILITY_TLS_SIGALG_NAME, OSSL_CAPABILITY_TLS_SIGALG_OID,
+            OSSL_CAPABILITY_TLS_SIGALG_SECURITY_BITS,
         };
         use openssl_provider_forge::osslparams;
         use osslparams::{OSSLParam, CONST_OSSL_PARAM};
 
         pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] = &[
-            // IANA group name
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, GROUP_NAME),
-            // group name according to the provider
+            // IANA sigalg name
             OSSLParam::new_const_utf8string(
-                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-                GROUP_NAME_INTERNAL,
+                OSSL_CAPABILITY_TLS_SIGALG_IANA_NAME,
+                Some(SIGALG_NAME_IANA),
             ),
-            // keymgmt algorithm name
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, GROUP_ALG),
-            // IANA group ID
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, &IANA_GROUP_ID),
+            // other sigalg name
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_SIGALG_NAME, Some(SIGALG_NAME)),
+            // OID
+            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_SIGALG_OID, Some(SIGALG_OID)),
+            // codepoint
+            OSSLParam::new_const_uint(
+                OSSL_CAPABILITY_TLS_SIGALG_CODE_POINT,
+                Some(&SIGALG_CODEPOINT),
+            ),
             // number of bits of security
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS, &SECURITY_BITS),
+            OSSLParam::new_const_uint(
+                OSSL_CAPABILITY_TLS_SIGALG_SECURITY_BITS,
+                Some(&SECURITY_BITS),
+            ),
             // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, &MIN_TLS),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MIN_TLS, Some(&MIN_TLS)),
             // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, &MAX_TLS),
+            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MAX_TLS, Some(&MAX_TLS)),
+            // See note above: these aren't in OSSL 3.2, but we might use them in the future.
             // min DTLS
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, &MIN_DTLS),
+            //OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MIN_DTLS, Some(&MIN_DTLS)),
             // max DTLS
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, &MAX_DTLS),
-            // is KEM
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, &IS_KEM),
+            //OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MAX_DTLS, Some(&MAX_DTLS)),
             // IMPORTANT: always terminate a params array!!!
             CONST_OSSL_PARAM::END,
         ];

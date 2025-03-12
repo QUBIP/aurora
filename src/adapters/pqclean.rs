@@ -62,7 +62,6 @@ impl AdapterContextTrait for PQCleanAdapter {
         Ok(())
     }
 
-    #[cfg(any())]
     #[named]
     fn register_capabilities(
         &self,
@@ -70,15 +69,12 @@ impl AdapterContextTrait for PQCleanAdapter {
     ) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let tlsgroups = [
-            X25519MLKEM768::capabilities::tls_group::OSSL_PARAM_ARRAY,
-            SecP256r1MLKEM768::capabilities::tls_group::OSSL_PARAM_ARRAY,
-        ];
-        for a in tlsgroups {
+        let tls_sigalgs = [MLDSA65::capabilities::tls_sigalg::OSSL_PARAM_ARRAY];
+        for a in tls_sigalgs {
             use crate::osslparams::CONST_OSSL_PARAM;
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);
             let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
-            handle.register_capability(c"TLS-GROUP", ptr)?;
+            handle.register_capability(c"TLS-SIGALG", ptr)?;
         }
         Ok(())
     }
