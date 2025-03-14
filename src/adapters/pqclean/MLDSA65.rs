@@ -57,10 +57,10 @@ pub(crate) mod capabilities {
         /// For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
         /// as IANA does not list ML-DSA in the registry yet.
         /// These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
-        pub(crate) const SIGALG_IANA_NAME: &CStr = c"ML-DSA-65";
+        pub(crate) const SIGALG_IANA_NAME: &CStr = c"mldsa65";
 
         /// Another name the algorithm is known by.
-        pub(crate) const SIGALG_NAME: &CStr = c"mldsa65";
+        pub(crate) const SIGALG_NAME: &CStr = c"ML-DSA-65";
 
         /// The OID of the algorithm, from [NIST Computer Security Objects Register](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration).
         pub(crate) const SIGALG_OID: &CStr = c"2.16.840.1.101.3.4.3.18";
