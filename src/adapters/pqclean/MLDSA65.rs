@@ -53,18 +53,20 @@ pub(crate) mod capabilities {
         // Values come from providers/common/capabilities.c in OpenSSL
         /// The name of the signature algorithm as given in the IANA TLS Signature Scheme registry as "Description":
         /// [IANA TLS Signature Scheme registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme).
-        /// (Except, ML-DSA-65 isn't listed there yet, so we have to use the
-        /// values from providers/common/capabilities.c in OpenSSL.)
-        pub(crate) const SIGALG_NAME_IANA: &CStr = c"ML-DSA-65";
+        ///
+        /// For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
+        /// as IANA does not list ML-DSA in the registry yet.
+        /// These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+        pub(crate) const SIGALG_IANA_NAME: &CStr = c"ML-DSA-65";
 
         /// Another name the algorithm is known by.
         pub(crate) const SIGALG_NAME: &CStr = c"mldsa65";
 
-        /// The OID of the algorithm.
+        /// The OID of the algorithm, from [NIST Computer Security Objects Register](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration).
         pub(crate) const SIGALG_OID: &CStr = c"2.16.840.1.101.3.4.3.18";
 
         /// The TLS algorithm ID value as given in the IANA TLS SignatureScheme registry.
-        /// (Same note as on `IANA_SIGALG_NAME`.)
+        /// (Same note as on [`SIGALG_IANA_NAME`].)
         pub(crate) const SIGALG_CODEPOINT: u32 = 2309; // 0x0905
 
         /// The number of security bits.
@@ -97,7 +99,7 @@ pub(crate) mod capabilities {
             // IANA sigalg name
             OSSLParam::new_const_utf8string(
                 OSSL_CAPABILITY_TLS_SIGALG_IANA_NAME,
-                Some(SIGALG_NAME_IANA),
+                Some(SIGALG_IANA_NAME),
             ),
             // other sigalg name
             OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_SIGALG_NAME, Some(SIGALG_NAME)),
