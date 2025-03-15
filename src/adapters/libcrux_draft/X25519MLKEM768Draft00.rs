@@ -43,82 +43,45 @@ pub(super) const DESCRIPTION: &CStr = c"X25519MLKEM768Draft00 from libcrux (libc
 pub(crate) const SECURITY_BITS: u32 = 192;
 
 pub(crate) mod capabilities {
-    use super::CStr;
-
     pub(crate) mod tls_group {
-        use super::*;
+        use openssl_provider_forge::capabilities::tls_group;
+        use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
+        use tls_group::*;
 
-        /// The name of the group as given in the
-        /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
-        pub(crate) const IANA_GROUP_NAME: &CStr = c"X25519Kyber768Draft00";
+        pub(crate) struct TLSGroupCap;
 
-        /// The TLS group id value as given in the
-        /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
-        pub(crate) const IANA_GROUP_ID: u32 = 25497;
+        impl TLSGroup for TLSGroupCap {
+            /// The name of the group as given in the
+            /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+            const IANA_GROUP_NAME: &CStr = c"X25519Kyber768Draft00";
 
-        /// An alias for `IANA_GROUP_NAME`
-        pub(crate) use self::IANA_GROUP_NAME as GROUP_NAME;
+            /// The TLS group id value as given in the
+            /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+            const IANA_GROUP_ID: u32 = 25497;
 
-        /// group name according to this provider
-        pub(crate) use super::super::NAME as GROUP_NAME_INTERNAL;
+            /// group name according to this provider
+            const GROUP_NAME_INTERNAL: &CStr = super::super::NAME;
 
-        /// keymgmt algorithm name
-        pub(crate) use super::super::NAME as GROUP_ALG;
+            /// keymgmt algorithm name
+            const GROUP_ALG: &CStr = Self::GROUP_NAME_INTERNAL;
 
-        /// min TLS: v1.3
-        pub(crate) const MIN_TLS: i32 = 0x0304;
-        /// max TLS: no set version
-        pub(crate) const MAX_TLS: i32 = 0;
-        /// min DTLS (do not use this group at all with DTLS)
-        pub(crate) const MIN_DTLS: i32 = -1;
-        /// max DTLS (do not use this group at all with DTLS)
-        pub(crate) const MAX_DTLS: i32 = -1;
-        /// is KEM: yes
-        pub(crate) const IS_KEM: u32 = 1;
+            /// number of bits of security
+            const SECURITY_BITS: u32 = super::super::SECURITY_BITS;
 
-        /// number of bits of security
-        pub(crate) use super::super::SECURITY_BITS;
+            /// min TLS: v1.3
+            const MIN_TLS: TLSVersion = TLSVersion::TLSv1_3;
+            /// max TLS: no set version
+            const MAX_TLS: TLSVersion = TLSVersion::None;
+            /// min DTLS (do not use this group at all with DTLS)
+            const MIN_DTLS: DTLSVersion = DTLSVersion::Disabled;
+            /// max DTLS (do not use this group at all with DTLS)
+            const MAX_DTLS: DTLSVersion = DTLSVersion::Disabled;
 
-        use crate::bindings::{
-            OSSL_CAPABILITY_TLS_GROUP_ALG, OSSL_CAPABILITY_TLS_GROUP_ID,
-            OSSL_CAPABILITY_TLS_GROUP_IS_KEM, OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS,
-            OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS,
-            OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, OSSL_CAPABILITY_TLS_GROUP_NAME,
-            OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL, OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
-        };
-        use openssl_provider_forge::osslparams;
-        use osslparams::{OSSLParam, CONST_OSSL_PARAM};
+            const IS_KEM: bool = true;
+        }
 
-        pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] = &[
-            // IANA group name
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_NAME, Some(GROUP_NAME)),
-            // group name according to the provider
-            OSSLParam::new_const_utf8string(
-                OSSL_CAPABILITY_TLS_GROUP_NAME_INTERNAL,
-                Some(GROUP_NAME_INTERNAL),
-            ),
-            // keymgmt algorithm name
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_GROUP_ALG, Some(GROUP_ALG)),
-            // IANA group ID
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_ID, Some(&IANA_GROUP_ID)),
-            // number of bits of security
-            OSSLParam::new_const_uint(
-                OSSL_CAPABILITY_TLS_GROUP_SECURITY_BITS,
-                Some(&SECURITY_BITS),
-            ),
-            // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_TLS, Some(&MIN_TLS)),
-            // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_TLS, Some(&MAX_TLS)),
-            // min DTLS
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MIN_DTLS, Some(&MIN_DTLS)),
-            // max DTLS
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_GROUP_MAX_DTLS, Some(&MAX_DTLS)),
-            // is KEM
-            OSSLParam::new_const_uint(OSSL_CAPABILITY_TLS_GROUP_IS_KEM, Some(&IS_KEM)),
-            // IMPORTANT: always terminate a params array!!!
-            CONST_OSSL_PARAM::END,
-        ];
+        pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] =
+            tls_group::as_params!(TLSGroupCap);
     }
 }
 
