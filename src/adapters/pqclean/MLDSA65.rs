@@ -45,88 +45,76 @@ pub(super) const DESCRIPTION: &CStr = c"ML-DSA-65 from pqclean";
 pub(crate) const SECURITY_BITS: u32 = 192;
 
 pub(crate) mod capabilities {
-    use super::CStr;
-
     pub(crate) mod tls_sigalg {
-        use super::*;
+        use openssl_provider_forge::capabilities::tls_sigalg;
+        use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
+        use tls_sigalg::*;
 
-        // Values come from providers/common/capabilities.c in OpenSSL
-        /// The name of the signature algorithm as given in the IANA TLS Signature Scheme registry as "Description":
-        /// [IANA TLS Signature Scheme registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme).
+        /// A [_unit-like struct_][rustbook:unit-like-structs] implementing [`TLSSigAlg`] for `id-ml-dsa-65`.
         ///
-        /// For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
-        /// as IANA does not list ML-DSA in the registry yet.
-        /// These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
-        pub(crate) const SIGALG_IANA_NAME: &CStr = c"mldsa65";
+        /// [rustbook:unit-like-structs]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#unit-like-structs-without-any-fields
+        pub(crate) struct TLSSigAlgCap;
 
-        /// Another name the algorithm is known by.
-        pub(crate) const SIGALG_NAME: &CStr = c"ML-DSA-65";
+        /// Implement [`TLSSigAlg`] for [`TLSSigAlgCap`]
+        ///
+        /// # NOTE
+        ///
+        /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
+        /// > as IANA does not list ML-DSA in the registry yet.
+        /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+        ///
+        /// We use default values for MAX_TLS (none), MIN_DTLS (disabled), MAX_DTLS (disabled)
+        impl TLSSigAlg for TLSSigAlgCap {
+            /// The name of the signature algorithm as given in the [IANA TLS SignatureScheme registry][IANA:tls-signaturescheme] as "Description".
+            ///
+            /// [IANA:tls-signaturescheme]: https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme
+            ///
+            /// # NOTE
+            ///
+            /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
+            /// > as IANA does not list ML-DSA in the registry yet.
+            /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+            const SIGALG_IANA_NAME: &CStr = c"mldsa65";
 
-        /// The OID of the algorithm, from [NIST Computer Security Objects Register](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration).
-        pub(crate) const SIGALG_OID: &CStr = c"2.16.840.1.101.3.4.3.18";
+            /// The TLS algorithm ID value as given in the [IANA TLS SignatureScheme registry][IANA:tls-signaturescheme].
+            ///
+            /// [IANA:tls-signaturescheme]: https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme
+            ///
+            /// # NOTE
+            ///
+            /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
+            /// > as IANA does not list ML-DSA in the registry yet.
+            /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+            const SIGALG_CODEPOINT: u32 = 0x0905; // 2309 in decimal notation
 
-        /// The TLS algorithm ID value as given in the IANA TLS SignatureScheme registry.
-        /// (Same note as on [`SIGALG_IANA_NAME`].)
-        pub(crate) const SIGALG_CODEPOINT: u32 = 2309; // 0x0905
+            /// A name for the signature algorithm as known by the provider.
+            ///
+            /// Note this is also the name that
+            /// [`SSL_CONF_cmd(-sigalgs)`][SSL_CONF_cmd(3ossl):cli]/[`SSL_CONF_cmd(SignatureAlgorithms)`][SSL_CONF_cmd(3ossl):conf]
+            /// will support.
+            ///
+            /// [SSL_CONF_cmd(3ossl):cli]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-command-line-commands
+            /// [SSL_CONF_cmd(3ossl):conf]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-configuration-file-commands
+            const SIGALG_NAME: &CStr = c"ML-DSA-65";
 
-        /// The number of security bits.
-        pub(crate) use super::super::SECURITY_BITS;
+            /// The OID of the [`Self::SIGALG_SIG_NAME`] algorithm in canonical numeric text form. \[optional\]
+            ///
+            /// # NOTE
+            ///
+            /// > The OIDs for ML-DSA come from the [NIST Computer Security Objects Register](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration).
+            ///
+            /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+            const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.101.3.4.3.18");
 
-        /// min TLS: v1.3
-        pub(crate) const MIN_TLS: i32 = 0x0304;
-        /// max TLS: no set version
-        pub(crate) const MAX_TLS: i32 = 0;
+            const SECURITY_BITS: u32 = super::super::SECURITY_BITS;
 
-        // There aren't any OSSL_CAPABILITY_TLS_SIGALG_{MAX,MIN}_DTLS constants in OpenSSL 3.2, so
-        // we currently don't generate any bindings for those constants, and they can't be used
-        // unless we manually defined them. But later versions of OpenSSL will have them, so the
-        // values are here for later.
-        /// min DTLS (do not use this signature algorithm at all with DTLS)
-        pub(crate) const MIN_DTLS: i32 = -1;
-        /// max DTLS (do not use this signature algorithm at all with DTLS)
-        pub(crate) const MAX_DTLS: i32 = -1;
+            /// min TLS: v1.3
+            const MIN_TLS: TLSVersion = TLSVersion::TLSv1_3;
+            // use default values for MAX_TLS (none), MIN_DTLS (disabled), MAX_DTLS (disabled) (see doc-comment)
+        }
 
-        use crate::bindings::{
-            OSSL_CAPABILITY_TLS_SIGALG_CODE_POINT, OSSL_CAPABILITY_TLS_SIGALG_IANA_NAME,
-            OSSL_CAPABILITY_TLS_SIGALG_MAX_TLS, OSSL_CAPABILITY_TLS_SIGALG_MIN_TLS,
-            OSSL_CAPABILITY_TLS_SIGALG_NAME, OSSL_CAPABILITY_TLS_SIGALG_OID,
-            OSSL_CAPABILITY_TLS_SIGALG_SECURITY_BITS,
-        };
-        use openssl_provider_forge::osslparams;
-        use osslparams::{OSSLParam, CONST_OSSL_PARAM};
-
-        pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] = &[
-            // IANA sigalg name
-            OSSLParam::new_const_utf8string(
-                OSSL_CAPABILITY_TLS_SIGALG_IANA_NAME,
-                Some(SIGALG_IANA_NAME),
-            ),
-            // other sigalg name
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_SIGALG_NAME, Some(SIGALG_NAME)),
-            // OID
-            OSSLParam::new_const_utf8string(OSSL_CAPABILITY_TLS_SIGALG_OID, Some(SIGALG_OID)),
-            // codepoint
-            OSSLParam::new_const_uint(
-                OSSL_CAPABILITY_TLS_SIGALG_CODE_POINT,
-                Some(&SIGALG_CODEPOINT),
-            ),
-            // number of bits of security
-            OSSLParam::new_const_uint(
-                OSSL_CAPABILITY_TLS_SIGALG_SECURITY_BITS,
-                Some(&SECURITY_BITS),
-            ),
-            // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MIN_TLS, Some(&MIN_TLS)),
-            // min TLS version
-            OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MAX_TLS, Some(&MAX_TLS)),
-            // See note above: these aren't in OSSL 3.2, but we might use them in the future.
-            // min DTLS
-            //OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MIN_DTLS, Some(&MIN_DTLS)),
-            // max DTLS
-            //OSSLParam::new_const_int(OSSL_CAPABILITY_TLS_SIGALG_MAX_DTLS, Some(&MAX_DTLS)),
-            // IMPORTANT: always terminate a params array!!!
-            CONST_OSSL_PARAM::END,
-        ];
+        pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] =
+            tls_sigalg::as_params!(TLSSigAlgCap);
     }
 }
 
