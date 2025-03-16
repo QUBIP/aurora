@@ -10,16 +10,14 @@ pub trait AdapterContextTrait: Debug {
     }
 
     #[function_name::named]
-    fn register_algorithms(&self, handle: &mut AdaptersHandle) -> Result<(), aurora::Error> {
+    fn register_algorithms(&self, _handle: &mut AdaptersHandle) -> Result<(), aurora::Error> {
         debug!(target: log_target!(), "No algorithms to register for {}", self.name());
-        let _ = handle;
         Ok(())
     }
 
     #[function_name::named]
-    fn register_capabilities(&self, handle: &mut AdaptersHandle) -> Result<(), aurora::Error> {
+    fn register_capabilities(&self, _handle: &mut AdaptersHandle) -> Result<(), aurora::Error> {
         debug!(target: log_target!(), "No capabilities to register for {}", self.name());
-        let _ = handle;
         Ok(())
     }
 }
