@@ -1,10 +1,11 @@
 use std::ffi::CStr;
 
-use crate::forge::bindings;
+use crate::forge;
 use crate::named;
 use crate::OpenSSLProvider;
+use forge::bindings;
+use forge::ossl_callback::OSSLCallback;
 use libc::{c_char, c_int, c_void};
-use openssl_provider_forge::ossl_callback::OSSLCallback;
 
 use bindings::{OSSL_ALGORITHM, OSSL_CALLBACK};
 

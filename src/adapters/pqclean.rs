@@ -2,9 +2,10 @@ use crate as aurora;
 
 use aurora::adapters::AdapterContextTrait;
 use aurora::bindings;
+use aurora::forge;
 use aurora::OpenSSLProvider;
-use bindings::{OSSL_ALGORITHM, OSSL_OP_KEYMGMT};
-use function_name::named;
+use aurora::{handleResult, named};
+use bindings::{CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_KEYMGMT};
 use std::ffi::CStr;
 
 pub(crate) type OurError = aurora::Error;
@@ -75,7 +76,6 @@ impl AdapterContextTrait for PQCleanAdapter {
             MLDSA65::capabilities::tls_sigalg::OSSL_PARAM_ARRAY_OQSCOMP,
         ];
         for a in tls_sigalgs {
-            use crate::osslparams::CONST_OSSL_PARAM;
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);
             let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
             handle.register_capability(c"TLS-SIGALG", ptr)?;

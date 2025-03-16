@@ -44,8 +44,9 @@ pub(crate) const SECURITY_BITS: u32 = 192;
 
 pub(crate) mod capabilities {
     pub(crate) mod tls_group {
-        use openssl_provider_forge::capabilities::tls_group;
-        use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
+        use super::super::forge;
+        use forge::capabilities::tls_group;
+        use forge::osslparams::CONST_OSSL_PARAM;
         use tls_group::*;
 
         pub(crate) struct TLSGroupCap;

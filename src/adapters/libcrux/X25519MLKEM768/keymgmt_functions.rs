@@ -1,14 +1,12 @@
 use super::OurError as KMGMTError;
 use super::*;
-use crate::forge::{keymgmt::selection::Selection, osslparams};
-use crate::{handleResult, OpenSSLProvider};
 use bindings::{
-    OSSL_CALLBACK, OSSL_PARAM, OSSL_PARAM_OCTET_STRING, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
-    OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
+    CONST_OSSL_PARAM, OSSL_CALLBACK, OSSL_PARAM, OSSL_PARAM_OCTET_STRING,
+    OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
 };
+use forge::{keymgmt::selection::Selection, osslparams};
 use kem::{Decapsulate, Encapsulate};
-use openssl_provider_forge::bindings::CONST_OSSL_PARAM;
-use openssl_provider_forge::osslparams::OSSLParam;
+use osslparams::OSSLParam;
 use rand_core::CryptoRngCore;
 use std::{
     ffi::{c_int, c_void},

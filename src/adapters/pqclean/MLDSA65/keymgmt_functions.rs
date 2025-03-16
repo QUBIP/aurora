@@ -1,11 +1,10 @@
 use super::OurError as KMGMTError;
 use super::*;
-use crate::forge::{bindings, keymgmt::selection::Selection, osslparams::*};
-use crate::{handleResult, OpenSSLProvider};
 use bindings::{
     OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, OSSL_PKEY_PARAM_PRIV_KEY,
     OSSL_PKEY_PARAM_PUB_KEY,
 };
+use forge::{bindings, keymgmt::selection::Selection, osslparams::*};
 use std::{
     ffi::{c_int, c_void},
     fmt::Debug,

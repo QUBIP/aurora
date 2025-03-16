@@ -1,7 +1,6 @@
 use super::keymgmt_functions::KeyPair;
 use super::OurError as KEMError;
 use super::*;
-use crate::{handleResult, named};
 use bindings::OSSL_PARAM;
 use kem::{Decapsulate, Encapsulate};
 use libc::{c_int, c_uchar, c_void};

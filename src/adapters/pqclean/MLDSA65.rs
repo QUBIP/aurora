@@ -46,8 +46,9 @@ pub(crate) const SECURITY_BITS: u32 = 192;
 
 pub(crate) mod capabilities {
     pub(crate) mod tls_sigalg {
-        use openssl_provider_forge::capabilities::tls_sigalg;
-        use openssl_provider_forge::osslparams::CONST_OSSL_PARAM;
+        use super::super::forge;
+        use forge::capabilities::tls_sigalg;
+        use forge::osslparams::CONST_OSSL_PARAM;
         use tls_sigalg::*;
 
         /// A [_unit-like struct_][rustbook:unit-like-structs] implementing [`TLSSigAlg`] for `id-ml-dsa-65`.

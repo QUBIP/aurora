@@ -1,7 +1,6 @@
 use super::keymgmt_functions::KeyPair;
 use super::OurError as SignatureError;
 use super::*;
-use crate::{handleResult, named};
 use anyhow::bail;
 use bindings::OSSL_PARAM;
 use libc::{c_int, c_uchar, c_void};
