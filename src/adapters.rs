@@ -17,23 +17,12 @@ mod pqclean;
 mod traits;
 pub use traits::AdapterContextTrait;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct AdapterContext {
     algorithms: HashMap<u32, Vec<*const OSSL_ALGORITHM>>,
     capabilities: HashMap<&'static CStr, Vec<*const OSSL_PARAM>>,
     op_kem_ptr: Option<*const OSSL_ALGORITHM>,
     op_keymgmt_ptr: Option<*const OSSL_ALGORITHM>,
-}
-
-impl Default for AdapterContext {
-    fn default() -> Self {
-        Self {
-            op_kem_ptr: Default::default(),
-            op_keymgmt_ptr: Default::default(),
-            algorithms: Default::default(),
-            capabilities: Default::default(),
-        }
-    }
 }
 
 pub struct AdaptersHandle {
