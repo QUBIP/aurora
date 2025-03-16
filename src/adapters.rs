@@ -103,7 +103,7 @@ impl AdaptersHandle {
         #[cfg(not(debug_assertions))] // code compiled only in release builds
         todo!();
 
-        debug!(target: log_target!(), "Registering algorithms for op {op_id:}: {algs:?}");
+        trace!(target: log_target!(), "Registering algorithms for op {op_id:}: {algs:?}");
 
         match self.alg_iters.entry(op_id) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
@@ -133,7 +133,7 @@ impl AdaptersHandle {
         trace!(target: log_target!(), "{}", "Called!");
         self.check_state()?;
 
-        debug!(target: log_target!(), "Registering capability {capability:?}:");
+        trace!(target: log_target!(), "Registering capability {capability:?}:");
         #[cfg(debug_assertions)] // code compiled only in debug builds
         {
             let params = OSSLParam::try_from(params_list).map_err(|e| {
@@ -224,7 +224,7 @@ impl Default for AdaptersHandle {
         let mut contexts = std::mem::take(&mut handle.contexts); // Temporarily move out
 
         let res = contexts.iter().try_for_each(|ctx| {
-            debug!("Calling register_algorithms() on {ctx:?}");
+            debug!("🚀 🧮 Calling register_algorithms() on {ctx:?}");
             ctx.register_algorithms(&mut handle)
         });
         match res {
@@ -238,7 +238,7 @@ impl Default for AdaptersHandle {
         };
 
         let res = contexts.iter().try_for_each(|ctx| {
-            debug!("Calling register_capabilities() on {ctx:?}");
+            debug!("🚀 🌟 Calling register_capabilities() on {ctx:?}");
             ctx.register_capabilities(&mut handle)
         });
         match res {

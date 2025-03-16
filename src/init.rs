@@ -51,8 +51,8 @@ pub unsafe extern "C" fn provider_teardown(vprovctx: *mut c_void) {
     trace!(target: log_target!(), "{}", "Called!");
     let /* mut */ prov: Box<OpenSSLProvider> = unsafe { Box::from_raw(vprovctx.cast()) };
     let name = prov.name;
-    debug!(target: log_target!(), "Teardown of \"{name}\"");
-    info!(target: log_target!(), "🦀 Goodbye!");
+    trace!(target: log_target!(), "Teardown of \"{name}\"");
+    trace!(target: log_target!(), "🦀 Goodbye!");
 }
 
 #[named]
