@@ -115,6 +115,49 @@ pub(crate) mod capabilities {
 
         pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] =
             tls_sigalg::as_params!(TLSSigAlgCap);
+
+        pub(crate) struct OQScompatCap;
+
+        /// Implement [`TLSSigAlg`] for [`OQScompatCap`].
+        ///
+        /// This is identical to [`TLSSigAlgCap`], but uses `"mldsa65"` for [`TLSSigAlg::SIGALG_NAME`] for compatiblity with the OQS provider.
+        impl TLSSigAlg for OQScompatCap {
+            /// A name for the signature algorithm as known by the provider.
+            ///
+            /// Note this is also the name that
+            /// [`SSL_CONF_cmd(-sigalgs)`][SSL_CONF_cmd(3ossl):cli]/[`SSL_CONF_cmd(SignatureAlgorithms)`][SSL_CONF_cmd(3ossl):conf]
+            /// will support.
+            ///
+            /// Here we use `"mldsa65"` for compatiblity with the OQS provider.
+            ///
+            /// [SSL_CONF_cmd(3ossl):cli]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-command-line-commands
+            /// [SSL_CONF_cmd(3ossl):conf]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-configuration-file-commands
+            const SIGALG_NAME: &CStr = c"mldsa65";
+
+            const SIGALG_IANA_NAME: &CStr = TLSSigAlgCap::SIGALG_IANA_NAME;
+            const SIGALG_CODEPOINT: u32 = TLSSigAlgCap::SIGALG_CODEPOINT;
+            const SECURITY_BITS: u32 = TLSSigAlgCap::SECURITY_BITS;
+
+            /// If needed, this OID has already been defined
+            const SIGALG_OID: Option<&CStr> = None;
+            /// If needed, this OID has already been defined
+            const SIGALG_SIG_OID: Option<&CStr> = None;
+            /// If needed, this OID has already been defined
+            const SIGALG_HASH_OID: Option<&CStr> = None;
+            /// If needed, this OID has already been defined
+            const SIGALG_KEYTYPE_OID: Option<&CStr> = None;
+
+            const SIGALG_SIG_NAME: Option<&CStr> = TLSSigAlgCap::SIGALG_SIG_NAME;
+            const SIGALG_HASH_NAME: Option<&CStr> = TLSSigAlgCap::SIGALG_HASH_NAME;
+            const SIGALG_KEYTYPE: Option<&CStr> = TLSSigAlgCap::SIGALG_KEYTYPE;
+            const MIN_TLS: TLSVersion = TLSSigAlgCap::MIN_TLS;
+            const MAX_TLS: TLSVersion = TLSSigAlgCap::MAX_TLS;
+            const MIN_DTLS: DTLSVersion = TLSSigAlgCap::MIN_DTLS;
+            const MAX_DTLS: DTLSVersion = TLSSigAlgCap::MAX_DTLS;
+        }
+
+        pub(crate) static OSSL_PARAM_ARRAY_OQSCOMP: &[CONST_OSSL_PARAM] =
+            tls_sigalg::as_params!(OQScompatCap);
     }
 }
 

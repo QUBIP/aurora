@@ -69,7 +69,11 @@ impl AdapterContextTrait for PQCleanAdapter {
     ) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let tls_sigalgs = [MLDSA65::capabilities::tls_sigalg::OSSL_PARAM_ARRAY];
+        let tls_sigalgs = [
+            MLDSA65::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
+            // Add second sigalg capability for MLDSA65, for better compatibility with OQS-provider
+            MLDSA65::capabilities::tls_sigalg::OSSL_PARAM_ARRAY_OQSCOMP,
+        ];
         for a in tls_sigalgs {
             use crate::osslparams::CONST_OSSL_PARAM;
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);
