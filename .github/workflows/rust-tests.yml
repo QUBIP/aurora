@@ -6,7 +6,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
+  pull_request_target:
 jobs:
   lint-code:
     runs-on: ubuntu-latest
