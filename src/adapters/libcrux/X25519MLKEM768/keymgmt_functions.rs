@@ -769,11 +769,28 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::new_provctx_for_testing;
+
+    struct TestCTX<'a> {
+        provctx: OpenSSLProvider<'a>,
+    }
+
+    fn setup<'a>() -> Result<TestCTX<'a>, OurError> {
+        use crate::tests::new_provctx_for_testing;
+
+        crate::tests::common::setup()?;
+
+        let provctx = new_provctx_for_testing();
+
+        let testctx = TestCTX { provctx };
+
+        Ok(testctx)
+    }
 
     #[test]
     fn test_loopback_kex() {
-        let provctx = new_provctx_for_testing();
+        let testctx = setup().expect("Failed to initialize test setup");
+
+        let provctx = testctx.provctx;
 
         let client_kp = KeyPair::generate_new(&provctx);
 
@@ -786,7 +803,9 @@ mod tests {
 
     #[test]
     fn test_full_kex() {
-        let provctx = new_provctx_for_testing();
+        let testctx = setup().expect("Failed to initialize test setup");
+
+        let provctx = testctx.provctx;
 
         let client_kp = KeyPair::generate_new(&provctx);
 

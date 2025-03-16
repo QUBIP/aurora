@@ -1,5 +1,6 @@
 use crate::forge::{bindings, osslparams};
 use crate::named;
+use crate::Error as OurError;
 use crate::OpenSSLProvider;
 use bindings::OSSL_DISPATCH;
 use bindings::OSSL_PARAM;
@@ -9,14 +10,39 @@ use osslparams::OSSLParam;
 
 use crate::{PROV_NAME, PROV_VER};
 
-#[cfg(feature = "pretty_env_logger")]
-pub use pretty_env_logger as logger;
+#[cfg(feature = "env_logger")]
+pub use env_logger as logger;
 
 #[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct OSSL_CORE_HANDLE {
     _data: [u8; 0],
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
+
+#[cfg(feature = "env_logger")]
+fn inner_try_init_logging() -> Result<(), OurError> {
+    logger::Builder::from_default_env()
+        //.filter_level(log::LevelFilter::Debug)
+        .format_timestamp(None) // Optional: disable timestamps
+        .format_module_path(true) // Optional: disable module path
+        .format_target(false) // Optional: disable target
+        .format_source_path(true)
+        .try_init()
+        .map_err(OurError::from)
+}
+
+pub(crate) fn try_init_logging() -> Result<(), OurError> {
+    use std::sync::Once;
+
+    static INIT: Once = Once::new();
+
+    INIT.call_once(|| {
+        #[cfg(feature = "env_logger")]
+        inner_try_init_logging().expect("Failed to initialize the logging system");
+    });
+
+    Ok(())
 }
 
 #[named]
@@ -28,8 +54,8 @@ pub extern "C" fn OSSL_provider_init(
     provider_dispatch: *mut *const OSSL_DISPATCH,
     provctx: *mut *mut c_void,
 ) -> c_int {
-    #[cfg(feature = "pretty_env_logger")]
-    logger::try_init().expect("Failed initializing logger subsystem");
+    #[cfg(feature = "env_logger")]
+    try_init_logging().expect("Failed initializing logger subsystem");
 
     trace!(target: log_target!(), "Just called a 🦀 Rust function from C!");
     trace!(target: log_target!(), "This is 🌌 {} v{}", PROV_NAME, PROV_VER);

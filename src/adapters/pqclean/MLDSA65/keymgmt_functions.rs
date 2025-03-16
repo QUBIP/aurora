@@ -232,7 +232,7 @@ impl<'a> GenCTX<'a> {
             trace!(target: log_target!(), "Returning empty keypair due to selection bits {:?}", self.selection);
             return KeyPair::new(self.provctx);
         }
-        debug!(target: log_target!(), "Generating a new KeyPair");
+        trace!(target: log_target!(), "Generating a new KeyPair");
 
         KeyPair::generate(self.provctx)
     }
@@ -537,11 +537,28 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::new_provctx_for_testing;
+
+    struct TestCTX<'a> {
+        provctx: OpenSSLProvider<'a>,
+    }
+
+    fn setup<'a>() -> Result<TestCTX<'a>, OurError> {
+        use crate::tests::new_provctx_for_testing;
+
+        crate::tests::common::setup()?;
+
+        let provctx = new_provctx_for_testing();
+
+        let testctx = TestCTX { provctx };
+
+        Ok(testctx)
+    }
 
     #[test]
     fn test_roundtrip_encode_decode() {
-        let provctx = new_provctx_for_testing();
+        let testctx = setup().expect("Failed to initialize test setup");
+
+        let provctx = testctx.provctx;
 
         let keypair = KeyPair::generate_new(&provctx);
 

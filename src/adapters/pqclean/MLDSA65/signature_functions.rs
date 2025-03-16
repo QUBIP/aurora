@@ -314,12 +314,29 @@ fn u8_mut_slice_try_from_raw_parts<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::new_provctx_for_testing;
+
+    struct TestCTX<'a> {
+        provctx: OpenSSLProvider<'a>,
+    }
+
+    fn setup<'a>() -> Result<TestCTX<'a>, OurError> {
+        use crate::tests::new_provctx_for_testing;
+
+        crate::tests::common::setup()?;
+
+        let provctx = new_provctx_for_testing();
+
+        let testctx = TestCTX { provctx };
+
+        Ok(testctx)
+    }
 
     #[test]
     fn test_sign() {
+        let testctx = setup().expect("Failed to initialize test setup");
+        let provctx = testctx.provctx;
+
         // generate a keypair
-        let provctx = new_provctx_for_testing();
         let keypair = KeyPair::generate_new(&provctx);
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message
@@ -334,8 +351,10 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_success() {
+        let testctx = setup().expect("Failed to initialize test setup");
+        let provctx = testctx.provctx;
+
         // generate keypair
-        let provctx = new_provctx_for_testing();
         let keypair = KeyPair::generate_new(&provctx);
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
@@ -353,8 +372,10 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_wrong_key_failure() {
+        let testctx = setup().expect("Failed to initialize test setup");
+        let provctx = testctx.provctx;
+
         // generate keypair
-        let provctx = new_provctx_for_testing();
         let keypair = KeyPair::generate_new(&provctx);
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
@@ -371,8 +392,10 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_tampered_sig_failure() {
+        let testctx = setup().expect("Failed to initialize test setup");
+        let provctx = testctx.provctx;
+
         // generate keypair
-        let provctx = new_provctx_for_testing();
         let keypair = KeyPair::generate_new(&provctx);
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
@@ -390,8 +413,10 @@ mod tests {
 
     #[test]
     fn test_sign_and_verify_tampered_msg_failure() {
+        let testctx = setup().expect("Failed to initialize test setup");
+        let provctx = testctx.provctx;
+
         // generate keypair
-        let provctx = new_provctx_for_testing();
         let keypair = KeyPair::generate_new(&provctx);
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
