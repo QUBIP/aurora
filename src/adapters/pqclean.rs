@@ -5,7 +5,7 @@ use aurora::bindings;
 use aurora::forge;
 use aurora::OpenSSLProvider;
 use aurora::{handleResult, named};
-use bindings::{CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_KEYMGMT};
+use bindings::{CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_DECODER, OSSL_OP_KEYMGMT};
 use std::ffi::CStr;
 
 pub(crate) type OurError = aurora::Error;
@@ -80,6 +80,25 @@ impl AdapterContextTrait for PQCleanAdapter {
             let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
             handle.register_capability(c"TLS-SIGALG", ptr)?;
         }
+        Ok(())
+    }
+
+    #[named]
+    fn register_decoders(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        let decoder_algorithms = Box::new([{
+            use MLDSA65 as Alg;
+            OSSL_ALGORITHM {
+                algorithm_names: Alg::NAMES.as_ptr(),
+                property_definition: PROPERTY_DEFINITION.as_ptr(),
+                implementation: Alg::DECODER_FUNCTIONS.as_ptr(),
+                algorithm_description: Alg::DESCRIPTION.as_ptr(),
+            }
+        }]);
+
+        handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
+
         Ok(())
     }
 }

@@ -20,4 +20,10 @@ pub trait AdapterContextTrait: Debug {
         debug!(target: log_target!(), "No capabilities to register for {}", self.name());
         Ok(())
     }
+
+    #[function_name::named]
+    fn register_decoders(&self, _handle: &mut AdaptersHandle) -> Result<(), aurora::Error> {
+        debug!(target: log_target!(), "No decoders to register for {}", self.name());
+        Ok(())
+    }
 }

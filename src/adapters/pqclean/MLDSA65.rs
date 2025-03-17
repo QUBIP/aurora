@@ -2,6 +2,15 @@
 
 use super::*;
 use bindings::{dispatch_table_entry, OSSL_DISPATCH};
+use bindings::{OSSL_FUNC_decoder_decode_fn, OSSL_FUNC_DECODER_DECODE};
+use bindings::{OSSL_FUNC_decoder_does_selection_fn, OSSL_FUNC_DECODER_DOES_SELECTION};
+use bindings::{OSSL_FUNC_decoder_export_object_fn, OSSL_FUNC_DECODER_EXPORT_OBJECT};
+use bindings::{OSSL_FUNC_decoder_freectx_fn, OSSL_FUNC_DECODER_FREECTX};
+use bindings::{OSSL_FUNC_decoder_get_params_fn, OSSL_FUNC_DECODER_GET_PARAMS};
+use bindings::{OSSL_FUNC_decoder_gettable_params_fn, OSSL_FUNC_DECODER_GETTABLE_PARAMS};
+use bindings::{OSSL_FUNC_decoder_newctx_fn, OSSL_FUNC_DECODER_NEWCTX};
+use bindings::{OSSL_FUNC_decoder_set_ctx_params_fn, OSSL_FUNC_DECODER_SET_CTX_PARAMS};
+use bindings::{OSSL_FUNC_decoder_settable_ctx_params_fn, OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_export_fn, OSSL_FUNC_KEYMGMT_EXPORT};
 use bindings::{OSSL_FUNC_keymgmt_export_types_ex_fn, OSSL_FUNC_KEYMGMT_EXPORT_TYPES_EX};
 use bindings::{OSSL_FUNC_keymgmt_free_fn, OSSL_FUNC_KEYMGMT_FREE};
@@ -25,6 +34,7 @@ use bindings::{OSSL_FUNC_signature_sign_init_fn, OSSL_FUNC_SIGNATURE_SIGN_INIT};
 use bindings::{OSSL_FUNC_signature_verify_fn, OSSL_FUNC_SIGNATURE_VERIFY};
 use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_INIT};
 
+mod decoder_functions;
 mod keymgmt_functions;
 mod signature_functions;
 
@@ -280,6 +290,57 @@ pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 17] = [
         OSSL_FUNC_KEYMGMT_EXPORT_TYPES_EX,
         OSSL_FUNC_keymgmt_export_types_ex_fn,
         keymgmt_functions::export_types_ex
+    ),
+    OSSL_DISPATCH::END,
+];
+
+// TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
+// https://docs.openssl.org/3.2/man7/provider-decoder/
+pub(super) const DECODER_FUNCTIONS: [OSSL_DISPATCH; 10] = [
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_GET_PARAMS,
+        OSSL_FUNC_decoder_get_params_fn,
+        decoder_functions::get_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_GETTABLE_PARAMS,
+        OSSL_FUNC_decoder_gettable_params_fn,
+        decoder_functions::gettable_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_NEWCTX,
+        OSSL_FUNC_decoder_newctx_fn,
+        decoder_functions::newctx
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_FREECTX,
+        OSSL_FUNC_decoder_freectx_fn,
+        decoder_functions::freectx
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_SET_CTX_PARAMS,
+        OSSL_FUNC_decoder_set_ctx_params_fn,
+        decoder_functions::set_ctx_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS,
+        OSSL_FUNC_decoder_settable_ctx_params_fn,
+        decoder_functions::settable_ctx_params
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_DOES_SELECTION,
+        OSSL_FUNC_decoder_does_selection_fn,
+        decoder_functions::does_selection
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_DECODE,
+        OSSL_FUNC_decoder_decode_fn,
+        decoder_functions::decode
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_DECODER_EXPORT_OBJECT,
+        OSSL_FUNC_decoder_export_object_fn,
+        decoder_functions::export_object
     ),
     OSSL_DISPATCH::END,
 ];
