@@ -240,6 +240,20 @@ impl Default for AdaptersHandle {
             }
         };
 
+        let res = contexts.iter().try_for_each(|ctx| {
+            debug!("🚀 🌟 Calling register_decoders() on {ctx:?}");
+            ctx.register_decoders(&mut handle)
+        });
+        match res {
+            Ok(_) => {
+                trace!("Registered all decoders from all registered adapters");
+            }
+            Err(e) => {
+                error!("Failed registering decoders: {e:?}");
+                panic!()
+            }
+        };
+
         std::mem::swap(&mut handle.contexts, &mut contexts); // Place it back
 
         // then finalize
