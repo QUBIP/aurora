@@ -1,12 +1,16 @@
 use super::*;
 use bindings::{
-    OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES, OSSL_PARAM,
-    OSSL_PASSPHRASE_CALLBACK,
+    OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES,
+    OSSL_KEYMGMT_SELECT_ALL_PARAMETERS, OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
+    OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK,
 };
 use forge::osslparams::*;
 use libc::{c_int, c_void};
 
 struct DecoderContext {}
+
+// TODO fill this in with the values we support (of the OSSL_KEYMGMT_SELECT_* constants)
+const SELECTION_MASK: c_int = 0;
 
 #[named]
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
@@ -79,16 +83,32 @@ pub(super) extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OS
     return ptr;
 }
 
+// based on oqsprov/oqs_decode_der2key.c:der2key_check_selection() in the OQS provider
 #[named]
 pub(super) extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    let _ = selection;
-    warn!("Ignoring selection");
+    debug!(target: log_target!(), "selection: {:?}", selection);
 
-    todo!();
+    if selection == 0 {
+        return 1;
+    }
+
+    let checks = [
+        OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
+        OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
+        OSSL_KEYMGMT_SELECT_ALL_PARAMETERS,
+    ];
+    for check in checks {
+        let check = check as c_int;
+        if selection & check != 0 {
+            return (SELECTION_MASK & check != 0) as c_int;
+        }
+    }
+
+    return 0;
 }
 
 #[named]
