@@ -56,7 +56,10 @@ jobs:
         run: cargo --version
       - name: "Check openssl version"
         run: openssl version -a
-      - run: just list
+      - name: "Build"
+        run: cargo build
+      - run: openssl list -verbose -providers -provider $PWD/target/debug/libaurora.so
+      - run: openssl list -verbose -all-algorithms -provider $PWD/target/debug/libaurora.so
   build-doc:
     runs-on: ubuntu-latest
     permissions:

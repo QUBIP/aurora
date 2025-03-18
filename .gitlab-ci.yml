@@ -18,7 +18,9 @@ stages:
 just-list:
   stage: test
   script:
-    - just list
+    - cargo build
+    - openssl list -verbose -providers -provider $PWD/target/debug/libaurora.so
+    - openssl list -verbose -all-algorithms -provider $PWD/target/debug/libaurora.so
 
 test-code:
   stage: test
