@@ -1,5 +1,9 @@
 use super::*;
-use bindings::{OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK};
+use bindings::{
+    OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES, OSSL_PARAM,
+    OSSL_PASSPHRASE_CALLBACK,
+};
+use forge::osslparams::*;
 use libc::{c_int, c_void};
 
 struct DecoderContext {}
@@ -64,7 +68,15 @@ pub(super) extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OS
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    todo!();
+    static LIST: &[CONST_OSSL_PARAM] = &[
+        OSSLParam::new_const_utf8string(OSSL_DECODER_PARAM_PROPERTIES, None),
+        CONST_OSSL_PARAM::END,
+    ];
+
+    let first: &bindings::OSSL_PARAM = &LIST[0];
+    let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
+
+    return ptr;
 }
 
 #[named]
