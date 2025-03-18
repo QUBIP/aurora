@@ -41,6 +41,22 @@ jobs:
         run: openssl version -a
       - name: "Execute cargo test"
         run: cargo test
+  just-list:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read
+    container: "nisectuni/qubip-ossl-rust-runner:latest-nix"
+    steps:
+      - name: ⤵️ Check out code from GitHub
+        uses: actions/checkout@v1
+      - name: "Check rustc version"
+        run: rustc --version
+      - name: "Check cargo version"
+        run: cargo --version
+      - name: "Check openssl version"
+        run: openssl version -a
+      - run: just list
   build-doc:
     runs-on: ubuntu-latest
     permissions:

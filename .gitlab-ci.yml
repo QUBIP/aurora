@@ -15,6 +15,11 @@ stages:
   - lint
   - test
 
+just-list:
+  stage: test
+  script:
+    - just list
+
 test-code:
   stage: test
   script:
