@@ -241,7 +241,7 @@ impl Default for AdaptersHandle {
         };
 
         let res = contexts.iter().try_for_each(|ctx| {
-            debug!("🚀 🌟 Calling register_decoders() on {ctx:?}");
+            debug!("🚀 📡 Calling register_decoders() on {ctx:?}");
             ctx.register_decoders(&mut handle)
         });
         match res {
