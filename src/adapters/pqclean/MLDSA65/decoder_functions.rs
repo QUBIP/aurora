@@ -8,13 +8,7 @@ struct DecoderContext {}
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
+    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
     let decoder_ctx = Box::new(DecoderContext {});
 
@@ -35,13 +29,7 @@ pub(super) extern "C" fn get_params(params: *mut OSSL_PARAM) -> c_int {
 pub(super) extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
+    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
     todo!();
 }
@@ -74,13 +62,7 @@ pub(super) extern "C" fn set_ctx_params(
 pub(super) extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
+    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
     todo!();
 }
@@ -89,13 +71,7 @@ pub(super) extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OS
 pub(super) extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            error!(target: log_target!(), "{}", e);
-            return ERROR_RET;
-        }
-    };
+    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
     let _ = selection;
     warn!("Ignoring selection");
