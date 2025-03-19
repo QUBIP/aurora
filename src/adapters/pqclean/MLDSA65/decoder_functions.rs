@@ -103,6 +103,7 @@ pub(super) extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int)
     ];
     for check in checks {
         let check = check as c_int;
+        // FIXME use the bitmask crate to do these comparisons
         if selection & check != 0 {
             return (SELECTION_MASK & check != 0) as c_int;
         }
