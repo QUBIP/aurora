@@ -55,7 +55,7 @@ use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
 pub struct OpenSSLProvider<'a> {
     pub data: [u8; 10],
     _handle: *const OSSL_CORE_HANDLE,
-    _core_dispatch: *const OSSL_DISPATCH,
+    _core_dispatch: &'a [OSSL_DISPATCH],
     pub name: &'a str,
     pub version: &'a str,
     params: Vec<OSSLParam<'a>>,
@@ -84,10 +84,22 @@ pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
 impl<'a> OpenSSLProvider<'a> {
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: *const OSSL_DISPATCH) -> Self {
+        let core_dispatch_slice = if !core_dispatch.is_null() {
+            // convert the upcall table to a slice so we can index into it
+            let mut i: usize = 0;
+            // this check is basically "while core_dispatch[i] != OSSL_DISPATCH_END"; for some reason,
+            // OSSL_DISPATCH structs can't be directly compared for (in)equality
+            while unsafe { *core_dispatch.offset(i as isize) }.function_id != 0 {
+                i += 1;
+            }
+            unsafe { std::slice::from_raw_parts(core_dispatch, i) }
+        } else {
+            &[]
+        };
         Self {
             data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
             _handle: handle,
-            _core_dispatch: core_dispatch,
+            _core_dispatch: core_dispatch_slice,
             name: PROV_NAME,
             version: PROV_VER,
             param_array_ptr: None,
