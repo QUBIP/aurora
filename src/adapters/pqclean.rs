@@ -11,6 +11,8 @@ use std::ffi::CStr;
 pub(crate) type OurError = aurora::Error;
 
 const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='pqclean'";
+const DECODER_PROPERTY_DEFINITION: &CStr =
+    c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der'";
 
 #[allow(non_snake_case)]
 pub(crate) mod MLDSA65;
@@ -91,7 +93,7 @@ impl AdapterContextTrait for PQCleanAdapter {
             use MLDSA65 as Alg;
             OSSL_ALGORITHM {
                 algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: PROPERTY_DEFINITION.as_ptr(),
+                property_definition: DECODER_PROPERTY_DEFINITION.as_ptr(),
                 implementation: Alg::DECODER_FUNCTIONS.as_ptr(),
                 algorithm_description: Alg::DESCRIPTION.as_ptr(),
             }
