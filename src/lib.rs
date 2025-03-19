@@ -2,7 +2,7 @@
 extern crate log;
 
 pub(crate) use ::function_name::named;
-use std::ffi::{CStr, CString};
+use std::ffi::{c_int, c_void, CStr, CString};
 use std::sync::LazyLock;
 
 pub type Error = anyhow::Error;
@@ -34,10 +34,10 @@ use bindings::OSSL_PARAM;
 use bindings::{
     OSSL_FUNC_provider_get_capabilities_fn, OSSL_FUNC_provider_get_params_fn,
     OSSL_FUNC_provider_gettable_params_fn, OSSL_FUNC_provider_query_operation_fn,
-    OSSL_FUNC_provider_teardown_fn, OSSL_DISPATCH, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS,
-    OSSL_FUNC_PROVIDER_GET_CAPABILITIES, OSSL_FUNC_PROVIDER_GET_PARAMS,
-    OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_BUILDINFO,
-    OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION,
+    OSSL_FUNC_provider_teardown_fn, OSSL_CORE_BIO, OSSL_DISPATCH, OSSL_FUNC_BIO_READ_EX,
+    OSSL_FUNC_PROVIDER_GETTABLE_PARAMS, OSSL_FUNC_PROVIDER_GET_CAPABILITIES,
+    OSSL_FUNC_PROVIDER_GET_PARAMS, OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN,
+    OSSL_PROV_PARAM_BUILDINFO, OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION,
 };
 use init::OSSL_CORE_HANDLE;
 use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
@@ -165,6 +165,49 @@ impl<'a> OpenSSLProvider<'a> {
             }
         };
         raw_ptr.cast()
+    }
+
+    #[allow(dead_code)]
+    #[allow(non_snake_case)]
+    pub(crate) fn BIO_read_ex(&self, bio: *mut OSSL_CORE_BIO) -> Vec<u8> {
+        // TODO improve error handling (check slice index validity and return Result instead of Vec)
+        if let Some(fn_ptr) = self._core_dispatch[OSSL_FUNC_BIO_READ_EX as usize].function {
+            // is there a way to just specify the type using the type alias OSSL_FUNC_BIO_read_ex_fn
+            // instead of writing it all out again?
+            let ffi_BIO_read_ex = unsafe {
+                std::mem::transmute::<
+                    *const (),
+                    unsafe extern "C" fn(
+                        bio: *mut OSSL_CORE_BIO,
+                        data: *mut c_void,
+                        data_len: usize,
+                        bytes_read: *mut usize,
+                    ) -> c_int,
+                >(fn_ptr as _)
+            };
+            // we might want to tweak this depending on what size data we're usually using it for
+            const DATA_LEN: usize = 2048;
+            let mut data: [u8; DATA_LEN] = [0; DATA_LEN];
+            let mut bytes_read: usize = 0;
+            let mut bytes = Vec::new();
+            loop {
+                let ret = unsafe {
+                    ffi_BIO_read_ex(
+                        bio,
+                        data.as_mut_ptr() as *mut c_void,
+                        DATA_LEN,
+                        &mut bytes_read,
+                    )
+                };
+                if bytes_read == 0 || ret != 1 {
+                    break;
+                }
+                bytes.extend_from_slice(&data[0..bytes_read]);
+            }
+            bytes
+        } else {
+            Vec::new()
+        }
     }
 
     pub fn c_prov_name(&self) -> &CStr {
