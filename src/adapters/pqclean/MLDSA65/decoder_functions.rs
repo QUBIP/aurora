@@ -12,6 +12,38 @@ struct DecoderContext {}
 // TODO fill this in with the values we support (of the OSSL_KEYMGMT_SELECT_* constants)
 const SELECTION_MASK: c_int = 0;
 
+impl TryFrom<*mut c_void> for &mut DecoderContext {
+    type Error = OurError;
+
+    #[named]
+    fn try_from(vptr: *mut c_void) -> Result<Self, Self::Error> {
+        trace!(target: log_target!(), "Called for {}",
+        "impl TryFrom<*mut c_void> for &mut DecoderContext"
+        );
+        let ptr = vptr as *mut DecoderContext;
+        if ptr.is_null() {
+            return Err(anyhow::anyhow!("vptr was null"));
+        }
+        Ok(unsafe { &mut *ptr })
+    }
+}
+
+impl TryFrom<*mut c_void> for &DecoderContext {
+    type Error = OurError;
+
+    #[named]
+    fn try_from(vptr: *mut c_void) -> Result<Self, Self::Error> {
+        trace!(target: log_target!(), "Called for {}",
+        "impl TryFrom<*mut c_void> for &mut DecoderContext"
+        );
+        let ptr = vptr as *mut DecoderContext;
+        if ptr.is_null() {
+            return Err(anyhow::anyhow!("vptr was null"));
+        }
+        Ok(unsafe { &mut *ptr })
+    }
+}
+
 #[named]
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
@@ -122,9 +154,10 @@ pub(super) extern "C" fn decode(
     pw_cb: OSSL_PASSPHRASE_CALLBACK,
     pw_cbarg: *mut c_void,
 ) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    let _ = vdecoderctx;
+    let _: &DecoderContext = handleResult!(vdecoderctx.try_into());
     let _ = in_;
     let _ = selection;
     let _ = data_cb;
