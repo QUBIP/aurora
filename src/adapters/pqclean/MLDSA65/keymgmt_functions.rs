@@ -548,6 +548,41 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
     return ptr;
 }
 
+#[named]
+/// Implements key loading by object reference, also a constructor for a new Key object
+///
+/// Refer to [provider-keymgmt(7ossl)] and [provider-object(7ossl)].
+///
+/// # Notes
+///
+/// This function is tightly integrated with the
+/// [`OSSL_FUNC_decoder_decode_fn`][provider-decoder(7ossl)]
+/// exposed by [decoders registered][`super::decoder_functions`]
+/// for [this algorithm][`super`]
+/// by [this adapter][`super::super`].
+///
+/// Eventually this function is called by the callback passed to OSSL_FUNC_decoder_decode_fn
+/// hence they must agree on how the reference is being passed around.
+///
+/// [provider-keymgmt(7ossl)]: https://docs.openssl.org/master/man7/provider-keymgmt/
+/// [provider-object(7ossl)]: https://docs.openssl.org/master/man7/provider-object/
+/// [provider-decoder(7ossl)]: https://docs.openssl.org/master/man7/provider-decoder/
+pub(super) unsafe extern "C" fn load(reference: *const c_void, reference_sz: usize) -> *mut c_void {
+    const ERROR_RET: *mut c_void = std::ptr::null_mut();
+    trace!(target: log_target!(), "{}", "Called!");
+
+    assert_eq!(reference_sz, std::mem::size_of::<KeyPair>());
+    if reference.is_null() {
+        error!(target: log_target!(), "reference should not be NULL");
+        unreachable!()
+    }
+
+    let keypair = handleResult!(<&KeyPair>::try_from(reference as *mut c_void));
+    debug!(target: log_target!(), "keypair: {keypair:#?}");
+
+    return std::ptr::from_ref(keypair).cast_mut() as *mut c_void;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

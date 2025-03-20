@@ -15,6 +15,7 @@ use bindings::{OSSL_FUNC_keymgmt_gettable_params_fn, OSSL_FUNC_KEYMGMT_GETTABLE_
 use bindings::{OSSL_FUNC_keymgmt_has_fn, OSSL_FUNC_KEYMGMT_HAS};
 use bindings::{OSSL_FUNC_keymgmt_import_fn, OSSL_FUNC_KEYMGMT_IMPORT};
 use bindings::{OSSL_FUNC_keymgmt_import_types_ex_fn, OSSL_FUNC_KEYMGMT_IMPORT_TYPES_EX};
+use bindings::{OSSL_FUNC_keymgmt_load_fn, OSSL_FUNC_KEYMGMT_LOAD};
 use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
 use bindings::{OSSL_FUNC_keymgmt_set_params_fn, OSSL_FUNC_KEYMGMT_SET_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_settable_params_fn, OSSL_FUNC_KEYMGMT_SETTABLE_PARAMS};
@@ -281,6 +282,11 @@ pub(super) const KMGMT_FUNCTIONS: &[OSSL_DISPATCH] = &[
         OSSL_FUNC_KEYMGMT_EXPORT_TYPES_EX,
         OSSL_FUNC_keymgmt_export_types_ex_fn,
         keymgmt_functions::export_types_ex
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_KEYMGMT_LOAD,
+        OSSL_FUNC_keymgmt_load_fn,
+        keymgmt_functions::load
     ),
     OSSL_DISPATCH::END,
 ];
