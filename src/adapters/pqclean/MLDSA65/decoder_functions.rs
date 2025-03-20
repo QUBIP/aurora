@@ -227,3 +227,91 @@ pub(super) extern "C" fn export_object(
 
     todo!();
 }
+
+// FIXME: this should likely be in openssl_provider_forge, and maybe defined as a trait
+pub(crate) struct DECODER {
+    pub(crate) property_definition: &'static CStr,
+    pub(crate) dispatch_table: &'static [OSSL_DISPATCH],
+}
+
+pub(crate) const DER_DECODER: DECODER = DECODER {
+    property_definition: c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der'",
+    dispatch_table: {
+        mod dispath_table_module {
+            #![expect(unused_imports)] // FIXME: get rid of this
+
+            use super::*;
+            use bindings::{OSSL_FUNC_decoder_decode_fn, OSSL_FUNC_DECODER_DECODE};
+            use bindings::{OSSL_FUNC_decoder_does_selection_fn, OSSL_FUNC_DECODER_DOES_SELECTION};
+            use bindings::{OSSL_FUNC_decoder_export_object_fn, OSSL_FUNC_DECODER_EXPORT_OBJECT};
+            use bindings::{OSSL_FUNC_decoder_freectx_fn, OSSL_FUNC_DECODER_FREECTX};
+            use bindings::{OSSL_FUNC_decoder_get_params_fn, OSSL_FUNC_DECODER_GET_PARAMS};
+            use bindings::{
+                OSSL_FUNC_decoder_gettable_params_fn, OSSL_FUNC_DECODER_GETTABLE_PARAMS,
+            };
+            use bindings::{OSSL_FUNC_decoder_newctx_fn, OSSL_FUNC_DECODER_NEWCTX};
+            use bindings::{OSSL_FUNC_decoder_set_ctx_params_fn, OSSL_FUNC_DECODER_SET_CTX_PARAMS};
+            use bindings::{
+                OSSL_FUNC_decoder_settable_ctx_params_fn, OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS,
+            };
+
+            // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
+            // https://docs.openssl.org/3.2/man7/provider-decoder/
+            pub(super) const DER_DECODER_FUNCTIONS: &[OSSL_DISPATCH] = &[
+                #[cfg(any())]
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_GET_PARAMS,
+                    OSSL_FUNC_decoder_get_params_fn,
+                    decoder_functions::get_params
+                ),
+                #[cfg(any())]
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_GETTABLE_PARAMS,
+                    OSSL_FUNC_decoder_gettable_params_fn,
+                    decoder_functions::gettable_params
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_NEWCTX,
+                    OSSL_FUNC_decoder_newctx_fn,
+                    decoder_functions::newctx
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_FREECTX,
+                    OSSL_FUNC_decoder_freectx_fn,
+                    decoder_functions::freectx
+                ),
+                #[cfg(any())]
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_SET_CTX_PARAMS,
+                    OSSL_FUNC_decoder_set_ctx_params_fn,
+                    decoder_functions::set_ctx_params
+                ),
+                #[cfg(any())]
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS,
+                    OSSL_FUNC_decoder_settable_ctx_params_fn,
+                    decoder_functions::settable_ctx_params
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_DOES_SELECTION,
+                    OSSL_FUNC_decoder_does_selection_fn,
+                    decoder_functions::does_selection
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_DECODE,
+                    OSSL_FUNC_decoder_decode_fn,
+                    decoder_functions::decode
+                ),
+                #[cfg(any())]
+                dispatch_table_entry!(
+                    OSSL_FUNC_DECODER_EXPORT_OBJECT,
+                    OSSL_FUNC_decoder_export_object_fn,
+                    decoder_functions::export_object
+                ),
+                OSSL_DISPATCH::END,
+            ];
+        }
+
+        dispath_table_module::DER_DECODER_FUNCTIONS
+    },
+};
