@@ -106,6 +106,20 @@ impl<'a> KeyPair<'a> {
     }
 
     #[named]
+    pub(super) fn from_parts(
+        provctx: &'a OpenSSLProvider,
+        private: Option<PrivateKey>,
+        public: Option<PublicKey>,
+    ) -> Self {
+        trace!(target: log_target!(), "Called");
+        KeyPair {
+            private,
+            public,
+            provctx,
+        }
+    }
+
+    #[named]
     fn generate(provctx: &'a OpenSSLProvider) -> Self {
         trace!(target: log_target!(), "Called");
 
@@ -151,7 +165,7 @@ impl TryFrom<*mut c_void> for &mut KeyPair<'_> {
     }
 }
 
-impl TryFrom<*mut core::ffi::c_void> for &KeyPair<'_> {
+impl TryFrom<*mut c_void> for &KeyPair<'_> {
     type Error = KMGMTError;
 
     #[named]

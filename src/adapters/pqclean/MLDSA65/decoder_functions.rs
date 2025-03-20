@@ -7,7 +7,7 @@ use bindings::{
 };
 use forge::ossl_callback::OSSLCallback;
 use forge::osslparams::*;
-use libc::{c_int, c_void};
+use libc::{c_char, c_int, c_void};
 use std::ffi::CString;
 
 struct DecoderContext<'a> {
