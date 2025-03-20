@@ -8,7 +8,8 @@ use forge::osslparams::*;
 use libc::{c_int, c_void};
 use std::ffi::CString;
 
-struct DecoderContext {
+struct DecoderContext<'a> {
+    provctx: &'a OpenSSLProvider<'a>,
     // worry about ownership later
     properties: Option<CString>,
 }
@@ -16,7 +17,7 @@ struct DecoderContext {
 // TODO is this the right value? probably not, if we'll only be decoding public keys....
 const SELECTION_MASK: c_int = OSSL_KEYMGMT_SELECT_ALL as c_int;
 
-impl TryFrom<*mut c_void> for &mut DecoderContext {
+impl<'a> TryFrom<*mut c_void> for &mut DecoderContext<'a> {
     type Error = OurError;
 
     #[named]
@@ -32,7 +33,7 @@ impl TryFrom<*mut c_void> for &mut DecoderContext {
     }
 }
 
-impl TryFrom<*mut c_void> for &DecoderContext {
+impl<'a> TryFrom<*mut c_void> for &DecoderContext<'a> {
     type Error = OurError;
 
     #[named]
@@ -52,9 +53,12 @@ impl TryFrom<*mut c_void> for &DecoderContext {
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    let decoder_ctx = Box::new(DecoderContext { properties: None });
+    let decoder_ctx = Box::new(DecoderContext {
+        provctx,
+        properties: None,
+    });
 
     Box::into_raw(decoder_ctx).cast()
 }
