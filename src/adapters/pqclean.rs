@@ -88,11 +88,12 @@ impl AdapterContextTrait for PQCleanAdapter {
         trace!(target: log_target!(), "{}", "Called!");
 
         let decoder_algorithms = Box::new([{
+            use Alg::DER2SubjectPublicKeyInfo_DECODER as AlgDecoder;
             use MLDSA65 as Alg;
             OSSL_ALGORITHM {
                 algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: Alg::DER_DECODER.property_definition.as_ptr(),
-                implementation: Alg::DER_DECODER.dispatch_table.as_ptr(),
+                property_definition: AlgDecoder.property_definition.as_ptr(),
+                implementation: AlgDecoder.dispatch_table.as_ptr(),
                 algorithm_description: Alg::DESCRIPTION.as_ptr(),
             }
         }]);

@@ -234,8 +234,10 @@ pub(crate) struct DECODER {
     pub(crate) dispatch_table: &'static [OSSL_DISPATCH],
 }
 
-pub(crate) const DER_DECODER: DECODER = DECODER {
-    property_definition: c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der'",
+#[expect(non_upper_case_globals)]
+pub(crate) const DER2SubjectPublicKeyInfo_DECODER: DECODER = DECODER {
+    property_definition:
+        c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='SubjectPublicKeyInfo'",
     dispatch_table: {
         mod dispath_table_module {
             #![expect(unused_imports)] // FIXME: get rid of this
