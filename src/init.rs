@@ -26,8 +26,8 @@ fn inner_try_init_logging() -> Result<(), OurError> {
     logger::Builder::from_default_env()
         //.filter_level(log::LevelFilter::Debug)
         .format_timestamp(None) // Optional: disable timestamps
-        .format_module_path(true) // Optional: disable module path
-        .format_target(false) // Optional: disable target
+        .format_module_path(false) // Optional: disable module path
+        .format_target(true) // Optional: enable target
         .format_source_path(true)
         .try_init()
         .map_err(OurError::from)

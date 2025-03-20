@@ -70,7 +70,7 @@ pub(super) extern "C" fn get_params(params: *mut OSSL_PARAM) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
 
     let _ = params;
-    warn!("Ignoring params");
+    warn!(target: log_target!(), "Ignoring params");
 
     todo!();
 }
@@ -197,19 +197,19 @@ pub(super) extern "C" fn decode(
     pw_cbarg: *mut c_void,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
-    trace!(target: log_target!(), "{}", "Called decode!");
+    trace!(target: log_target!(), "{}", "Called!");
 
-    debug!("Got selection in decode(): {}", selection);
+    debug!(target: log_target!(), "Got selection in decode(): {}", selection);
 
     let decoderctx: &DecoderContext = handleResult!(vdecoderctx.try_into());
     let cb = handleResult!(OSSLCallback::try_new(data_cb, data_cbarg));
 
     let bytes = handleResult!(decoderctx.provctx.BIO_read_ex(in_));
-    debug!("Read {} bytes in decode()", bytes.len());
+    debug!(target: log_target!(), "Read {} bytes in decode()", bytes.len());
 
     // TODO actually parse the properties, don't just assume it's a public key!
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
-    debug!("Using properties: {:?}", decoderctx.properties);
+    debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
 
     let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
         return d.read_element::<asn1::Sequence>()?.parse(|d| {
@@ -259,7 +259,7 @@ pub(super) extern "C" fn decode(
 
     let _ = pw_cb;
     let _ = pw_cbarg;
-    warn!("Ignoring pw_cb and pw_cbarg");
+    warn!(target: log_target!(), "Ignoring pw_cb and pw_cbarg");
 
     // TODO don't just always return 1
     1
@@ -280,7 +280,7 @@ pub(super) extern "C" fn export_object(
     let _ = objref_sz;
     let _ = export_cb;
     let _ = export_cbarg;
-    warn!("Ignoring all arguments");
+    warn!(target: log_target!(), "Ignoring all arguments");
 
     todo!();
 }
