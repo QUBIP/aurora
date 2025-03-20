@@ -1,16 +1,20 @@
 use super::*;
 use bindings::{
-    OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES,
+    OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES, OSSL_KEYMGMT_SELECT_ALL,
     OSSL_KEYMGMT_SELECT_ALL_PARAMETERS, OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
     OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK,
 };
 use forge::osslparams::*;
 use libc::{c_int, c_void};
+use std::ffi::CString;
 
-struct DecoderContext {}
+struct DecoderContext {
+    // worry about ownership later
+    properties: Option<CString>,
+}
 
-// TODO fill this in with the values we support (of the OSSL_KEYMGMT_SELECT_* constants)
-const SELECTION_MASK: c_int = 0;
+// TODO is this the right value? probably not, if we'll only be decoding public keys....
+const SELECTION_MASK: c_int = OSSL_KEYMGMT_SELECT_ALL as c_int;
 
 impl TryFrom<*mut c_void> for &mut DecoderContext {
     type Error = OurError;
@@ -50,7 +54,7 @@ pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    let decoder_ctx = Box::new(DecoderContext {});
+    let decoder_ctx = Box::new(DecoderContext { properties: None });
 
     Box::into_raw(decoder_ctx).cast()
 }
@@ -90,12 +94,43 @@ pub(super) extern "C" fn set_ctx_params(
     params: *const OSSL_PARAM,
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
+    const ERROR_RET: c_int = 0;
+    const SUCCESS: c_int = 1;
 
-    let _ = vdecoderctx;
-    let _ = params;
-    warn!("Ignoring vdecoderctx and params");
+    let decoderctx: &mut DecoderContext = handleResult!(vdecoderctx.try_into());
 
-    todo!();
+    let params = match OSSLParam::try_from(params) {
+        Ok(params) => params,
+        Err(e) => {
+            error!(target: log_target!(), "Failed decoding params: {:?}", e);
+            return ERROR_RET;
+        }
+    };
+
+    for p in params {
+        let key = match p.get_key() {
+            Some(key) => key,
+            None => {
+                error!(target: log_target!(), "Param without valid key {:?}", p);
+                return ERROR_RET;
+            }
+        };
+
+        if key == OSSL_DECODER_PARAM_PROPERTIES {
+            let bytes: &[u8] = match p.get() {
+                Some(bytes) => bytes,
+                None => handleResult!(Err(anyhow!("Invalid OSSL_DECODER_PARAM_PROPERTIES"))),
+            };
+            debug!(target: log_target!(), "The received properties are: {:X?}", bytes);
+            debug!(target: log_target!(), "And as a string: {:X?}", CString::new(bytes));
+
+            decoderctx.properties =
+                Some(CString::new(bytes).expect("properties should be parseable as CString"));
+        } else {
+            debug!(target: log_target!(), "Ignoring param {:?}", key);
+        }
+    }
+    return SUCCESS;
 }
 
 #[named]
