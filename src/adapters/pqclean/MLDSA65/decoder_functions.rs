@@ -213,7 +213,10 @@ pub(super) extern "C" fn decode(
 
     let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
         return d.read_element::<asn1::Sequence>()?.parse(|d| {
-            let algorithm_identifier = d.read_element::<asn1::ObjectIdentifier>()?;
+            let algorithm_identifier = d.read_element::<asn1::Sequence>()?.parse(|d| {
+                let algorithm_identifier = d.read_element::<asn1::ObjectIdentifier>()?;
+                return Ok(algorithm_identifier);
+            })?;
             let subject_public_key = d.read_element::<asn1::BitString>()?;
             return Ok((algorithm_identifier, subject_public_key));
         });
