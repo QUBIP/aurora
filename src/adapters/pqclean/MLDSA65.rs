@@ -174,7 +174,7 @@ pub(crate) mod capabilities {
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/3.2/man7/provider-signature/
-pub(super) const SIG_FUNCTIONS: [OSSL_DISPATCH; 7] = [
+pub(super) const SIG_FUNCTIONS: &[OSSL_DISPATCH] = &[
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_NEWCTX,
         OSSL_FUNC_signature_newctx_fn,
@@ -210,7 +210,7 @@ pub(super) const SIG_FUNCTIONS: [OSSL_DISPATCH; 7] = [
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/3.2/man7/provider-keymgmt/
-pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 17] = [
+pub(super) const KMGMT_FUNCTIONS: &[OSSL_DISPATCH] = &[
     dispatch_table_entry!(
         OSSL_FUNC_KEYMGMT_NEW,
         OSSL_FUNC_keymgmt_new_fn,
@@ -296,7 +296,7 @@ pub(super) const KMGMT_FUNCTIONS: [OSSL_DISPATCH; 17] = [
 
 // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
 // https://docs.openssl.org/3.2/man7/provider-decoder/
-pub(super) const DECODER_FUNCTIONS: [OSSL_DISPATCH; 10] = [
+pub(super) const DECODER_FUNCTIONS: &[OSSL_DISPATCH] = &[
     dispatch_table_entry!(
         OSSL_FUNC_DECODER_GET_PARAMS,
         OSSL_FUNC_decoder_get_params_fn,
