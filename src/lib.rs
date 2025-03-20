@@ -1,12 +1,14 @@
 #[macro_use]
 extern crate log;
 
+use anyhow::anyhow;
 pub(crate) use ::function_name::named;
+use std::collections::HashMap;
 use std::ffi::{c_int, c_void, CStr, CString};
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
+use zeroize::{Zeroize, Zeroizing};
 
 pub type Error = anyhow::Error;
-use anyhow::anyhow;
 
 macro_rules! function_path {
     () => {
@@ -56,7 +58,9 @@ use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
 pub struct OpenSSLProvider<'a> {
     pub data: [u8; 10],
     _handle: *const OSSL_CORE_HANDLE,
-    _core_dispatch: &'a [OSSL_DISPATCH],
+    #[expect(dead_code)]
+    core_dispatch_slice: &'a [OSSL_DISPATCH],
+    core_dispatch_map: HashMap<u32, &'a OSSL_DISPATCH>,
     pub name: &'a str,
     pub version: &'a str,
     params: Vec<OSSLParam<'a>>,
@@ -84,23 +88,16 @@ pub static PROV_VER: &str = env!("CARGO_PKG_VERSION");
 pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
 impl<'a> OpenSSLProvider<'a> {
-    pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: *const OSSL_DISPATCH) -> Self {
-        // convert the upcall table to a slice so we can use it more easily
-        let core_dispatch_slice = if !core_dispatch.is_null() {
-            let mut i: usize = 0;
-            // this check is basically "while core_dispatch[i] != OSSL_DISPATCH_END"; for some reason,
-            // OSSL_DISPATCH structs can't be directly compared for (in)equality
-            while unsafe { *core_dispatch.offset(i as isize) }.function_id != 0 {
-                i += 1;
-            }
-            unsafe { std::slice::from_raw_parts(core_dispatch, i) }
-        } else {
-            &[]
-        };
+    pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch_slice: &'a [OSSL_DISPATCH]) -> Self {
+        let mut core_dispatch_map = HashMap::with_capacity(core_dispatch_slice.len());
+        for entry in core_dispatch_slice {
+            core_dispatch_map.insert(entry.function_id as u32, entry);
+        }
         Self {
             data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
             _handle: handle,
-            _core_dispatch: core_dispatch_slice,
+            core_dispatch_slice,
+            core_dispatch_map,
             name: PROV_NAME,
             version: PROV_VER,
             param_array_ptr: None,
@@ -168,22 +165,40 @@ impl<'a> OpenSSLProvider<'a> {
         raw_ptr.cast()
     }
 
+    fn fn_from_core_dispatch(&self, id: u32) -> Option<unsafe extern "C" fn()> {
+        let f = self.core_dispatch_map.get(&id).map(|f| f.function);
+        match f {
+            Some(Some(f)) => Some(f),
+            Some(None) => {
+                error!("core_dispatch entry for function_id {id:} was NULL");
+                None
+            }
+            None => {
+                warn!("no entry in core_dispatch for function_id {id:}");
+                None
+            }
+        }
+    }
+
     #[allow(dead_code)]
-    #[allow(non_snake_case)]
-    pub(crate) fn BIO_read_ex(&self, bio: *mut OSSL_CORE_BIO) -> Result<Vec<u8>, Error> {
-        // TODO we should cache the extracted function pointer somewhere in the provider context,
-        // so we can just call it instead of having to dig it out like this every time
-        let d = self
-            ._core_dispatch
-            .iter()
-            .find(|&&d| d.function_id == OSSL_FUNC_BIO_READ_EX as c_int)
-            .ok_or(anyhow!(
-                "No entry found for BIO_read_ex() in core dispatch table"
-            ))?;
-        let fn_ptr = d.function.ok_or(anyhow!(
-            "No function pointer available in BIO_read_ex()'s dispatch table entry"
-        ))?;
-        // is there a way to just specify the type using the type alias OSSL_FUNC_BIO_read_ex_fn
+    #[expect(non_snake_case)]
+    /// Makes a BIO_read_ex() core upcall.
+    ///
+    /// Refer to [BIO_read_ex(3ossl)](https://docs.openssl.org/3.5/man3/BIO_read/).
+    pub(crate) fn BIO_read_ex(&self, bio: *mut OSSL_CORE_BIO) -> Result<Box<[u8]>, Error> {
+        static CELL: OnceLock<Option<unsafe extern "C" fn()>> = OnceLock::new();
+        let fn_ptr = CELL.get_or_init(|| {
+            let f = self.fn_from_core_dispatch(OSSL_FUNC_BIO_READ_EX);
+            f
+        });
+        let fn_ptr = match fn_ptr {
+            Some(f) => f,
+            None => {
+                return Err(anyhow::anyhow!("No upcall pointer"));
+            }
+        };
+
+        // FIXME: is there a way to just specify the type using the type alias OSSL_FUNC_BIO_read_ex_fn
         // instead of writing it all out again?
         let ffi_BIO_read_ex = unsafe {
             std::mem::transmute::<
@@ -194,28 +209,34 @@ impl<'a> OpenSSLProvider<'a> {
                     data_len: usize,
                     bytes_read: *mut usize,
                 ) -> c_int,
-            >(fn_ptr as _)
+            >(*fn_ptr as _)
         };
-        // we might want to tweak this depending on what size data we're usually using it for
-        const DATA_LEN: usize = 2048;
-        let mut data: [u8; DATA_LEN] = [0; DATA_LEN];
+
+        // We use a mutable Vec to buffer reads, so we can do big reads on the heap and minimize calls
+        // we might want to tweak the capacity depending on what size data we're usually using it for
+        let mut buffer: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::with_capacity(8 * 1024 * 1024));
         let mut bytes_read: usize = 0;
-        let mut bytes = Vec::new();
+
+        let mut ret_buffer: Vec<u8> = Vec::new();
         loop {
             let ret = unsafe {
                 ffi_BIO_read_ex(
                     bio,
-                    data.as_mut_ptr() as *mut c_void,
-                    DATA_LEN,
+                    buffer.as_mut_ptr() as *mut c_void,
+                    buffer.capacity(),
                     &mut bytes_read,
                 )
             };
+            if ret != 1 {
+                ret_buffer.zeroize();
+                return Err(anyhow!("Underlying upcall to BIO_read_ex returned {ret:}"));
+            }
             if bytes_read == 0 || ret != 1 {
                 break;
             }
-            bytes.extend_from_slice(&data[0..bytes_read]);
+            ret_buffer.extend_from_slice(&buffer[0..bytes_read]);
         }
-        Ok(bytes)
+        Ok(ret_buffer.into_boxed_slice())
     }
 
     pub fn c_prov_name(&self) -> &CStr {

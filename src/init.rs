@@ -7,6 +7,7 @@ use bindings::OSSL_PARAM;
 use bindings::{OSSL_PROV_PARAM_BUILDINFO, OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION};
 use libc::{c_int, c_void};
 use osslparams::OSSLParam;
+use std::sync::Once;
 
 use crate::{PROV_NAME, PROV_VER};
 
@@ -33,8 +34,6 @@ fn inner_try_init_logging() -> Result<(), OurError> {
 }
 
 pub(crate) fn try_init_logging() -> Result<(), OurError> {
-    use std::sync::Once;
-
     static INIT: Once = Once::new();
 
     INIT.call_once(|| {
@@ -60,7 +59,27 @@ pub extern "C" fn OSSL_provider_init(
     trace!(target: log_target!(), "Just called a 🦀 Rust function from C!");
     trace!(target: log_target!(), "This is 🌌 {} v{}", PROV_NAME, PROV_VER);
 
-    let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch));
+    // convert the upcall table to a slice for easier handling
+    let core_dispatch_slice = if !core_dispatch.is_null() {
+        let mut i: usize = 0;
+        loop {
+            let f = unsafe { *core_dispatch.offset(i as isize) };
+            if f.function_id == OSSL_DISPATCH::END.function_id {
+                break;
+            }
+            assert!(
+                i < 512,
+                "the core_dispatch table seems to be excessively long, bailing!"
+            );
+            i += 1;
+        }
+        unsafe { std::slice::from_raw_parts(core_dispatch, i) }
+    } else {
+        error!("Got a null core_dispath table");
+        unreachable!("Got a null core_dispath table");
+    };
+
+    let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch_slice));
     let ourdispatch = prov.get_provider_dispatch();
     unsafe {
         *provctx = Box::into_raw(prov).cast();
