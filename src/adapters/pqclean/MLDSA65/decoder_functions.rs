@@ -1,9 +1,11 @@
 use super::*;
 use bindings::{
-    OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES, OSSL_KEYMGMT_SELECT_ALL,
+    OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES,
     OSSL_KEYMGMT_SELECT_ALL_PARAMETERS, OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
-    OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK,
+    OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_OBJECT_PARAM_DATA_TYPE, OSSL_OBJECT_PARAM_REFERENCE,
+    OSSL_OBJECT_PARAM_TYPE, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK,
 };
+use forge::ossl_callback::OSSLCallback;
 use forge::osslparams::*;
 use libc::{c_int, c_void};
 use std::ffi::CString;
@@ -14,8 +16,8 @@ struct DecoderContext<'a> {
     properties: Option<CString>,
 }
 
-// TODO is this the right value? probably not, if we'll only be decoding public keys....
-const SELECTION_MASK: c_int = OSSL_KEYMGMT_SELECT_ALL as c_int;
+// TODO is this the right value?
+const SELECTION_MASK: c_int = OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int;
 
 impl<'a> TryFrom<*mut c_void> for &mut DecoderContext<'a> {
     type Error = OurError;
@@ -183,6 +185,7 @@ pub(super) extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int)
     return 0;
 }
 
+// based on oqsprov/oqs_decode_der2key.c:oqs_der2key_decode() in the OQS provider
 #[named]
 pub(super) extern "C" fn decode(
     vdecoderctx: *mut c_void,
@@ -194,18 +197,69 @@ pub(super) extern "C" fn decode(
     pw_cbarg: *mut c_void,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
-    trace!(target: log_target!(), "{}", "Called!");
+    trace!(target: log_target!(), "{}", "Called decode!");
 
-    let _: &DecoderContext = handleResult!(vdecoderctx.try_into());
-    let _ = in_;
-    let _ = selection;
-    let _ = data_cb;
-    let _ = data_cbarg;
+    debug!("Got selection in decode(): {}", selection);
+
+    let decoderctx: &DecoderContext = handleResult!(vdecoderctx.try_into());
+    let cb = handleResult!(OSSLCallback::try_new(data_cb, data_cbarg));
+
+    let bytes = handleResult!(decoderctx.provctx.BIO_read_ex(in_));
+    debug!("Read {} bytes in decode()", bytes.len());
+
+    // TODO actually parse the properties, don't just assume it's a public key!
+    // https://docs.openssl.org/3.2/man7/property/#global-and-local
+    debug!("Using properties: {:?}", decoderctx.properties);
+
+    let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
+        return d.read_element::<asn1::Sequence>()?.parse(|d| {
+            let algorithm_identifier = d.read_element::<asn1::ObjectIdentifier>()?;
+            let subject_public_key = d.read_element::<asn1::BitString>()?;
+            return Ok((algorithm_identifier, subject_public_key));
+        });
+    });
+
+    // wrapping the asn1::parse() call itself in handleResult!() leaves the compiler too little
+    // information to be able to infer types, so I left it like this for now
+    let (oid, key) = handleResult!(result);
+
+    // yes, this really is the "right" way to do this (see the asn1::ObjectIdentifier docs)
+    if oid != asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18) {
+        panic!("OID mismatch: found {}", oid);
+    }
+
+    // key bytes get converted to i8 to match the type signature of OSSLParam::new_const_octetstring
+    #[allow(unused_mut)]
+    let mut key_bytes = key.as_bytes().iter().map(|b| *b as i8).collect::<Box<_>>();
+
+    // TODO this constant comes from core_object.h in openssl: include that file in the wrapper.h
+    // file we feed to bindgen in the forge, so a binding gets generated for it
+    const OSSL_OBJECT_PKEY: c_int = 2;
+    #[allow(unused_mut)]
+    let mut object_type = OSSL_OBJECT_PKEY;
+
+    #[allow(unused_mut)]
+    let mut keytype_name = c"";
+
+    // TODO clean up this mess
+    // These aren't "really" const, we're just using these functions as a shortcut to create
+    // OSSL_PARAM structs. the data backing them is mutable, so it should "work" for now.
+    // But the compiler can't "see" that; hence the "unused_mut"s explicitly suppressed above.
+    let params = &[
+        OSSLParam::new_const_int(OSSL_OBJECT_PARAM_TYPE, Some(&object_type)),
+        OSSLParam::new_const_utf8string(OSSL_OBJECT_PARAM_DATA_TYPE, Some(&keytype_name)),
+        OSSLParam::new_const_octetstring(OSSL_OBJECT_PARAM_REFERENCE, Some(&key_bytes)),
+        CONST_OSSL_PARAM::END,
+    ];
+
+    cb.call(params.as_ptr() as *const OSSL_PARAM);
+
     let _ = pw_cb;
     let _ = pw_cbarg;
-    warn!("Ignoring all arguments");
+    warn!("Ignoring pw_cb and pw_cbarg");
 
-    todo!();
+    // TODO don't just always return 1
+    1
 }
 
 #[named]
