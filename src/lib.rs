@@ -6,6 +6,7 @@ use std::ffi::{c_int, c_void, CStr, CString};
 use std::sync::LazyLock;
 
 pub type Error = anyhow::Error;
+use anyhow::anyhow;
 
 macro_rules! function_path {
     () => {
@@ -84,8 +85,8 @@ pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
 impl<'a> OpenSSLProvider<'a> {
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: *const OSSL_DISPATCH) -> Self {
+        // convert the upcall table to a slice so we can use it more easily
         let core_dispatch_slice = if !core_dispatch.is_null() {
-            // convert the upcall table to a slice so we can index into it
             let mut i: usize = 0;
             // this check is basically "while core_dispatch[i] != OSSL_DISPATCH_END"; for some reason,
             // OSSL_DISPATCH structs can't be directly compared for (in)equality
@@ -169,45 +170,52 @@ impl<'a> OpenSSLProvider<'a> {
 
     #[allow(dead_code)]
     #[allow(non_snake_case)]
-    pub(crate) fn BIO_read_ex(&self, bio: *mut OSSL_CORE_BIO) -> Vec<u8> {
-        // TODO improve error handling (check slice index validity and return Result instead of Vec)
-        if let Some(fn_ptr) = self._core_dispatch[OSSL_FUNC_BIO_READ_EX as usize].function {
-            // is there a way to just specify the type using the type alias OSSL_FUNC_BIO_read_ex_fn
-            // instead of writing it all out again?
-            let ffi_BIO_read_ex = unsafe {
-                std::mem::transmute::<
-                    *const (),
-                    unsafe extern "C" fn(
-                        bio: *mut OSSL_CORE_BIO,
-                        data: *mut c_void,
-                        data_len: usize,
-                        bytes_read: *mut usize,
-                    ) -> c_int,
-                >(fn_ptr as _)
+    pub(crate) fn BIO_read_ex(&self, bio: *mut OSSL_CORE_BIO) -> Result<Vec<u8>, Error> {
+        // TODO we should cache the extracted function pointer somewhere in the provider context,
+        // so we can just call it instead of having to dig it out like this every time
+        let d = self
+            ._core_dispatch
+            .iter()
+            .find(|&&d| d.function_id == OSSL_FUNC_BIO_READ_EX as c_int)
+            .ok_or(anyhow!(
+                "No entry found for BIO_read_ex() in core dispatch table"
+            ))?;
+        let fn_ptr = d.function.ok_or(anyhow!(
+            "No function pointer available in BIO_read_ex()'s dispatch table entry"
+        ))?;
+        // is there a way to just specify the type using the type alias OSSL_FUNC_BIO_read_ex_fn
+        // instead of writing it all out again?
+        let ffi_BIO_read_ex = unsafe {
+            std::mem::transmute::<
+                *const (),
+                unsafe extern "C" fn(
+                    bio: *mut OSSL_CORE_BIO,
+                    data: *mut c_void,
+                    data_len: usize,
+                    bytes_read: *mut usize,
+                ) -> c_int,
+            >(fn_ptr as _)
+        };
+        // we might want to tweak this depending on what size data we're usually using it for
+        const DATA_LEN: usize = 2048;
+        let mut data: [u8; DATA_LEN] = [0; DATA_LEN];
+        let mut bytes_read: usize = 0;
+        let mut bytes = Vec::new();
+        loop {
+            let ret = unsafe {
+                ffi_BIO_read_ex(
+                    bio,
+                    data.as_mut_ptr() as *mut c_void,
+                    DATA_LEN,
+                    &mut bytes_read,
+                )
             };
-            // we might want to tweak this depending on what size data we're usually using it for
-            const DATA_LEN: usize = 2048;
-            let mut data: [u8; DATA_LEN] = [0; DATA_LEN];
-            let mut bytes_read: usize = 0;
-            let mut bytes = Vec::new();
-            loop {
-                let ret = unsafe {
-                    ffi_BIO_read_ex(
-                        bio,
-                        data.as_mut_ptr() as *mut c_void,
-                        DATA_LEN,
-                        &mut bytes_read,
-                    )
-                };
-                if bytes_read == 0 || ret != 1 {
-                    break;
-                }
-                bytes.extend_from_slice(&data[0..bytes_read]);
+            if bytes_read == 0 || ret != 1 {
+                break;
             }
-            bytes
-        } else {
-            Vec::new()
+            bytes.extend_from_slice(&data[0..bytes_read]);
         }
+        Ok(bytes)
     }
 
     pub fn c_prov_name(&self) -> &CStr {
