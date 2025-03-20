@@ -79,12 +79,12 @@ impl<'a> Debug for KeyPair<'a> {
             }
             #[cfg(debug_assertions)] // code compiled only in development builds
             Some(p) => {
-                format!("{:?}", p.encode())
+                format!("{:02x?}", p.encode())
             }
             None => format!("{:?}", None::<()>),
         };
         let public = match &self.public {
-            Some(p) => format!("{:?}", p.encode()),
+            Some(p) => format!("{:02x?}", p.encode()),
             None => format!("{:?}", None::<()>),
         };
         f.debug_struct("KeyPair")
