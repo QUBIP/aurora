@@ -79,7 +79,7 @@ pub(super) extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_P
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    todo!();
+    std::ptr::from_ref(&CONST_OSSL_PARAM::END)
 }
 
 #[named]
