@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate log;
 
-use anyhow::anyhow;
 pub(crate) use ::function_name::named;
 use std::collections::HashMap;
 use std::ffi::{c_int, c_void, CStr, CString};
@@ -214,11 +213,15 @@ impl<'a> OpenSSLProvider<'a> {
 
         // We use a mutable Vec to buffer reads, so we can do big reads on the heap and minimize calls
         // we might want to tweak the capacity depending on what size data we're usually using it for
-        let mut buffer: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::with_capacity(8 * 1024 * 1024));
+        let mut buffer: Zeroizing<Vec<u8>> = Zeroizing::new(vec![42; 8 * 1024 * 1024]);
         let mut bytes_read: usize = 0;
 
         let mut ret_buffer: Vec<u8> = Vec::new();
+
+        const MAX_ITERATIONS: usize = 10;
+        let mut cnt: usize = 0;
         loop {
+            cnt += 1;
             let ret = unsafe {
                 ffi_BIO_read_ex(
                     bio,
@@ -227,12 +230,32 @@ impl<'a> OpenSSLProvider<'a> {
                     &mut bytes_read,
                 )
             };
-            if ret != 1 {
+            match (ret, bytes_read) {
+                (0, 0) => {
+                    debug!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes => stopping for EOF");
+                    break;
+                }
+                (0, _n) => {
+                    warn!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes");
+                }
+                (1, 0) => {
+                    warn!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes");
+                }
+                (1, _n) => {
+                    debug!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes => 👍");
+                }
+                (_r, _n) => {
+                    error!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes");
+                }
+            };
+            if cnt > MAX_ITERATIONS {
+                error!(
+                    "Reached {cnt:} upcalls to BIO_read_ex => stopping due to too many attempts"
+                );
                 ret_buffer.zeroize();
-                return Err(anyhow!("Underlying upcall to BIO_read_ex returned {ret:}"));
-            }
-            if bytes_read == 0 || ret != 1 {
-                break;
+                return Err(anyhow::anyhow!(
+                    "Underlying upcall to BIO_read_ex called too many times"
+                ));
             }
             ret_buffer.extend_from_slice(&buffer[0..bytes_read]);
         }
