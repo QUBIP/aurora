@@ -52,7 +52,7 @@ impl<'a> TryFrom<*mut c_void> for &DecoderContext<'a> {
 }
 
 #[named]
-pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
+pub(super) unsafe extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
     let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
@@ -66,7 +66,7 @@ pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
 }
 
 #[named]
-pub(super) extern "C" fn get_params(params: *mut OSSL_PARAM) -> c_int {
+pub(super) unsafe extern "C" fn get_params(params: *mut OSSL_PARAM) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
 
     let _ = params;
@@ -76,7 +76,7 @@ pub(super) extern "C" fn get_params(params: *mut OSSL_PARAM) -> c_int {
 }
 
 #[named]
-pub(super) extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
+pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
@@ -85,7 +85,7 @@ pub(super) extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_P
 }
 
 #[named]
-pub(super) extern "C" fn freectx(vdecoderctx: *mut c_void) {
+pub(super) unsafe extern "C" fn freectx(vdecoderctx: *mut c_void) {
     trace!(target: log_target!(), "{}", "Called!");
 
     if !vdecoderctx.is_null() {
@@ -95,7 +95,7 @@ pub(super) extern "C" fn freectx(vdecoderctx: *mut c_void) {
 }
 
 #[named]
-pub(super) extern "C" fn set_ctx_params(
+pub(super) unsafe extern "C" fn set_ctx_params(
     vdecoderctx: *mut c_void,
     params: *const OSSL_PARAM,
 ) -> c_int {
@@ -140,7 +140,7 @@ pub(super) extern "C" fn set_ctx_params(
 }
 
 #[named]
-pub(super) extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
+pub(super) unsafe extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
@@ -158,7 +158,7 @@ pub(super) extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OS
 
 // based on oqsprov/oqs_decode_der2key.c:der2key_check_selection() in the OQS provider
 #[named]
-pub(super) extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int) -> c_int {
+pub(super) unsafe extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
@@ -185,21 +185,57 @@ pub(super) extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int)
     return 0;
 }
 
+/// Decodes a SubjectPublicKeyInfo DER blob
+///
+/// # Arguments
+///
+/// ## TODO(🛠️): document arguments
+///
+/// # Notes
+///
+/// [`OSSL_FUNC_decoder_decode_fn`][provider-decoder(7ossl)]
+/// functions such as this one are tightly integrated
+/// with the [`super::keymgmt_functions::load`]
+/// implementation exposed
+/// for [their algorithm][`super`].
+///
+/// Eventually the `data_cb` argument calls the
+/// `OSSL_FUNC_keymgmt_load_fn`
+/// exposed by the [keymgmt][`super::keymgmt_functions`]
+/// for [this algorithm][`super`].
+/// Hence they must agree on how the reference is being passed around.
+///
+/// Refer to [provider-decoder(7ossl)],
+/// [provider-keymgmt(7ossl)],
+/// and [provider-object(7ossl)].
+///
+/// [provider-keymgmt(7ossl)]: https://docs.openssl.org/master/man7/provider-keymgmt/
+/// [provider-object(7ossl)]: https://docs.openssl.org/master/man7/provider-object/
+/// [provider-decoder(7ossl)]: https://docs.openssl.org/master/man7/provider-decoder/
+///
+/// # Examples
+///
+/// ## TODO(🛠️): add examples
+///
 // based on oqsprov/oqs_decode_der2key.c:oqs_der2key_decode() in the OQS provider
 #[named]
-pub(super) extern "C" fn decode(
+pub(super) unsafe extern "C" fn decodeSPKI(
     vdecoderctx: *mut c_void,
     in_: *mut OSSL_CORE_BIO,
     selection: c_int,
     data_cb: OSSL_CALLBACK,
     data_cbarg: *mut c_void,
-    pw_cb: OSSL_PASSPHRASE_CALLBACK,
-    pw_cbarg: *mut c_void,
+    _pw_cb: OSSL_PASSPHRASE_CALLBACK,
+    _pw_cbarg: *mut c_void,
 ) -> c_int {
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
     debug!(target: log_target!(), "Got selection in decode(): {}", selection);
+    if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
+        error!(target: log_target!(), "Invalid selection: {selection:#?}");
+        return ERROR_RET;
+    }
 
     let decoderctx: &DecoderContext = handleResult!(vdecoderctx.try_into());
     let cb = handleResult!(OSSLCallback::try_new(data_cb, data_cbarg));
@@ -231,42 +267,36 @@ pub(super) extern "C" fn decode(
         panic!("OID mismatch: found {}", oid);
     }
 
-    // key bytes get converted to i8 to match the type signature of OSSLParam::new_const_octetstring
-    #[allow(unused_mut)]
-    let mut key_bytes = key.as_bytes().iter().map(|b| *b as i8).collect::<Box<_>>();
+    let key_bytes = key.as_bytes();
+    let pk = handleResult!(keymgmt_functions::PublicKey::decode(key_bytes));
+    let kp: Box<keymgmt_functions::KeyPair<'_>> = Box::new(
+        super::keymgmt_functions::KeyPair::from_parts(decoderctx.provctx, None, Some(pk)),
+    );
+    let len = std::mem::size_of::<keymgmt_functions::KeyPair>();
+    let kp_ptr = Box::into_raw(kp);
+    // convert to c_char to match the type signature of OSSLParam::new_const_octetstring
+    let ref_slice: &[c_char] = unsafe { std::slice::from_raw_parts(kp_ptr as *const c_char, len) };
 
     // TODO this constant comes from core_object.h in openssl: include that file in the wrapper.h
     // file we feed to bindgen in the forge, so a binding gets generated for it
     const OSSL_OBJECT_PKEY: c_int = 2;
-    #[allow(unused_mut)]
-    let mut object_type = OSSL_OBJECT_PKEY;
 
-    #[allow(unused_mut)]
-    let mut keytype_name = c"";
-
-    // TODO clean up this mess
-    // These aren't "really" const, we're just using these functions as a shortcut to create
-    // OSSL_PARAM structs. the data backing them is mutable, so it should "work" for now.
-    // But the compiler can't "see" that; hence the "unused_mut"s explicitly suppressed above.
+    // Pass it by reference, as per https://docs.openssl.org/master/man7/provider-object/
     let params = &[
-        OSSLParam::new_const_int(OSSL_OBJECT_PARAM_TYPE, Some(&object_type)),
-        OSSLParam::new_const_utf8string(OSSL_OBJECT_PARAM_DATA_TYPE, Some(&keytype_name)),
-        OSSLParam::new_const_octetstring(OSSL_OBJECT_PARAM_REFERENCE, Some(&key_bytes)),
+        OSSLParam::new_const_int(OSSL_OBJECT_PARAM_TYPE, Some(&OSSL_OBJECT_PKEY)),
+        OSSLParam::new_const_utf8string(OSSL_OBJECT_PARAM_DATA_TYPE, Some(&super::NAME)),
+        OSSLParam::new_const_octetstring(OSSL_OBJECT_PARAM_REFERENCE, Some(&ref_slice)),
         CONST_OSSL_PARAM::END,
     ];
 
-    cb.call(params.as_ptr() as *const OSSL_PARAM);
+    trace!(target: log_target!(), "Ignoring pw_cb and pw_cbarg");
+    let ret = cb.call(params.as_ptr() as *const OSSL_PARAM);
 
-    let _ = pw_cb;
-    let _ = pw_cbarg;
-    warn!(target: log_target!(), "Ignoring pw_cb and pw_cbarg");
-
-    // TODO don't just always return 1
-    1
+    return ret;
 }
 
 #[named]
-pub(super) extern "C" fn export_object(
+pub(super) unsafe extern "C" fn export_object(
     vdecoderctx: *mut c_void,
     objref: *const c_void,
     objref_sz: usize,
@@ -291,6 +321,9 @@ pub(crate) struct DECODER {
     pub(crate) dispatch_table: &'static [OSSL_DISPATCH],
 }
 
+/// A _DER_ [Decoder][provider-decoder(7ossl)] for _SubjectPublicKeyInfo_
+///
+/// [provider-decoder(7ossl)]: https://docs.openssl.org/master/man7/provider-decoder/
 #[expect(non_upper_case_globals)]
 pub(crate) const DER2SubjectPublicKeyInfo_DECODER: DECODER = DECODER {
     property_definition:
@@ -359,7 +392,7 @@ pub(crate) const DER2SubjectPublicKeyInfo_DECODER: DECODER = DECODER {
                 dispatch_table_entry!(
                     OSSL_FUNC_DECODER_DECODE,
                     OSSL_FUNC_decoder_decode_fn,
-                    decoder_functions::decode
+                    decoder_functions::decodeSPKI
                 ),
                 #[cfg(any())]
                 dispatch_table_entry!(
