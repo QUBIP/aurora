@@ -65,7 +65,7 @@ impl<'a> SignatureContext<'a> {
 }
 
 #[named]
-pub(super) extern "C" fn newctx(vprovctx: *mut c_void, propq: *const c_uchar) -> *mut c_void {
+pub(super) extern "C" fn newctx(vprovctx: *mut c_void, _propq: *const c_uchar) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
     let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
@@ -76,8 +76,8 @@ pub(super) extern "C" fn newctx(vprovctx: *mut c_void, propq: *const c_uchar) ->
         }
     };
 
-    warn!("Ignoring *propq");
-    let _ = propq;
+    warn!(target: log_target!(), "Ignoring *propq");
+    let _ = _propq;
 
     let sig_ctx = Box::new(SignatureContext {
         keypair: None,

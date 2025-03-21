@@ -6,6 +6,7 @@ use aurora::forge;
 use aurora::OpenSSLProvider;
 use aurora::{handleResult, named};
 use bindings::{CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_DECODER, OSSL_OP_KEYMGMT};
+use openssl_provider_forge::bindings::OSSL_OP_SIGNATURE;
 use std::ffi::CStr;
 
 pub(crate) type OurError = aurora::Error;
@@ -23,30 +24,17 @@ impl AdapterContextTrait for PQCleanAdapter {
     fn register_algorithms(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        #[cfg(any())]
-        let kem_algorithms = Box::new([
-            {
-                use X25519MLKEM768 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::KEM_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use SecP256r1MLKEM768 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::KEM_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-        ]);
-        #[cfg(any())]
+        let signature_algorithms = Box::new([{
+            use MLDSA65 as Alg;
+            OSSL_ALGORITHM {
+                algorithm_names: Alg::NAMES.as_ptr(),
+                property_definition: PROPERTY_DEFINITION.as_ptr(),
+                implementation: Alg::SIG_FUNCTIONS.as_ptr(),
+                algorithm_description: Alg::DESCRIPTION.as_ptr(),
+            }
+        }]);
         // ownership transfers to the iterator which is transferred to the handle
-        handle.register_algorithms(OSSL_OP_KEM, kem_algorithms.into_iter())?;
+        handle.register_algorithms(OSSL_OP_SIGNATURE, signature_algorithms.into_iter())?;
 
         let keymgmt_algorithms = Box::new([{
             use MLDSA65 as Alg;
