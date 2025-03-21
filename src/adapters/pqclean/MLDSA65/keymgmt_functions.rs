@@ -1,14 +1,19 @@
 use super::OurError as KMGMTError;
 use super::*;
 use bindings::{
-    OSSL_CALLBACK, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, OSSL_PKEY_PARAM_PRIV_KEY,
-    OSSL_PKEY_PARAM_PUB_KEY,
+    OSSL_CALLBACK, OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
+    OSSL_PKEY_PARAM_MANDATORY_DIGEST, OSSL_PKEY_PARAM_MAX_SIZE, OSSL_PKEY_PARAM_PRIV_KEY,
+    OSSL_PKEY_PARAM_PUB_KEY, OSSL_PKEY_PARAM_SECURITY_BITS,
 };
 use forge::{bindings, keymgmt::selection::Selection, osslparams::*};
 use std::{
     ffi::{c_int, c_void},
     fmt::Debug,
 };
+
+pub(crate) const PUBKEY_LEN: usize = PublicKey::byte_len();
+pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len();
+pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 
 // The wrapped key from the pqcrypto crate has to be public, or else we can't access it to use it
 // with the pqcrypto sign and verify functions.
@@ -38,6 +43,14 @@ impl PublicKey {
         <pqcrypto_mldsa::mldsa65::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(k)
             .to_vec()
     }
+
+    pub const fn byte_len() -> usize {
+        pqcrypto_mldsa::mldsa65::public_key_bytes()
+    }
+
+    pub const fn signature_bytes() -> usize {
+        PrivateKey::signature_bytes()
+    }
 }
 
 impl PrivateKey {
@@ -59,6 +72,14 @@ impl PrivateKey {
                 )
             })?;
         Ok(Self(k))
+    }
+
+    pub const fn byte_len() -> usize {
+        pqcrypto_mldsa::mldsa65::secret_key_bytes()
+    }
+
+    pub const fn signature_bytes() -> usize {
+        pqcrypto_mldsa::mldsa65::signature_bytes()
     }
 }
 
@@ -420,7 +441,7 @@ pub(super) unsafe extern "C" fn get_params(
     const SUCCESS: c_int = 1;
 
     trace!(target: log_target!(), "{}", "Called!");
-    let keydata: &KeyPair = handleResult!(vkeydata.try_into());
+    let _keydata: &KeyPair = handleResult!(vkeydata.try_into());
 
     let params = match OSSLParam::try_from(params) {
         Ok(params) => params,
@@ -439,19 +460,15 @@ pub(super) unsafe extern "C" fn get_params(
             }
         };
 
-        if key == OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY {
-            match &keydata.public {
-                Some(pubkey) => {
-                    let bytes = pubkey.encode();
-                    // might be nice to impl OSSLParamSetter<&Vec<u8>> and avoid .as_slice()
-                    let _ = p.set(bytes.as_slice()); // set(&bytes)
-                }
-                #[expect(unreachable_code)]
-                None => {
-                    unreachable!("Unexpectedly the public key was empty?");
-                    return ERROR_RET;
-                }
-            }
+        if key == OSSL_PKEY_PARAM_BITS {
+            const BITS: c_int = 8 * (PUBKEY_LEN as c_int);
+            let _ = handleResult!(p.set(BITS));
+        } else if key == OSSL_PKEY_PARAM_MAX_SIZE {
+            let _ = handleResult!(p.set(SIGNATURE_LEN as c_int));
+        } else if key == OSSL_PKEY_PARAM_SECURITY_BITS {
+            let _ = handleResult!(p.set(super::SECURITY_BITS as c_int));
+        } else if key == OSSL_PKEY_PARAM_MANDATORY_DIGEST {
+            let _ = handleResult!(p.set(c""));
         } else {
             debug!(target: log_target!(), "Ignoring param {:?}", key);
         }
@@ -472,7 +489,10 @@ pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const
     };
 
     static LIST: &[CONST_OSSL_PARAM] = &[
-        OSSLParam::new_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, None),
+        OSSLParam::new_const_int::<c_int>(OSSL_PKEY_PARAM_BITS, None),
+        OSSLParam::new_const_int::<c_int>(OSSL_PKEY_PARAM_MAX_SIZE, None),
+        OSSLParam::new_const_int::<c_int>(OSSL_PKEY_PARAM_SECURITY_BITS, None),
+        OSSLParam::new_const_utf8string(OSSL_PKEY_PARAM_MANDATORY_DIGEST, None),
         CONST_OSSL_PARAM::END,
     ];
 
