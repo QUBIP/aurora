@@ -1,9 +1,9 @@
 use super::OurError as KMGMTError;
 use super::*;
 use bindings::{
-    OSSL_CALLBACK, OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_MANDATORY_DIGEST,
-    OSSL_PKEY_PARAM_MAX_SIZE, OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
-    OSSL_PKEY_PARAM_SECURITY_BITS,
+    OSSL_CALLBACK, OSSL_KEYMGMT_SELECT_KEYPAIR, OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
+    OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_MANDATORY_DIGEST, OSSL_PKEY_PARAM_MAX_SIZE,
+    OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY, OSSL_PKEY_PARAM_SECURITY_BITS,
 };
 use forge::{bindings, keymgmt::selection::Selection, osslparams::*};
 use std::{
@@ -229,9 +229,33 @@ pub(super) unsafe extern "C" fn free(vkey: *mut c_void) {
 }
 
 #[named]
-pub(super) unsafe extern "C" fn has(_keydata: *const c_void, _selection: c_int) -> c_int {
+pub(super) unsafe extern "C" fn has(vkeydata: *const c_void, selection: c_int) -> c_int {
+    const ERROR_RET: c_int = 0;
+
     trace!(target: log_target!(), "{}", "Called!");
-    todo!("Check whether the given keydata contains the subsets of data indicated by the selector")
+
+    let selection: u32 = selection.try_into().unwrap();
+
+    // From https://github.com/openssl/openssl/blob/fb55383c65bb47eef3bf5f73be5a0ad41d81bb3f/providers/implementations/keymgmt/ml_dsa_kmgmt.c#L145-L155
+    if (selection & OSSL_KEYMGMT_SELECT_KEYPAIR) == 0 {
+        return 1; // the selection is not missing
+    }
+
+    let keydata: &KeyPair = handleResult!(vkeydata.try_into());
+
+    // from https://github.com/openssl/openssl/blob/fb55383c65bb47eef3bf5f73be5a0ad41d81bb3f/crypto/ml_dsa/ml_dsa_key.c#L285-L297
+    if (selection & OSSL_KEYMGMT_SELECT_KEYPAIR) != 0 {
+        // Note that the public key always exists if there is a private key
+        if keydata.public.is_none() {
+            return 0; // No public key
+        }
+        if (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY) != 0 && keydata.private.is_none() {
+            return 0; // No private key
+        }
+        return 1;
+    }
+
+    return 0;
 }
 
 #[named]
