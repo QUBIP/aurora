@@ -68,10 +68,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1fd03a028ef38ba2276dce7e33fcd6369c158a1bca17946c4b1b701891c1ff7"
 
 [[package]]
+name = "asn1"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c48ea2b435a08bc0fc63de853bda3d5dd1b794ce5f188edd036ad39a7c069d9"
+dependencies = [
+ "asn1_derive",
+ "itoa",
+]
+
+[[package]]
+name = "asn1_derive"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67c7e14dc2fafd01c4c68c054e128b770d5a4a07b04d76bfaedca40dce3cb2c0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
 name = "aurora"
 version = "0.8.0-dev"
 dependencies = [
  "anyhow",
+ "asn1",
  "env_logger",
  "function_name",
  "kem",
@@ -83,6 +105,7 @@ dependencies = [
  "pqcrypto-traits",
  "rand",
  "rand_core",
+ "zeroize",
 ]
 
 [[package]]
@@ -529,8 +552,8 @@ checksum = "d75b0bedcc4fe52caa0e03d9f1151a323e4aa5e2d78ba3580400cd3c9e2bc4bc"
 
 [[package]]
 name = "openssl_provider_forge"
-version = "0.8.1"
-source = "git+https://github.com/qubip/openssl-provider-forge-rs?tag=v0.8.1#bdd80d7b7cf5284cf0d4f8db48e39c70f449bf53"
+version = "0.8.2-dev"
+source = "git+https://github.com/qubip/openssl-provider-forge-rs?tag=nt%2Fv0.8.2-alpha1#e3e45d646b5a68c4b8f5bbd36b4e1b17611708fc"
 dependencies = [
  "anyhow",
  "bindgen",
