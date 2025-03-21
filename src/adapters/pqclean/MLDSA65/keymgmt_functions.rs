@@ -1,9 +1,9 @@
 use super::OurError as KMGMTError;
 use super::*;
 use bindings::{
-    OSSL_CALLBACK, OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY,
-    OSSL_PKEY_PARAM_MANDATORY_DIGEST, OSSL_PKEY_PARAM_MAX_SIZE, OSSL_PKEY_PARAM_PRIV_KEY,
-    OSSL_PKEY_PARAM_PUB_KEY, OSSL_PKEY_PARAM_SECURITY_BITS,
+    OSSL_CALLBACK, OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_MANDATORY_DIGEST,
+    OSSL_PKEY_PARAM_MAX_SIZE, OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
+    OSSL_PKEY_PARAM_SECURITY_BITS,
 };
 use forge::{bindings, keymgmt::selection::Selection, osslparams::*};
 use std::{
@@ -530,14 +530,15 @@ pub(super) unsafe extern "C" fn set_params(
             }
         };
 
-        if key == OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY {
-            let bytes: &[u8] = match p.get() {
-                Some(bytes) => bytes,
-                None => handleResult!(Err(anyhow!("Invalid ENCODED_PUBLIC_KEY"))),
-            };
-            debug!(target: log_target!(), "The received encoded public key is (len: {}): {:X?}", bytes.len(), bytes);
+        if false && key == OSSL_PKEY_PARAM_SECURITY_BITS {
+            unreachable!();
+            //let bytes: &[u8] = match p.get() {
+            //    Some(bytes) => bytes,
+            //    None => handleResult!(Err(anyhow!("Invalid ENCODED_PUBLIC_KEY"))),
+            //};
+            //debug!(target: log_target!(), "The received encoded public key is (len: {}): {:X?}", bytes.len(), bytes);
 
-            keydata.public = Some(handleResult!(PublicKey::decode(bytes)));
+            //keydata.public = Some(handleResult!(PublicKey::decode(bytes)));
         } else {
             debug!(target: log_target!(), "Ignoring param {:?}", key);
         }
@@ -557,10 +558,7 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
         }
     };
 
-    static LIST: &[CONST_OSSL_PARAM] = &[
-        OSSLParam::new_const_octetstring(OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, None),
-        CONST_OSSL_PARAM::END,
-    ];
+    static LIST: &[CONST_OSSL_PARAM] = &[CONST_OSSL_PARAM::END];
 
     let first: &bindings::OSSL_PARAM = &LIST[0];
     let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
