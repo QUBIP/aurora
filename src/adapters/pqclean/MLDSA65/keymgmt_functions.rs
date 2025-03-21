@@ -548,7 +548,7 @@ pub(super) unsafe extern "C" fn set_params(
     const SUCCESS: c_int = 1;
 
     trace!(target: log_target!(), "{}", "Called!");
-    let keydata: &mut KeyPair = handleResult!(vkeydata.try_into());
+    let _keydata: &mut KeyPair = handleResult!(vkeydata.try_into());
 
     let params = match OSSLParam::try_from(params) {
         Ok(params) => params,
