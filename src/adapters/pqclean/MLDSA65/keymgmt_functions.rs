@@ -497,8 +497,9 @@ pub(super) unsafe extern "C" fn get_params(
         };
 
         if key == OSSL_PKEY_PARAM_BITS {
-            const BITS: c_int = 8 * (PUBKEY_LEN as c_int);
-            let _ = handleResult!(p.set(BITS));
+            //const BITS: c_int = 8 * (PUBKEY_LEN as c_int);
+            //let _ = handleResult!(p.set(BITS));
+            let _ = handleResult!(p.set(super::SECURITY_BITS as c_int));
         } else if key == OSSL_PKEY_PARAM_MAX_SIZE {
             let _ = handleResult!(p.set(SIGNATURE_LEN as c_int));
         } else if key == OSSL_PKEY_PARAM_SECURITY_BITS {
