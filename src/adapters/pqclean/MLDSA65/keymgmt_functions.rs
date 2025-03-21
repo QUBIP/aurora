@@ -197,6 +197,18 @@ impl TryFrom<*mut c_void> for &KeyPair<'_> {
     }
 }
 
+impl TryFrom<*const c_void> for &KeyPair<'_> {
+    type Error = KMGMTError;
+
+    #[named]
+    fn try_from(vptr: *const c_void) -> Result<Self, Self::Error> {
+        trace!(target: log_target!(), "Called for {}", "impl<'a> TryFrom<*const c_void> for &KeyPair<'a>");
+        let mut_vptr = vptr as *mut c_void;
+        let r: &mut KeyPair = mut_vptr.try_into()?;
+        Ok(r)
+    }
+}
+
 #[named]
 pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
