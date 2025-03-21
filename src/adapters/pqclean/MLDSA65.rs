@@ -1,4 +1,5 @@
 #![expect(dead_code)]
+#![expect(unused_imports)]
 
 use super::*;
 use bindings::{dispatch_table_entry, OSSL_DISPATCH};
@@ -19,8 +20,18 @@ use bindings::{OSSL_FUNC_keymgmt_load_fn, OSSL_FUNC_KEYMGMT_LOAD};
 use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
 use bindings::{OSSL_FUNC_keymgmt_set_params_fn, OSSL_FUNC_KEYMGMT_SET_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_settable_params_fn, OSSL_FUNC_KEYMGMT_SETTABLE_PARAMS};
+use bindings::{OSSL_FUNC_signature_digest_verify_fn, OSSL_FUNC_SIGNATURE_DIGEST_VERIFY};
+use bindings::{OSSL_FUNC_signature_digest_verify_init_fn, OSSL_FUNC_SIGNATURE_DIGEST_VERIFY_INIT};
 use bindings::{OSSL_FUNC_signature_freectx_fn, OSSL_FUNC_SIGNATURE_FREECTX};
+use bindings::{OSSL_FUNC_signature_get_ctx_params_fn, OSSL_FUNC_SIGNATURE_GET_CTX_PARAMS};
+use bindings::{
+    OSSL_FUNC_signature_gettable_ctx_params_fn, OSSL_FUNC_SIGNATURE_GETTABLE_CTX_PARAMS,
+};
 use bindings::{OSSL_FUNC_signature_newctx_fn, OSSL_FUNC_SIGNATURE_NEWCTX};
+use bindings::{OSSL_FUNC_signature_set_ctx_params_fn, OSSL_FUNC_SIGNATURE_SET_CTX_PARAMS};
+use bindings::{
+    OSSL_FUNC_signature_settable_ctx_params_fn, OSSL_FUNC_SIGNATURE_SETTABLE_CTX_PARAMS,
+};
 use bindings::{OSSL_FUNC_signature_sign_fn, OSSL_FUNC_SIGNATURE_SIGN};
 use bindings::{OSSL_FUNC_signature_sign_init_fn, OSSL_FUNC_SIGNATURE_SIGN_INIT};
 use bindings::{OSSL_FUNC_signature_verify_fn, OSSL_FUNC_SIGNATURE_VERIFY};
@@ -199,6 +210,40 @@ pub(super) const SIG_FUNCTIONS: &[OSSL_DISPATCH] = &[
         OSSL_FUNC_SIGNATURE_VERIFY,
         OSSL_FUNC_signature_verify_fn,
         signature_functions::verify
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_DIGEST_VERIFY_INIT,
+        OSSL_FUNC_signature_digest_verify_init_fn,
+        signature_functions::digest_verify_init
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_DIGEST_VERIFY,
+        OSSL_FUNC_signature_digest_verify_fn,
+        signature_functions::digest_verify
+    ),
+    #[cfg(any())]
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_GETTABLE_CTX_PARAMS,
+        OSSL_FUNC_signature_gettable_ctx_params_fn,
+        signature_functions::gettable_ctx_params
+    ),
+    #[cfg(any())]
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_GET_CTX_PARAMS,
+        OSSL_FUNC_signature_get_ctx_params_fn,
+        signature_functions::get_ctx_params
+    ),
+    #[cfg(any())]
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_SETTABLE_CTX_PARAMS,
+        OSSL_FUNC_signature_settable_ctx_params_fn,
+        signature_functions::settable_ctx_params
+    ),
+    #[cfg(any())]
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_SET_CTX_PARAMS,
+        OSSL_FUNC_signature_set_ctx_params_fn,
+        signature_functions::set_ctx_params
     ),
     OSSL_DISPATCH::END,
 ];

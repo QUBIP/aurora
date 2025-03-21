@@ -1,10 +1,9 @@
 use super::keymgmt_functions::KeyPair;
 use super::OurError as SignatureError;
 use super::*;
-use anyhow::bail;
 use bindings::OSSL_PARAM;
-use libc::{c_int, c_uchar, c_void};
-use pqcrypto_traits::sign::{DetachedSignature, SignedMessage};
+use libc::{c_char, c_int, c_uchar, c_void};
+use pqcrypto_traits::sign::{DetachedSignature, SignedMessage, VerificationError};
 
 type OurResult<T> = anyhow::Result<T, SignatureError>;
 
@@ -115,7 +114,9 @@ impl<'a> SignatureContext<'a> {
         return Err("Unable to sign message (likely cause: no private key)");
     }
 
+    #[named]
     pub fn verify_init(&mut self, keypair: &'a KeyPair) -> OurResult<()> {
+        trace!(target: log_target!(), "🧾 Called!");
         if keypair.public.is_some() {
             self.set_keypair(keypair)
         } else {
@@ -123,17 +124,28 @@ impl<'a> SignatureContext<'a> {
         }
     }
 
-    pub fn verify(&mut self, sig: &[u8], msg: &[u8]) -> anyhow::Result<()> {
+    #[named]
+    pub fn verify(
+        &mut self,
+        sig: &[u8],
+        msg: &[u8],
+    ) -> core::result::Result<(), VerificationError> {
+        trace!(target: log_target!(), "🧾 Called!");
         if let Some(keypair) = self.keypair {
             if let Some(pk) = &keypair.public {
-                let sig = pqcrypto_mldsa::mldsa65::DetachedSignature::from_bytes(sig)?;
-                let res = pqcrypto_mldsa::mldsa65::verify_detached_signature(&sig, msg, &pk.0)?;
-                return Ok(res);
+                let sig =
+                    pqcrypto_mldsa::mldsa65::DetachedSignature::from_bytes(sig).map_err(|e| {
+                        error!(target: log_target!(), "{e:?}");
+                        VerificationError::UnknownVerificationError
+                    })?;
+                return pqcrypto_mldsa::mldsa65::verify_detached_signature(&sig, msg, &pk.0);
             } else {
-                bail!("No public key available for verification");
+                error!(target: log_target!(), "No public key available for verification");
+                return Err(VerificationError::UnknownVerificationError);
             }
         }
-        bail!("Unable to verify message")
+        error!(target: log_target!(), "Unable to verify message");
+        return Err(VerificationError::UnknownVerificationError);
     }
 }
 
@@ -275,6 +287,110 @@ pub(super) extern "C" fn verify(
             error!(target: log_target!(), "verify() failed with {:?}", e);
             ERROR_RET
         }
+    }
+}
+
+pub(super) unsafe extern "C" fn gettable_ctx_params(
+    _ctx: *mut c_void,
+    _provctx: *mut c_void,
+) -> *const OSSL_PARAM {
+    todo!();
+}
+
+pub(super) unsafe extern "C" fn get_ctx_params(
+    _ctx: *mut c_void,
+    _params: *mut OSSL_PARAM,
+) -> c_int {
+    todo!();
+}
+
+pub(super) unsafe extern "C" fn settable_ctx_params(
+    _ctx: *mut c_void,
+    _provctx: *mut c_void,
+) -> *const OSSL_PARAM {
+    todo!();
+}
+
+pub(super) unsafe extern "C" fn set_ctx_params(
+    _ctx: *mut c_void,
+    _params: *const OSSL_PARAM,
+) -> c_int {
+    todo!();
+}
+
+#[named]
+pub(super) unsafe extern "C" fn digest_verify_init(
+    vsigctx: *mut c_void,
+    mdname: *const c_char,
+    vprovkey: *mut c_void,
+    _params: *const OSSL_PARAM,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    const SUCCESS_RET: c_int = 1;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    let sigctx: &mut SignatureContext<'_> = handleResult!(vsigctx.try_into());
+
+    // From https://github.com/openssl/openssl/blob/95051052b319d346a8aa3d34d6105d683bb77294/providers/implementations/signature/ml_dsa_sig.c#L157-L175
+
+    if !mdname.is_null() && unsafe { *mdname.offset(0) } != (0 as c_char) {
+        error!(target: log_target!(), "Explicit digest not supported for ML-DSA operations");
+        return ERROR_RET;
+    }
+
+    let provkey: &mut KeyPair = handleResult!(vprovkey.try_into());
+
+    let _ = handleResult!(sigctx.verify_init(provkey));
+
+    return SUCCESS_RET;
+}
+
+#[named]
+pub(super) unsafe extern "C" fn digest_verify(
+    vsigctx: *mut c_void,
+    sig: *const c_uchar,
+    siglen: usize,
+    tbs: *const c_uchar,
+    tbslen: usize,
+) -> c_int {
+    const ERROR_RET: c_int = -1;
+    const FALSE_RET: c_int = 0;
+    const TRUE_RET: c_int = 1;
+
+    trace!(target: log_target!(), "Called!");
+
+    let sigctx: &mut SignatureContext<'_> = handleResult!(vsigctx.try_into());
+
+    if sig.is_null() {
+        error!(target: log_target!(), "sig was NULL");
+        return ERROR_RET;
+    }
+    assert_eq!(siglen, super::SIGNATURE_LEN);
+    let sig = unsafe { std::slice::from_raw_parts(sig, siglen) };
+
+    if tbs.is_null() {
+        error!(target: log_target!(), "tbs was NULL");
+        return ERROR_RET;
+    }
+    let msg = unsafe { std::slice::from_raw_parts(tbs, tbslen) };
+
+    let ret = sigctx.verify(sig, msg);
+
+    match ret {
+        Ok(_) => {
+            trace!(target: log_target!(), "Signature verification succeeded");
+            return TRUE_RET;
+        }
+        Err(e) => match e {
+            VerificationError::InvalidSignature => {
+                debug!(target: log_target!(), "Signature verification failed!");
+                return FALSE_RET;
+            }
+            e => {
+                error!(target: log_target!(), "{e:?}");
+                return ERROR_RET;
+            }
+        },
     }
 }
 
