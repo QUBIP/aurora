@@ -46,6 +46,9 @@ pub(super) const DESCRIPTION: &CStr = c"ML-DSA-65 from pqclean";
 /// number of bits of security
 pub(crate) const SECURITY_BITS: u32 = 192;
 
+#[allow(unused_imports)]
+pub(crate) use keymgmt_functions::{PUBKEY_LEN, SECRETKEY_LEN, SIGNATURE_LEN};
+
 pub(crate) mod capabilities {
     pub(crate) mod tls_sigalg {
         use super::super::forge;
