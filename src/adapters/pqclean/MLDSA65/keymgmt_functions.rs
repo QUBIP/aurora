@@ -682,4 +682,17 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn const_sanity_assertions() {
+        crate::tests::common::setup().expect("Failed to initialize test setup");
+
+        // Compare against https://github.com/openssl/openssl/blob/openssl-3.5/crypto/ml_dsa/ml_dsa_params.c#L61-L76
+        assert_eq!(PUBKEY_LEN, 1952);
+        assert_eq!(SECRETKEY_LEN, 4032);
+        assert_eq!(SIGNATURE_LEN, 3309);
+
+        // Compare against https://github.com/openssl/openssl/blob/openssl-3.5/crypto/ml_dsa/ml_dsa_params.c#L64
+        assert_eq!(SECURITY_BITS, 192);
+    }
 }
