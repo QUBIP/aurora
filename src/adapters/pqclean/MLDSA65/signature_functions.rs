@@ -395,6 +395,40 @@ pub(super) unsafe extern "C" fn digest_verify(
 }
 
 #[named]
+pub(super) unsafe extern "C" fn digest_sign_init(
+    vsigctx: *mut c_void,
+    mdname: *const c_char,
+    vprovkey: *mut c_void,
+    params: *const OSSL_PARAM,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    if !mdname.is_null() && unsafe { *mdname.offset(0) } != (0 as c_char) {
+        error!(target: log_target!(), "Explicit digest not supported for ML-DSA operations");
+        return ERROR_RET;
+    }
+
+    sign_init(vsigctx, vprovkey, params)
+}
+
+#[named]
+pub(super) unsafe extern "C" fn digest_sign(
+    vsigctx: *mut c_void,
+    sig: *mut c_uchar,
+    siglen: *mut usize,
+    sigsize: usize,
+    tbs: *const c_uchar,
+    tbslen: usize,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    const SUCCESS_RET: c_int = 1;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    sign(vsigctx, sig, siglen, sigsize, tbs, tbslen)
+}
+
+#[named]
 fn u8_slice_try_from_raw_parts<'a>(
     p: *const c_uchar,
     len: usize,

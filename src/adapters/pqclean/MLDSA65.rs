@@ -20,6 +20,8 @@ use bindings::{OSSL_FUNC_keymgmt_load_fn, OSSL_FUNC_KEYMGMT_LOAD};
 use bindings::{OSSL_FUNC_keymgmt_new_fn, OSSL_FUNC_KEYMGMT_NEW};
 use bindings::{OSSL_FUNC_keymgmt_set_params_fn, OSSL_FUNC_KEYMGMT_SET_PARAMS};
 use bindings::{OSSL_FUNC_keymgmt_settable_params_fn, OSSL_FUNC_KEYMGMT_SETTABLE_PARAMS};
+use bindings::{OSSL_FUNC_signature_digest_sign_fn, OSSL_FUNC_SIGNATURE_DIGEST_SIGN};
+use bindings::{OSSL_FUNC_signature_digest_sign_init_fn, OSSL_FUNC_SIGNATURE_DIGEST_SIGN_INIT};
 use bindings::{OSSL_FUNC_signature_digest_verify_fn, OSSL_FUNC_SIGNATURE_DIGEST_VERIFY};
 use bindings::{OSSL_FUNC_signature_digest_verify_init_fn, OSSL_FUNC_SIGNATURE_DIGEST_VERIFY_INIT};
 use bindings::{OSSL_FUNC_signature_freectx_fn, OSSL_FUNC_SIGNATURE_FREECTX};
@@ -224,6 +226,16 @@ pub(super) const SIG_FUNCTIONS: &[OSSL_DISPATCH] = &[
         OSSL_FUNC_SIGNATURE_DIGEST_VERIFY,
         OSSL_FUNC_signature_digest_verify_fn,
         signature_functions::digest_verify
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_DIGEST_SIGN_INIT,
+        OSSL_FUNC_signature_digest_sign_init_fn,
+        signature_functions::digest_sign_init
+    ),
+    dispatch_table_entry!(
+        OSSL_FUNC_SIGNATURE_DIGEST_SIGN,
+        OSSL_FUNC_signature_digest_sign_fn,
+        signature_functions::digest_sign
     ),
     #[cfg(any())]
     dispatch_table_entry!(
