@@ -5,7 +5,7 @@ use bindings::{
     OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_MANDATORY_DIGEST, OSSL_PKEY_PARAM_MAX_SIZE,
     OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY, OSSL_PKEY_PARAM_SECURITY_BITS,
 };
-use forge::{bindings, keymgmt::selection::Selection, osslparams::*};
+use forge::{bindings, keymgmt::selection::Selection, ossl_callback::OSSLCallback, osslparams::*};
 use std::{
     ffi::{c_int, c_void},
     fmt::Debug,
@@ -357,15 +357,88 @@ pub(super) unsafe extern "C" fn import(
     todo!("import data indicated by selection into keydata with values taken from the params array")
 }
 
+// based on OpenSSL's providers/implementations/keymgmt/ml_dsa_keymgmt.c:ml_dsa_export()
 #[named]
 pub(super) unsafe extern "C" fn export(
-    _keydata: *mut c_void,
-    _selection: c_int,
-    _param_cb: OSSL_CALLBACK,
-    _cbarg: *mut c_void,
+    vkeydata: *mut c_void,
+    selection: c_int,
+    param_cb: OSSL_CALLBACK,
+    cbarg: *mut c_void,
 ) -> c_int {
+    const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
-    todo!("extract values indicated by selection from keydata, create an OSSL_PARAM array with them, and call param_cb with that array as well as the given cbarg")
+
+    let selection = selection as u32;
+    let keydata: &KeyPair = handleResult!(vkeydata.try_into());
+
+    if vkeydata.is_null() || ((selection & OSSL_KEYMGMT_SELECT_KEYPAIR) == 0) {
+        return ERROR_RET;
+    }
+
+    let include_private = (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY) != 0;
+    debug!(target: log_target!(), "include_private is: {}", include_private);
+
+    // In OpenSSL, they either 1) give the private key and/or the seed (if the private key was
+    // requested, or 2) give only the public key (if the private key wasn't requested). Since the
+    // former could require storing 1 or 2 elements in a params array, they allocate an array of 3
+    // elements (for it and the END marker). We don't have a way to get the seed out of the pqcrypto
+    // crate, unless I'm missing something, but for now I've kept the "put these in a list" design
+    // anyway (instead of putting it in an Option), in case we find a way to get the seed out later.
+    // (They need to be transformed into an END-terminated slice eventually anyway.)
+    let mut params: Vec<CONST_OSSL_PARAM> = Vec::new();
+    // I want to do something concise like this, but I haven't figured out the right incantations to
+    // get around the "cannot move out of shared reference" stuff.
+    /*
+    let (key_part, param_name) = if include_private {
+        (keydata.private.map(|k| k.encode()), OSSL_PKEY_PARAM_PRIV_KEY)
+    } else {
+        (keydata.public.map(|k| k.encode()), OSSL_PKEY_PARAM_PUB_KEY)
+    };
+    // (transform key_part from Option<Vec<u8>> to Option<&[i8]> before the next line)
+    params.push(OSSLParam::new_const_octetstring(param_name, key_part));
+    */
+    if include_private {
+        if let Some(private_key) = &keydata.private {
+            debug!(target: log_target!(), "exporting private key");
+            let bytes = private_key.encode();
+            params.push(OSSLParam::new_const_octetstring(
+                OSSL_PKEY_PARAM_PRIV_KEY,
+                Some(
+                    bytes
+                        .iter()
+                        .map(|&b| b as i8)
+                        .collect::<Vec<i8>>()
+                        .as_slice(),
+                ),
+            ));
+        }
+    } else {
+        if let Some(public_key) = &keydata.public {
+            debug!(target: log_target!(), "exporting public key");
+            let bytes = public_key.encode();
+            params.push(OSSLParam::new_const_octetstring(
+                OSSL_PKEY_PARAM_PUB_KEY,
+                Some(
+                    bytes
+                        .iter()
+                        .map(|&b| b as i8)
+                        .collect::<Vec<i8>>()
+                        .as_slice(),
+                ),
+            ));
+        }
+    }
+
+    // if we couldn't find the key part they wanted, there's nothing more to do
+    if params.is_empty() {
+        return ERROR_RET;
+    }
+
+    // but if we did find it, then we construct the params slice for the callback and call it!
+    params.push(CONST_OSSL_PARAM::END);
+    let params = params.into_boxed_slice();
+    let cb = handleResult!(OSSLCallback::try_new(param_cb, cbarg));
+    cb.call(params.as_ptr() as *const OSSL_PARAM)
 }
 
 const HANDLED_KEY_TYPES: [OSSL_PARAM; 3] = [

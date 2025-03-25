@@ -552,7 +552,8 @@ pub(super) unsafe extern "C" fn export(
     _cbarg: *mut c_void,
 ) -> c_int {
     trace!(target: log_target!(), "{}", "Called!");
-    todo!("extract values indicated by selection from keydata, create an OSSL_PARAM array with them, and call param_cb with that array as well as the given cbarg")
+    return 0;
+    //todo!("extract values indicated by selection from keydata, create an OSSL_PARAM array with them, and call param_cb with that array as well as the given cbarg")
 }
 
 const HANDLED_KEY_TYPES: [OSSL_PARAM; 3] = [
