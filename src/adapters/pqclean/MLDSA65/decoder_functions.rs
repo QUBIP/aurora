@@ -16,9 +16,6 @@ struct DecoderContext<'a> {
     properties: Option<CString>,
 }
 
-// TODO is this the right value?
-const SELECTION_MASK: c_int = OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int;
-
 impl<'a> TryFrom<*mut c_void> for &mut DecoderContext<'a> {
     type Error = OurError;
 
@@ -157,33 +154,40 @@ pub(super) unsafe extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *c
 }
 
 // based on oqsprov/oqs_decode_der2key.c:der2key_check_selection() in the OQS provider
-#[named]
-pub(super) unsafe extern "C" fn does_selection(vprovctx: *mut c_void, selection: c_int) -> c_int {
-    const ERROR_RET: c_int = 0;
-    trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+macro_rules! make_does_selection_fn {
+    ( $fn_name:ident, $selection_mask:expr ) => {
+        #[named]
+        pub(super) unsafe extern "C" fn $fn_name(vprovctx: *mut c_void, selection: c_int) -> c_int {
+            const ERROR_RET: c_int = 0;
+            trace!(target: log_target!(), "{}", "Called!");
+            let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    debug!(target: log_target!(), "selection: {:?}", selection);
+            let selection = selection as u32;
+            debug!(target: log_target!(), "selection: {:#b}", selection);
+            debug!(target: log_target!(), "we're offering: {:#b}", $selection_mask);
 
-    if selection == 0 {
-        return 1;
-    }
+            if selection == 0 {
+                return 1;
+            }
 
-    let checks = [
-        OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
-        OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
-        OSSL_KEYMGMT_SELECT_ALL_PARAMETERS,
-    ];
-    for check in checks {
-        let check = check as c_int;
-        // FIXME use the bitmask crate to do these comparisons
-        if selection & check != 0 {
-            return (SELECTION_MASK & check != 0) as c_int;
+            let checks = [
+                OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
+                OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
+                OSSL_KEYMGMT_SELECT_ALL_PARAMETERS,
+            ];
+            for check in checks {
+                // FIXME use the bitmask crate to do these comparisons
+                if selection & check != 0 {
+                    return ($selection_mask & check != 0) as c_int;
+                }
+            }
+
+            return 0;
         }
     }
-
-    return 0;
 }
+
+make_does_selection_fn!(does_selection_SPKI, OSSL_KEYMGMT_SELECT_PUBLIC_KEY);
 
 /// Decodes a SubjectPublicKeyInfo DER blob
 ///
@@ -318,6 +322,7 @@ pub(super) unsafe extern "C" fn export_object(
 // FIXME: this should likely be in openssl_provider_forge, and maybe defined as a trait
 pub(crate) struct DECODER {
     pub(crate) property_definition: &'static CStr,
+    pub(crate) selection_mask: c_int,
     pub(crate) dispatch_table: &'static [OSSL_DISPATCH],
 }
 
@@ -328,6 +333,7 @@ pub(crate) struct DECODER {
 pub(crate) const DER2SubjectPublicKeyInfo_DECODER: DECODER = DECODER {
     property_definition:
         c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='SubjectPublicKeyInfo'",
+    selection_mask: OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int,
     dispatch_table: {
         mod dispath_table_module {
             #![expect(unused_imports)] // FIXME: get rid of this
@@ -387,7 +393,7 @@ pub(crate) const DER2SubjectPublicKeyInfo_DECODER: DECODER = DECODER {
                 dispatch_table_entry!(
                     OSSL_FUNC_DECODER_DOES_SELECTION,
                     OSSL_FUNC_decoder_does_selection_fn,
-                    decoder_functions::does_selection
+                    decoder_functions::does_selection_SPKI
                 ),
                 dispatch_table_entry!(
                     OSSL_FUNC_DECODER_DECODE,
