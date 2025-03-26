@@ -75,16 +75,28 @@ impl AdapterContextTrait for PQCleanAdapter {
     fn register_decoders(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let decoder_algorithms = Box::new([{
-            use Alg::DER2SubjectPublicKeyInfo_DECODER as AlgDecoder;
-            use MLDSA65 as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: AlgDecoder.property_definition.as_ptr(),
-                implementation: AlgDecoder.dispatch_table.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let decoder_algorithms = Box::new([
+            {
+                use Alg::DER2SubjectPublicKeyInfo_DECODER as AlgDecoder;
+                use MLDSA65 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder.property_definition.as_ptr(),
+                    implementation: AlgDecoder.dispatch_table.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use Alg::DER2PrivateKeyInfo_DECODER as AlgDecoder;
+                use MLDSA65 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder.property_definition.as_ptr(),
+                    implementation: AlgDecoder.dispatch_table.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+        ]);
 
         handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
 
