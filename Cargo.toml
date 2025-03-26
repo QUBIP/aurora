@@ -8,8 +8,10 @@ crate-type = ["cdylib"]
 name = "aurora"
 
 [features]
+# default = ["env_logger", "export"]
 default = ["env_logger"]
 env_logger = ["dep:env_logger"]
+export = []
 
 [dependencies]
 function_name = "0.3"

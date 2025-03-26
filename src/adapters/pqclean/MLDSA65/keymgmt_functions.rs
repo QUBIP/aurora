@@ -358,7 +358,7 @@ pub(super) unsafe extern "C" fn import(
     todo!("import data indicated by selection into keydata with values taken from the params array")
 }
 
-// based on OpenSSL's providers/implementations/keymgmt/ml_dsa_keymgmt.c:ml_dsa_export()
+#[cfg(feature = "export")]
 #[named]
 pub(super) unsafe extern "C" fn export(
     vkeydata: *mut c_void,
@@ -366,6 +366,7 @@ pub(super) unsafe extern "C" fn export(
     param_cb: OSSL_CALLBACK,
     cbarg: *mut c_void,
 ) -> c_int {
+    // based on OpenSSL's providers/implementations/keymgmt/ml_dsa_keymgmt.c:ml_dsa_export()
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
@@ -441,6 +442,8 @@ pub(super) unsafe extern "C" fn export(
     let cb = handleResult!(OSSLCallback::try_new(param_cb, cbarg));
     cb.call(params.as_ptr() as *const OSSL_PARAM)
 }
+#[cfg(not(feature = "export"))]
+pub(super) use crate::adapters::common::keymgmt_functions::export_forbidden as export;
 
 const HANDLED_KEY_TYPES: [OSSL_PARAM; 3] = [
     OSSL_PARAM {
@@ -478,6 +481,7 @@ pub(super) unsafe extern "C" fn import_types_ex(
     ERROR_RET
 }
 
+#[cfg(feature = "export")]
 #[named]
 pub(super) unsafe extern "C" fn export_types_ex(
     vprovctx: *mut c_void,
@@ -494,6 +498,8 @@ pub(super) unsafe extern "C" fn export_types_ex(
     };
     todo!("return a constant array of descriptor OSSL_PARAM(3) for data indicated by selection, that the OSSL_FUNC_keymgmt_export() callback can expect to receive")
 }
+#[cfg(not(feature = "export"))]
+pub(super) use crate::adapters::common::keymgmt_functions::export_types_ex_forbidden as export_types_ex;
 
 #[named]
 pub(super) unsafe extern "C" fn gen_set_params(

@@ -14,6 +14,8 @@ mod libcrux;
 mod libcrux_draft;
 mod pqclean;
 
+pub(crate) mod common;
+
 mod traits;
 pub use traits::AdapterContextTrait;
 
