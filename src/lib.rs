@@ -21,8 +21,8 @@ macro_rules! log_target {
     };
 }
 
+pub(crate) mod forge;
 use forge::{bindings, osslparams};
-pub use openssl_provider_forge as forge;
 pub(crate) mod adapters;
 mod init;
 mod query;
