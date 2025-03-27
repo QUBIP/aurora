@@ -2,8 +2,9 @@ use super::OurError as KMGMTError;
 use super::*;
 use bindings::{
     OSSL_CALLBACK, OSSL_KEYMGMT_SELECT_KEYPAIR, OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
-    OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_MANDATORY_DIGEST, OSSL_PKEY_PARAM_MAX_SIZE,
-    OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY, OSSL_PKEY_PARAM_SECURITY_BITS,
+    OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_PKEY_PARAM_BITS, OSSL_PKEY_PARAM_MANDATORY_DIGEST,
+    OSSL_PKEY_PARAM_MAX_SIZE, OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
+    OSSL_PKEY_PARAM_SECURITY_BITS,
 };
 use forge::{bindings, keymgmt::selection::Selection, ossl_callback::OSSLCallback, osslparams::*};
 use std::{
@@ -711,7 +712,8 @@ pub(super) unsafe extern "C" fn load(reference: *const c_void, reference_sz: usi
     return std::ptr::from_ref(keypair).cast_mut() as *mut c_void;
 }
 
-// we can't just call it "match", because that's a Rust keyword
+// based on OpenSSL 3.5's crypto/ml_dsa/ml_dsa_key.c:ossl_ml_dsa_key_equal()
+// (and we can't just call it "match", because that's a Rust keyword)
 #[named]
 pub(super) unsafe extern "C" fn match_(
     keydata1: *const c_void,
@@ -721,12 +723,26 @@ pub(super) unsafe extern "C" fn match_(
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    let _keypair1 = handleResult!(<&KeyPair>::try_from(keydata1 as *mut c_void));
-    let _keypair2 = handleResult!(<&KeyPair>::try_from(keydata2 as *mut c_void));
-    let _ = selection;
+    let keypair1 = handleResult!(<&KeyPair>::try_from(keydata1 as *mut c_void));
+    let keypair2 = handleResult!(<&KeyPair>::try_from(keydata2 as *mut c_void));
+    let mut key_checked = false;
 
-    // TODO actually check if the keys match!!!
-    warn!(target: log_target!(), "Skipping the check for (mis)matching keys!");
+    if (selection & OSSL_KEYMGMT_SELECT_KEYPAIR as c_int) != 0 {
+        if (selection & OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int) != 0 {
+            if keypair1.public != keypair2.public {
+                return ERROR_RET;
+            }
+            key_checked = true;
+        }
+        if !key_checked && (selection & OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int) != 0 {
+            if keypair1.private != keypair2.private {
+                return ERROR_RET;
+            }
+            key_checked = true;
+        }
+        return key_checked as c_int;
+    }
+
     return 1;
 }
 
