@@ -7,7 +7,7 @@ use pqcrypto_traits::sign::{DetachedSignature, SignedMessage, VerificationError}
 
 type OurResult<T> = anyhow::Result<T, SignatureError>;
 
-pub(crate) const SIGNATURE_LENGTH: usize = 3309;
+pub(crate) const SIGNATURE_LEN: usize = super::keymgmt_functions::SIGNATURE_LEN;
 
 #[expect(dead_code)]
 struct SignatureContext<'a> {
@@ -195,7 +195,7 @@ pub(super) extern "C" fn sign(
     if sig.is_null() {
         // write the max byte length of a signature to *siglen
         unsafe { siglen.as_mut() }.map(|p| {
-            *p = SIGNATURE_LENGTH;
+            *p = SIGNATURE_LEN;
         });
         return SUCCESS_RET;
     }
@@ -493,7 +493,7 @@ mod tests {
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
         let signed_msg = sigctx.sign(&msg).unwrap();
-        assert_eq!(signed_msg.len(), SIGNATURE_LENGTH + msg.len());
+        assert_eq!(signed_msg.len(), SIGNATURE_LEN + msg.len());
         // the sig is prepended to the msg, so we compare the last bytes (here the last 5)
         assert_eq!(signed_msg.as_bytes()[signed_msg.len() - msg.len()..], msg);
         // (this test succeeds if we've gotten this far without anything exploding)
@@ -511,12 +511,12 @@ mod tests {
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
         let signed_msg = sigctx.sign(&msg).unwrap();
-        assert_eq!(signed_msg.len(), SIGNATURE_LENGTH + msg.len());
+        assert_eq!(signed_msg.len(), SIGNATURE_LEN + msg.len());
         // the sig is prepended to the msg, so we compare the last bytes (here the last 5)
         assert_eq!(signed_msg.as_bytes()[signed_msg.len() - msg.len()..], msg);
         // verify the signature
         sigctx.verify_init(&keypair).unwrap();
-        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LENGTH];
+        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LEN];
         assert!(sigctx.verify(detached_sig, &msg).is_ok());
     }
 
@@ -532,7 +532,7 @@ mod tests {
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
         let signed_msg = sigctx.sign(&msg).unwrap();
-        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LENGTH];
+        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LEN];
         // generate another keypair
         let other_keypair = KeyPair::generate_new(&provctx);
         // confirm that verification with the new key fails
@@ -552,8 +552,8 @@ mod tests {
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
         let signed_msg = sigctx.sign(&msg).unwrap();
-        let mut detached_sig = [0; SIGNATURE_LENGTH];
-        detached_sig.copy_from_slice(&signed_msg.as_bytes()[..SIGNATURE_LENGTH]);
+        let mut detached_sig = [0; SIGNATURE_LEN];
+        detached_sig.copy_from_slice(&signed_msg.as_bytes()[..SIGNATURE_LEN]);
         // flip a bit in the signature
         detached_sig[0] = std::ops::BitXor::bitxor(detached_sig[0], 1u8);
         // confirm that verification fails
@@ -573,7 +573,7 @@ mod tests {
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
         let signed_msg = sigctx.sign(&msg).unwrap();
-        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LENGTH];
+        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LEN];
         // construct a different message of the same length
         let other_msg: [u8; 5] = [1, 2, 3, 8, 5];
         // confirm that verification fails
