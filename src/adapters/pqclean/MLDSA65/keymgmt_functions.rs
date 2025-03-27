@@ -711,6 +711,25 @@ pub(super) unsafe extern "C" fn load(reference: *const c_void, reference_sz: usi
     return std::ptr::from_ref(keypair).cast_mut() as *mut c_void;
 }
 
+// we can't just call it "match", because that's a Rust keyword
+#[named]
+pub(super) unsafe extern "C" fn match_(
+    keydata1: *const c_void,
+    keydata2: *const c_void,
+    selection: c_int,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    let _keypair1 = handleResult!(<&KeyPair>::try_from(keydata1 as *mut c_void));
+    let _keypair2 = handleResult!(<&KeyPair>::try_from(keydata2 as *mut c_void));
+    let _ = selection;
+
+    // TODO actually check if the keys match!!!
+    warn!(target: log_target!(), "Skipping the check for (mis)matching keys!");
+    return 1;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
