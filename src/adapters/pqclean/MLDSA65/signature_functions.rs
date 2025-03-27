@@ -104,10 +104,10 @@ impl<'a> SignatureContext<'a> {
         }
     }
 
-    pub fn sign(&mut self, msg: &[u8]) -> Result<pqcrypto_mldsa::mldsa65::SignedMessage, &str> {
+    pub fn sign(&mut self, msg: &[u8]) -> Result<pqcrypto_mldsa::mldsa65::DetachedSignature, &str> {
         if let Some(keypair) = self.keypair {
             if let Some(sk) = &keypair.private {
-                let signed_msg = pqcrypto_mldsa::mldsa65::sign(msg, &sk.0);
+                let signed_msg = pqcrypto_mldsa::mldsa65::detached_sign(msg, &sk.0);
                 return Ok(signed_msg);
             }
         }
@@ -203,18 +203,19 @@ pub(super) extern "C" fn sign(
     // otherwise, we actually have something to sign, so let's sign it
     let tbs_slice = handleResult!(u8_slice_try_from_raw_parts(tbs, tbslen));
     match sig_ctx.sign(tbs_slice) {
-        Ok(signed_msg) => {
+        Ok(signature) => {
+            let sig_bytes = signature.as_bytes();
             // check that the signature fits in sigsize bytes
-            // (this check could be moved before `let tbs_slice = ...`, if we wanted...)
-            let nr_bytes = signed_msg.len();
+            let nr_bytes = sig_bytes.len();
             if nr_bytes > sigsize {
                 // error because our signature is longer than permitted :(
+                // this should never happen with a detached signature, but we may as well check!
                 error!("signature of {} bytes doesn't fit in {}", nr_bytes, sigsize);
                 return ERROR_RET;
             } else {
                 // write the signature to the provided memory address
                 unsafe {
-                    std::ptr::copy(signed_msg.as_bytes().as_ptr(), sig, nr_bytes);
+                    std::ptr::copy(sig_bytes.as_ptr(), sig, nr_bytes);
                 }
                 return SUCCESS_RET;
             }
@@ -492,10 +493,8 @@ mod tests {
         // sign a message
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
-        let signed_msg = sigctx.sign(&msg).unwrap();
-        assert_eq!(signed_msg.len(), SIGNATURE_LEN + msg.len());
-        // the sig is prepended to the msg, so we compare the last bytes (here the last 5)
-        assert_eq!(signed_msg.as_bytes()[signed_msg.len() - msg.len()..], msg);
+        let signature = sigctx.sign(&msg).unwrap();
+        assert_eq!(signature.as_bytes().len(), SIGNATURE_LEN);
         // (this test succeeds if we've gotten this far without anything exploding)
     }
 
@@ -510,14 +509,12 @@ mod tests {
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
-        let signed_msg = sigctx.sign(&msg).unwrap();
-        assert_eq!(signed_msg.len(), SIGNATURE_LEN + msg.len());
-        // the sig is prepended to the msg, so we compare the last bytes (here the last 5)
-        assert_eq!(signed_msg.as_bytes()[signed_msg.len() - msg.len()..], msg);
+        let signature = sigctx.sign(&msg).unwrap();
+        let sig_bytes = signature.as_bytes();
+        assert_eq!(sig_bytes.len(), SIGNATURE_LEN);
         // verify the signature
         sigctx.verify_init(&keypair).unwrap();
-        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LEN];
-        assert!(sigctx.verify(detached_sig, &msg).is_ok());
+        assert!(sigctx.verify(sig_bytes, &msg).is_ok());
     }
 
     #[test]
