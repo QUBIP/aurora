@@ -1,14 +1,16 @@
 use super::*;
+use bindings::ffi_c_types::*;
 use bindings::{
     OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES,
     OSSL_KEYMGMT_SELECT_ALL_PARAMETERS, OSSL_KEYMGMT_SELECT_KEYPAIR,
     OSSL_KEYMGMT_SELECT_PRIVATE_KEY, OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_OBJECT_PARAM_DATA_TYPE,
     OSSL_OBJECT_PARAM_REFERENCE, OSSL_OBJECT_PARAM_TYPE, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK,
 };
+use decoder::{Decoder, DoesSelection};
+use forge::operations::{decoder, keymgmt};
 use forge::ossl_callback::OSSLCallback;
 use forge::osslparams::*;
-use libc::{c_char, c_int, c_void};
-use std::ffi::CString;
+use keymgmt::selection::Selection;
 
 struct DecoderContext<'a> {
     provctx: &'a OpenSSLProvider<'a>,
@@ -152,43 +154,6 @@ pub(super) unsafe extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *c
 
     return ptr;
 }
-
-// based on oqsprov/oqs_decode_der2key.c:der2key_check_selection() in the OQS provider
-macro_rules! make_does_selection_fn {
-    ( $fn_name:ident, $selection_mask:expr ) => {
-        #[named]
-        pub(super) unsafe extern "C" fn $fn_name(vprovctx: *mut c_void, selection: c_int) -> c_int {
-            const ERROR_RET: c_int = 0;
-            trace!(target: log_target!(), "{}", "Called!");
-            let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
-
-            let selection = selection as u32;
-            debug!(target: log_target!(), "selection: {:#b}", selection);
-            debug!(target: log_target!(), "we're offering: {:#b}", $selection_mask);
-
-            if selection == 0 {
-                return 1;
-            }
-
-            let checks = [
-                OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
-                OSSL_KEYMGMT_SELECT_PUBLIC_KEY,
-                OSSL_KEYMGMT_SELECT_ALL_PARAMETERS,
-            ];
-            for check in checks {
-                // FIXME use the bitmask crate to do these comparisons
-                if selection & check != 0 {
-                    return ($selection_mask & check != 0) as c_int;
-                }
-            }
-
-            return 0;
-        }
-    }
-}
-
-make_does_selection_fn!(does_selection_SPKI, OSSL_KEYMGMT_SELECT_PUBLIC_KEY);
-make_does_selection_fn!(does_selection_PrivateKeyInfo, OSSL_KEYMGMT_SELECT_KEYPAIR);
 
 /// Decodes a SubjectPublicKeyInfo DER blob
 ///
@@ -445,22 +410,16 @@ pub(super) unsafe extern "C" fn export_object(
     todo!();
 }
 
-// FIXME: this should likely be in openssl_provider_forge, and maybe defined as a trait
-pub(crate) struct DECODER {
-    pub(crate) property_definition: &'static CStr,
-    pub(crate) selection_mask: c_int,
-    pub(crate) dispatch_table: &'static [OSSL_DISPATCH],
-}
-
 /// A _DER_ [Decoder][provider-decoder(7ossl)] for _SubjectPublicKeyInfo_
 ///
 /// [provider-decoder(7ossl)]: https://docs.openssl.org/master/man7/provider-decoder/
-#[expect(non_upper_case_globals)]
-pub(crate) const DER2SubjectPublicKeyInfo_DECODER: DECODER = DECODER {
-    property_definition:
-        c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='SubjectPublicKeyInfo'",
-    selection_mask: OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int,
-    dispatch_table: {
+pub(crate) struct DER2SubjectPublicKeyInfo();
+
+impl Decoder for DER2SubjectPublicKeyInfo {
+    const PROPERTY_DEFINITION: &'static CStr =
+        c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='SubjectPublicKeyInfo'";
+
+    const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispath_table_module {
             #![expect(unused_imports)] // FIXME: get rid of this
 
@@ -537,18 +496,25 @@ pub(crate) const DER2SubjectPublicKeyInfo_DECODER: DECODER = DECODER {
         }
 
         dispath_table_module::DER_DECODER_FUNCTIONS
-    },
-};
+    };
+}
+
+impl DoesSelection for DER2SubjectPublicKeyInfo {
+    const SELECTION_MASK: Selection = Selection::PUBLIC_KEY;
+}
+
+decoder::make_does_selection_fn!(does_selection_SPKI, DER2SubjectPublicKeyInfo);
 
 /// A _DER_ [Decoder][provider-decoder(7ossl)] for _PrivateKeyInfo_
 ///
 /// [provider-decoder(7ossl)]: https://docs.openssl.org/master/man7/provider-decoder/
-#[expect(non_upper_case_globals)]
-pub(crate) const DER2PrivateKeyInfo_DECODER: DECODER = DECODER {
-    property_definition:
-        c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='PrivateKeyInfo'",
-    selection_mask: OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int,
-    dispatch_table: {
+pub(crate) struct DER2PrivateKeyInfo();
+
+impl Decoder for DER2PrivateKeyInfo {
+    const PROPERTY_DEFINITION: &'static CStr =
+        c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='PrivateKeyInfo'";
+
+    const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispath_table_module {
             #![expect(unused_imports)] // FIXME: get rid of this
 
@@ -623,5 +589,11 @@ pub(crate) const DER2PrivateKeyInfo_DECODER: DECODER = DECODER {
         }
 
         dispath_table_module::DER_DECODER_FUNCTIONS
-    },
-};
+    };
+}
+
+impl DoesSelection for DER2PrivateKeyInfo {
+    const SELECTION_MASK: Selection = Selection::KEYPAIR;
+}
+
+decoder::make_does_selection_fn!(does_selection_PrivateKeyInfo, DER2PrivateKeyInfo);
