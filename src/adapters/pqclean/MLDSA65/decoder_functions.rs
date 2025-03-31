@@ -18,6 +18,15 @@ struct DecoderContext<'a> {
     properties: Option<CString>,
 }
 
+impl<'a> DecoderContext<'a> {
+    pub(super) fn new(provctx: &'a OpenSSLProvider<'a>) -> Self {
+        Self {
+            provctx,
+            properties: None,
+        }
+    }
+}
+
 impl<'a> TryFrom<*mut c_void> for &mut DecoderContext<'a> {
     type Error = OurError;
 
@@ -56,10 +65,7 @@ pub(super) unsafe extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
     let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
 
-    let decoder_ctx = Box::new(DecoderContext {
-        provctx,
-        properties: None,
-    });
+    let decoder_ctx = Box::new(DecoderContext::new(provctx));
 
     Box::into_raw(decoder_ctx).cast()
 }
