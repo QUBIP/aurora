@@ -29,6 +29,7 @@ fn inner_try_init_logging() -> Result<(), OurError> {
         .format_module_path(false) // Optional: disable module path
         .format_target(true) // Optional: enable target
         .format_source_path(true)
+        .is_test(cfg!(test))
         .try_init()
         .map_err(OurError::from)
 }
