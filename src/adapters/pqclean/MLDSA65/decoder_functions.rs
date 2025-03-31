@@ -99,68 +99,6 @@ pub(super) unsafe extern "C" fn freectx(vdecoderctx: *mut c_void) {
     }
 }
 
-#[named]
-pub(super) unsafe extern "C" fn set_ctx_params(
-    vdecoderctx: *mut c_void,
-    params: *const OSSL_PARAM,
-) -> c_int {
-    trace!(target: log_target!(), "{}", "Called!");
-    const ERROR_RET: c_int = 0;
-    const SUCCESS: c_int = 1;
-
-    let decoderctx: &mut DecoderContext = handleResult!(vdecoderctx.try_into());
-
-    let params = match OSSLParam::try_from(params) {
-        Ok(params) => params,
-        Err(e) => {
-            error!(target: log_target!(), "Failed decoding params: {:?}", e);
-            return ERROR_RET;
-        }
-    };
-
-    for p in params {
-        let key = match p.get_key() {
-            Some(key) => key,
-            None => {
-                error!(target: log_target!(), "Param without valid key {:?}", p);
-                return ERROR_RET;
-            }
-        };
-
-        if key == OSSL_DECODER_PARAM_PROPERTIES {
-            let bytes: &[u8] = match p.get() {
-                Some(bytes) => bytes,
-                None => handleResult!(Err(anyhow!("Invalid OSSL_DECODER_PARAM_PROPERTIES"))),
-            };
-            debug!(target: log_target!(), "The received properties are: {:X?}", bytes);
-            debug!(target: log_target!(), "And as a string: {:X?}", CString::new(bytes));
-
-            decoderctx.properties =
-                Some(CString::new(bytes).expect("properties should be parseable as CString"));
-        } else {
-            debug!(target: log_target!(), "Ignoring param {:?}", key);
-        }
-    }
-    return SUCCESS;
-}
-
-#[named]
-pub(super) unsafe extern "C" fn settable_ctx_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
-    const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
-    trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
-
-    static LIST: &[CONST_OSSL_PARAM] = &[
-        OSSLParam::new_const_utf8string(OSSL_DECODER_PARAM_PROPERTIES, None),
-        CONST_OSSL_PARAM::END,
-    ];
-
-    let first: &bindings::OSSL_PARAM = &LIST[0];
-    let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
-
-    return ptr;
-}
-
 /// Decodes a SubjectPublicKeyInfo DER blob
 ///
 /// # Arguments
@@ -396,26 +334,6 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     return ret;
 }
 
-#[named]
-pub(super) unsafe extern "C" fn export_object(
-    vdecoderctx: *mut c_void,
-    objref: *const c_void,
-    objref_sz: usize,
-    export_cb: OSSL_CALLBACK,
-    export_cbarg: *mut c_void,
-) -> c_int {
-    trace!(target: log_target!(), "{}", "Called!");
-
-    let _ = vdecoderctx;
-    let _ = objref;
-    let _ = objref_sz;
-    let _ = export_cb;
-    let _ = export_cbarg;
-    warn!(target: log_target!(), "Ignoring all arguments");
-
-    todo!();
-}
-
 /// A _DER_ [Decoder][provider-decoder(7ossl)] for _SubjectPublicKeyInfo_
 ///
 /// [provider-decoder(7ossl)]: https://docs.openssl.org/master/man7/provider-decoder/
@@ -427,38 +345,15 @@ impl Decoder for DER2SubjectPublicKeyInfo {
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispath_table_module {
-            #![expect(unused_imports)] // FIXME: get rid of this
-
             use super::*;
             use bindings::{OSSL_FUNC_decoder_decode_fn, OSSL_FUNC_DECODER_DECODE};
             use bindings::{OSSL_FUNC_decoder_does_selection_fn, OSSL_FUNC_DECODER_DOES_SELECTION};
-            use bindings::{OSSL_FUNC_decoder_export_object_fn, OSSL_FUNC_DECODER_EXPORT_OBJECT};
             use bindings::{OSSL_FUNC_decoder_freectx_fn, OSSL_FUNC_DECODER_FREECTX};
-            use bindings::{OSSL_FUNC_decoder_get_params_fn, OSSL_FUNC_DECODER_GET_PARAMS};
-            use bindings::{
-                OSSL_FUNC_decoder_gettable_params_fn, OSSL_FUNC_DECODER_GETTABLE_PARAMS,
-            };
             use bindings::{OSSL_FUNC_decoder_newctx_fn, OSSL_FUNC_DECODER_NEWCTX};
-            use bindings::{OSSL_FUNC_decoder_set_ctx_params_fn, OSSL_FUNC_DECODER_SET_CTX_PARAMS};
-            use bindings::{
-                OSSL_FUNC_decoder_settable_ctx_params_fn, OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS,
-            };
 
             // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
             // https://docs.openssl.org/3.2/man7/provider-decoder/
             pub(super) const DER_DECODER_FUNCTIONS: &[OSSL_DISPATCH] = &[
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_GET_PARAMS,
-                    OSSL_FUNC_decoder_get_params_fn,
-                    decoder_functions::get_params
-                ),
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_GETTABLE_PARAMS,
-                    OSSL_FUNC_decoder_gettable_params_fn,
-                    decoder_functions::gettable_params
-                ),
                 dispatch_table_entry!(
                     OSSL_FUNC_DECODER_NEWCTX,
                     OSSL_FUNC_decoder_newctx_fn,
@@ -469,18 +364,6 @@ impl Decoder for DER2SubjectPublicKeyInfo {
                     OSSL_FUNC_decoder_freectx_fn,
                     decoder_functions::freectx
                 ),
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_SET_CTX_PARAMS,
-                    OSSL_FUNC_decoder_set_ctx_params_fn,
-                    decoder_functions::set_ctx_params
-                ),
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS,
-                    OSSL_FUNC_decoder_settable_ctx_params_fn,
-                    decoder_functions::settable_ctx_params
-                ),
                 dispatch_table_entry!(
                     OSSL_FUNC_DECODER_DOES_SELECTION,
                     OSSL_FUNC_decoder_does_selection_fn,
@@ -490,12 +373,6 @@ impl Decoder for DER2SubjectPublicKeyInfo {
                     OSSL_FUNC_DECODER_DECODE,
                     OSSL_FUNC_decoder_decode_fn,
                     decoder_functions::decodeSPKI
-                ),
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_EXPORT_OBJECT,
-                    OSSL_FUNC_decoder_export_object_fn,
-                    decoder_functions::export_object
                 ),
                 OSSL_DISPATCH::END,
             ];
@@ -522,36 +399,15 @@ impl Decoder for DER2PrivateKeyInfo {
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispath_table_module {
-            #![expect(unused_imports)] // FIXME: get rid of this
-
             use super::*;
             use bindings::{OSSL_FUNC_decoder_decode_fn, OSSL_FUNC_DECODER_DECODE};
             use bindings::{OSSL_FUNC_decoder_does_selection_fn, OSSL_FUNC_DECODER_DOES_SELECTION};
-            use bindings::{OSSL_FUNC_decoder_export_object_fn, OSSL_FUNC_DECODER_EXPORT_OBJECT};
             use bindings::{OSSL_FUNC_decoder_freectx_fn, OSSL_FUNC_DECODER_FREECTX};
-            use bindings::{OSSL_FUNC_decoder_get_params_fn, OSSL_FUNC_DECODER_GET_PARAMS};
-            use bindings::{
-                OSSL_FUNC_decoder_gettable_params_fn, OSSL_FUNC_DECODER_GETTABLE_PARAMS,
-            };
             use bindings::{OSSL_FUNC_decoder_newctx_fn, OSSL_FUNC_DECODER_NEWCTX};
-            use bindings::{OSSL_FUNC_decoder_set_ctx_params_fn, OSSL_FUNC_DECODER_SET_CTX_PARAMS};
-            use bindings::{
-                OSSL_FUNC_decoder_settable_ctx_params_fn, OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS,
-            };
 
             // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
             // https://docs.openssl.org/3.2/man7/provider-decoder/
             pub(super) const DER_DECODER_FUNCTIONS: &[OSSL_DISPATCH] = &[
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_GET_PARAMS,
-                    OSSL_FUNC_decoder_get_params_fn,
-                    decoder_functions::get_params
-                ),
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_GETTABLE_PARAMS,
-                    OSSL_FUNC_decoder_gettable_params_fn,
-                    decoder_functions::gettable_params
-                ),
                 dispatch_table_entry!(
                     OSSL_FUNC_DECODER_NEWCTX,
                     OSSL_FUNC_decoder_newctx_fn,
@@ -562,18 +418,6 @@ impl Decoder for DER2PrivateKeyInfo {
                     OSSL_FUNC_decoder_freectx_fn,
                     decoder_functions::freectx
                 ),
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_SET_CTX_PARAMS,
-                    OSSL_FUNC_decoder_set_ctx_params_fn,
-                    decoder_functions::set_ctx_params
-                ),
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_SETTABLE_CTX_PARAMS,
-                    OSSL_FUNC_decoder_settable_ctx_params_fn,
-                    decoder_functions::settable_ctx_params
-                ),
                 dispatch_table_entry!(
                     OSSL_FUNC_DECODER_DOES_SELECTION,
                     OSSL_FUNC_decoder_does_selection_fn,
@@ -583,12 +427,6 @@ impl Decoder for DER2PrivateKeyInfo {
                     OSSL_FUNC_DECODER_DECODE,
                     OSSL_FUNC_decoder_decode_fn,
                     decoder_functions::decodePrivateKeyInfo
-                ),
-                #[cfg(any())]
-                dispatch_table_entry!(
-                    OSSL_FUNC_DECODER_EXPORT_OBJECT,
-                    OSSL_FUNC_decoder_export_object_fn,
-                    decoder_functions::export_object
                 ),
                 OSSL_DISPATCH::END,
             ];
@@ -601,5 +439,4 @@ impl Decoder for DER2PrivateKeyInfo {
 impl DoesSelection for DER2PrivateKeyInfo {
     const SELECTION_MASK: Selection = Selection::KEYPAIR;
 }
-
 decoder::make_does_selection_fn!(does_selection_PrivateKeyInfo, DER2PrivateKeyInfo);
