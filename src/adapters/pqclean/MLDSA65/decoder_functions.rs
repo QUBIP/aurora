@@ -14,16 +14,11 @@ use keymgmt::selection::Selection;
 
 struct DecoderContext<'a> {
     provctx: &'a OpenSSLProvider<'a>,
-    // worry about ownership later
-    properties: Option<CString>,
 }
 
 impl<'a> DecoderContext<'a> {
     pub(super) fn new(provctx: &'a OpenSSLProvider<'a>) -> Self {
-        Self {
-            provctx,
-            properties: None,
-        }
+        Self { provctx }
     }
 }
 
@@ -159,7 +154,7 @@ pub(super) unsafe extern "C" fn decodeSPKI(
 
     // I don't think these are used, since set_ctx_params is never called to set them....
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
-    debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
+    // debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
 
     let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
         return d.read_element::<asn1::Sequence>()?.parse(|d| {
@@ -270,7 +265,7 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
 
     // I don't think these are used, since set_ctx_params is never called to set them....
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
-    debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
+    // debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
 
     let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
         return d.read_element::<asn1::Sequence>()?.parse(|d| {
