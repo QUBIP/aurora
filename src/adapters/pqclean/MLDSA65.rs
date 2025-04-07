@@ -42,6 +42,7 @@ use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_IN
 
 mod decoder_functions;
 mod keymgmt_functions;
+mod signature;
 mod signature_functions;
 
 pub(crate) type OurError = anyhow::Error;

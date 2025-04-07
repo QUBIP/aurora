@@ -1,9 +1,12 @@
+use std::error::Error;
+
 use super::keymgmt_functions::KeyPair;
+use super::signature::*;
 use super::OurError as SignatureError;
 use super::*;
 use bindings::OSSL_PARAM;
+use forge::operations::signature::VerificationError;
 use libc::{c_char, c_int, c_uchar, c_void};
-use pqcrypto_traits::sign::{DetachedSignature, SignedMessage, VerificationError};
 
 type OurResult<T> = anyhow::Result<T, SignatureError>;
 
@@ -12,8 +15,7 @@ pub(crate) const SIGNATURE_LEN: usize = super::keymgmt_functions::SIGNATURE_LEN;
 #[expect(dead_code)]
 struct SignatureContext<'a> {
     keypair: Option<&'a KeyPair<'a>>,
-    signed_message: Option<&'a pqcrypto_mldsa::mldsa65::SignedMessage>,
-    provctx: *mut c_void,
+    provctx: &'a OpenSSLProvider<'a>,
 }
 
 impl<'a> TryFrom<*mut core::ffi::c_void> for &mut SignatureContext<'a> {
@@ -43,12 +45,10 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &SignatureContext<'a> {
 
 impl<'a> SignatureContext<'a> {
     #[cfg(test)]
-    pub fn new(provctx: &OpenSSLProvider) -> Self {
+    pub fn new(provctx: &'a OpenSSLProvider) -> Self {
         SignatureContext {
             keypair: None,
-            signed_message: None,
-            // this looks awful, but it's just for testing
-            provctx: provctx as *const OpenSSLProvider as *mut c_void,
+            provctx,
         }
     }
 
@@ -67,7 +67,7 @@ impl<'a> SignatureContext<'a> {
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void, _propq: *const c_uchar) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -80,8 +80,7 @@ pub(super) extern "C" fn newctx(vprovctx: *mut c_void, _propq: *const c_uchar) -
 
     let sig_ctx = Box::new(SignatureContext {
         keypair: None,
-        signed_message: None,
-        provctx: vprovctx,
+        provctx,
     });
     Box::into_raw(sig_ctx).cast()
 }
@@ -100,18 +99,8 @@ impl<'a> SignatureContext<'a> {
         if keypair.private.is_some() {
             self.set_keypair(keypair)
         } else {
-            Err(anyhow!("sign_init() requires secret key"))
+            Err(anyhow!("sign_init() requires a secret key"))
         }
-    }
-
-    pub fn sign(&mut self, msg: &[u8]) -> Result<pqcrypto_mldsa::mldsa65::DetachedSignature, &str> {
-        if let Some(keypair) = self.keypair {
-            if let Some(sk) = &keypair.private {
-                let signed_msg = pqcrypto_mldsa::mldsa65::detached_sign(msg, &sk.0);
-                return Ok(signed_msg);
-            }
-        }
-        return Err("Unable to sign message (likely cause: no private key)");
     }
 
     #[named]
@@ -123,29 +112,35 @@ impl<'a> SignatureContext<'a> {
             Err(anyhow!("verify_init() requires public key"))
         }
     }
+}
 
+impl<'a> Signer<Signature> for SignatureContext<'a> {
     #[named]
-    pub fn verify(
-        &mut self,
-        sig: &[u8],
-        msg: &[u8],
-    ) -> core::result::Result<(), VerificationError> {
+    fn try_sign(&self, msg: &[u8]) -> Result<Signature, signature::Error> {
         trace!(target: log_target!(), "🧾 Called!");
-        if let Some(keypair) = self.keypair {
-            if let Some(pk) = &keypair.public {
-                let sig =
-                    pqcrypto_mldsa::mldsa65::DetachedSignature::from_bytes(sig).map_err(|e| {
-                        error!(target: log_target!(), "{e:?}");
-                        VerificationError::UnknownVerificationError
-                    })?;
-                return pqcrypto_mldsa::mldsa65::verify_detached_signature(&sig, msg, &pk.0);
-            } else {
-                error!(target: log_target!(), "No public key available for verification");
-                return Err(VerificationError::UnknownVerificationError);
-            }
-        }
-        error!(target: log_target!(), "Unable to verify message");
-        return Err(VerificationError::UnknownVerificationError);
+        let keypair = self
+            .keypair
+            .ok_or_else(|| anyhow!("Signature context is badly initialized: missing keypair"))
+            .map_err(signature::Error::from_source)?;
+        keypair.try_sign(msg)
+    }
+}
+
+impl<'a> Verifier<Signature> for SignatureContext<'a> {
+    #[named]
+    fn verify(&self, msg: &[u8], sig: &Signature) -> Result<(), signature::Error> {
+        trace!(target: log_target!(), "🧾 Called!");
+
+        let keypair = self
+            .keypair
+            .ok_or_else(|| anyhow!("Signature contest is badly initialized: missing keypair"))
+            .map_err(|e| {
+                error!("{e:#}");
+                VerificationError::GenericVerificationError
+            })
+            .map_err(super::signature::Error::from_source)?;
+
+        keypair.verify(msg, sig)
     }
 }
 
@@ -199,26 +194,24 @@ pub(super) extern "C" fn sign(
         });
         return SUCCESS_RET;
     }
+    if sigsize < SIGNATURE_LEN {
+        error! {target: log_target!(), "the output buffer for the signature is too small ({sigsize} < {SIGNATURE_LEN})"};
+        return ERROR_RET;
+    }
+    let sigout = handleResult!(u8_mut_slice_try_from_raw_parts(sig, siglen));
 
     // otherwise, we actually have something to sign, so let's sign it
     let tbs_slice = handleResult!(u8_slice_try_from_raw_parts(tbs, tbslen));
-    match sig_ctx.sign(tbs_slice) {
+    match sig_ctx.try_sign(tbs_slice) {
         Ok(signature) => {
-            let sig_bytes = signature.as_bytes();
-            // check that the signature fits in sigsize bytes
-            let nr_bytes = sig_bytes.len();
-            if nr_bytes > sigsize {
-                // error because our signature is longer than permitted :(
-                // this should never happen with a detached signature, but we may as well check!
-                error!("signature of {} bytes doesn't fit in {}", nr_bytes, sigsize);
+            let signature = signature.to_bytes();
+            let signature = signature.as_ref();
+            if sigout.len() < signature.len() {
+                error! {target: log_target!(), "the generated signature does not fit within the provided buffer ({} < {})", sigout.len(), signature.len()};
                 return ERROR_RET;
-            } else {
-                // write the signature to the provided memory address
-                unsafe {
-                    std::ptr::copy(sig_bytes.as_ptr(), sig, nr_bytes);
-                }
-                return SUCCESS_RET;
             }
+            sigout.clone_from_slice(signature);
+            return SUCCESS_RET;
         }
         Err(e) => {
             error!(target: log_target!(), "sign() failed with {:?}", e);
@@ -279,13 +272,14 @@ pub(super) extern "C" fn verify(
     }
 
     let sig_slice = handleResult!(u8_slice_try_from_raw_parts(sig, siglen));
+    let sig = handleResult!(Signature::try_from(sig_slice));
     let msg_slice = handleResult!(u8_slice_try_from_raw_parts(tbs, tbslen));
-    match sig_ctx.verify(sig_slice, msg_slice) {
+    match sig_ctx.verify(msg_slice, &sig) {
         Ok(_) => {
             return SUCCESS_RET;
         }
         Err(e) => {
-            error!(target: log_target!(), "verify() failed with {:?}", e);
+            error!(target: log_target!(), "verify() failed with {e:?}");
             ERROR_RET
         }
     }
@@ -367,7 +361,8 @@ pub(super) unsafe extern "C" fn digest_verify(
         return ERROR_RET;
     }
     assert_eq!(siglen, super::SIGNATURE_LEN);
-    let sig = unsafe { std::slice::from_raw_parts(sig, siglen) };
+    let sig_slice = handleResult!(u8_slice_try_from_raw_parts(sig, siglen));
+    let sig = handleResult!(Signature::try_from(sig_slice));
 
     if tbs.is_null() {
         error!(target: log_target!(), "tbs was NULL");
@@ -375,23 +370,26 @@ pub(super) unsafe extern "C" fn digest_verify(
     }
     let msg = unsafe { std::slice::from_raw_parts(tbs, tbslen) };
 
-    let ret = sigctx.verify(sig, msg);
+    let ret = sigctx.verify(msg, &sig);
 
     match ret {
         Ok(_) => {
             trace!(target: log_target!(), "Signature verification succeeded");
             return TRUE_RET;
         }
-        Err(e) => match e {
-            VerificationError::InvalidSignature => {
-                debug!(target: log_target!(), "Signature verification failed!");
-                return FALSE_RET;
+        Err(e) => {
+            let e = VerificationError::from(e);
+            match e {
+                VerificationError::InvalidSignature => {
+                    debug!(target: log_target!(), "Signature verification failed!");
+                    return FALSE_RET;
+                }
+                e => {
+                    error!(target: log_target!(), "{e:?}");
+                    return ERROR_RET;
+                }
             }
-            e => {
-                error!(target: log_target!(), "{e:?}");
-                return ERROR_RET;
-            }
-        },
+        }
     }
 }
 
@@ -493,8 +491,8 @@ mod tests {
         // sign a message
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
-        let signature = sigctx.sign(&msg).unwrap();
-        assert_eq!(signature.as_bytes().len(), SIGNATURE_LEN);
+        let signature = sigctx.try_sign(&msg).unwrap();
+        assert_eq!(signature.encoded_len(), SIGNATURE_LEN);
         // (this test succeeds if we've gotten this far without anything exploding)
     }
 
@@ -509,12 +507,14 @@ mod tests {
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
-        let signature = sigctx.sign(&msg).unwrap();
-        let sig_bytes = signature.as_bytes();
-        assert_eq!(sig_bytes.len(), SIGNATURE_LEN);
+        let signature = sigctx.try_sign(&msg).unwrap();
+        assert_eq!(signature.encoded_len(), SIGNATURE_LEN);
+        let sig_bytes = signature.to_bytes();
+        let sig_bytes = sig_bytes.as_ref();
+        let sig = Signature::try_from(sig_bytes).unwrap();
         // verify the signature
         sigctx.verify_init(&keypair).unwrap();
-        assert!(sigctx.verify(sig_bytes, &msg).is_ok());
+        assert!(sigctx.verify(&msg, &sig).is_ok());
     }
 
     #[test]
@@ -528,13 +528,16 @@ mod tests {
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
-        let signed_msg = sigctx.sign(&msg).unwrap();
-        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LEN];
+        let signature = sigctx.try_sign(&msg).unwrap();
+        let sig = signature.to_bytes();
+        let sig = sig.as_ref();
+        let sig = Signature::try_from(sig).unwrap();
         // generate another keypair
         let other_keypair = KeyPair::generate_new(&provctx);
         // confirm that verification with the new key fails
         sigctx.verify_init(&other_keypair).unwrap();
-        assert!(sigctx.verify(detached_sig, &msg).is_err());
+        let ret = sigctx.verify(&msg, &sig);
+        assert!(ret.is_err());
     }
 
     #[test]
@@ -548,14 +551,16 @@ mod tests {
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
-        let signed_msg = sigctx.sign(&msg).unwrap();
-        let mut detached_sig = [0; SIGNATURE_LEN];
-        detached_sig.copy_from_slice(&signed_msg.as_bytes()[..SIGNATURE_LEN]);
+        let signature = sigctx.try_sign(&msg).unwrap().to_bytes();
+        let signature = signature.as_ref();
+        let mut mut_sig = [0; SIGNATURE_LEN];
+        mut_sig.copy_from_slice(signature);
         // flip a bit in the signature
-        detached_sig[0] = std::ops::BitXor::bitxor(detached_sig[0], 1u8);
+        mut_sig[2] = std::ops::BitXor::bitxor(mut_sig[2], 1u8);
+        let sig = Signature::try_from(mut_sig.as_slice()).unwrap();
         // confirm that verification fails
         sigctx.verify_init(&keypair).unwrap();
-        assert!(sigctx.verify(&detached_sig, &msg).is_err());
+        assert!(sigctx.verify(&msg, &sig).is_err());
     }
 
     #[test]
@@ -569,17 +574,18 @@ mod tests {
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
         sigctx.sign_init(&keypair).unwrap();
-        let signed_msg = sigctx.sign(&msg).unwrap();
-        let detached_sig = &signed_msg.as_bytes()[..SIGNATURE_LEN];
+        let signature = sigctx.try_sign(&msg).unwrap().to_bytes();
+        let signature = signature.as_ref();
+        let sig = Signature::try_from(signature).unwrap();
         // construct a different message of the same length
         let other_msg: [u8; 5] = [1, 2, 3, 8, 5];
         // confirm that verification fails
         sigctx.verify_init(&keypair).unwrap();
-        assert!(sigctx.verify(&detached_sig, &other_msg).is_err());
+        assert!(sigctx.verify(&other_msg, &sig).is_err());
         // construct a longer message with the same initial contents
         let other_msg: [u8; 6] = [1, 2, 3, 4, 5, 6];
         // confirm that verification fails
         sigctx.verify_init(&keypair).unwrap();
-        assert!(sigctx.verify(&detached_sig, &other_msg).is_err());
+        assert!(sigctx.verify(&other_msg, &sig).is_err());
     }
 }

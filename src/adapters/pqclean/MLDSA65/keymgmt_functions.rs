@@ -1,4 +1,3 @@
-use super::OurError as KMGMTError;
 use super::*;
 use bindings::{
     OSSL_CALLBACK, OSSL_KEYMGMT_SELECT_KEYPAIR, OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
@@ -6,11 +5,23 @@ use bindings::{
     OSSL_PKEY_PARAM_MAX_SIZE, OSSL_PKEY_PARAM_PRIV_KEY, OSSL_PKEY_PARAM_PUB_KEY,
     OSSL_PKEY_PARAM_SECURITY_BITS,
 };
-use forge::{bindings, keymgmt::selection::Selection, ossl_callback::OSSLCallback, osslparams::*};
+use forge::{
+    bindings,
+    operations::keymgmt::selection::Selection,
+    operations::signature::{Signer, VerificationError, Verifier},
+    ossl_callback::OSSLCallback,
+    osslparams::*,
+};
+use pqcrypto_traits::sign::DetachedSignature;
 use std::{
     ffi::{c_int, c_void},
     fmt::Debug,
 };
+
+use super::OurError as KMGMTError;
+type OurResult<T> = anyhow::Result<T, KMGMTError>;
+
+use super::signature::{Signature, SignatureBytes, SignatureEncoding};
 
 pub(crate) const PUBKEY_LEN: usize = PublicKey::byte_len();
 pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len();
@@ -19,10 +30,10 @@ pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 // The wrapped key from the pqcrypto crate has to be public, or else we can't access it to use it
 // with the pqcrypto sign and verify functions.
 #[derive(PartialEq)]
-pub struct PublicKey(pub pqcrypto_mldsa::mldsa65::PublicKey);
+pub struct PublicKey(pqcrypto_mldsa::mldsa65::PublicKey);
 
 #[derive(PartialEq)]
-pub struct PrivateKey(pub pqcrypto_mldsa::mldsa65::SecretKey);
+pub struct PrivateKey(pqcrypto_mldsa::mldsa65::SecretKey);
 
 impl PublicKey {
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
@@ -54,6 +65,42 @@ impl PublicKey {
     }
 }
 
+impl Verifier<Signature> for PublicKey {
+    #[named]
+    fn verify(&self, msg: &[u8], sig: &Signature) -> Result<(), forge::crypto::signature::Error> {
+        let sig = sig.to_bytes();
+        let sig = sig.as_ref();
+        use pqcrypto_traits::sign::DetachedSignature;
+        let sig = pqcrypto_mldsa::mldsa65::DetachedSignature::from_bytes(sig).map_err(|e| {
+            error!(target: log_target!(), "{e:?}");
+            forge::crypto::signature::Error::from_source(
+                VerificationError::GenericVerificationError,
+            )
+        })?;
+        pqcrypto_mldsa::mldsa65::verify_detached_signature(&sig, msg, &self.0)
+            .map_err(map_into_VerificationError)
+            .map_err(forge::crypto::signature::Error::from_source)
+    }
+}
+
+#[named]
+fn map_into_VerificationError(
+    value: pqcrypto_traits::sign::VerificationError,
+) -> VerificationError {
+    match value {
+        pqcrypto_traits::sign::VerificationError::InvalidSignature => {
+            VerificationError::InvalidSignature
+        }
+        pqcrypto_traits::sign::VerificationError::UnknownVerificationError => {
+            VerificationError::GenericVerificationError
+        }
+        e => {
+            warn!(target: log_target!(), "Unknown error {e:#?}");
+            VerificationError::GenericVerificationError
+        }
+    }
+}
+
 impl PrivateKey {
     pub fn encode(&self) -> Vec<u8> {
         let Self(ref k) = self;
@@ -81,6 +128,15 @@ impl PrivateKey {
 
     pub const fn signature_bytes() -> usize {
         pqcrypto_mldsa::mldsa65::signature_bytes()
+    }
+}
+
+impl Signer<Signature> for PrivateKey {
+    fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
+        let Self(ref sk) = self;
+        let signature = pqcrypto_mldsa::mldsa65::detached_sign(msg, sk);
+        Signature::try_from(signature.as_bytes())
+            .map_err(|e| forge::crypto::signature::Error::from_source(e))
     }
 }
 
@@ -168,6 +224,45 @@ impl<'a> KeyPair<'a> {
             public: r.public,
             provctx,
         }
+    }
+}
+
+impl<'a> Signer<Signature> for KeyPair<'a> {
+    #[named]
+    fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
+        trace!(target: log_target!(), "Called");
+
+        let sk = self
+            .private
+            .as_ref()
+            .ok_or_else(|| {
+                anyhow!(
+                    "This keypair does not have a private key, so it cannot generate signatures"
+                )
+            })
+            .map_err(forge::crypto::signature::Error::from_source)?;
+        Ok(sk.try_sign(msg)?)
+    }
+}
+
+impl<'a> Verifier<Signature> for KeyPair<'a> {
+    #[named]
+    fn verify(&self, msg: &[u8], sig: &Signature) -> Result<(), forge::crypto::signature::Error> {
+        trace!(target: log_target!(), "Called");
+
+        let pk = self
+            .public
+            .as_ref()
+            .ok_or_else(|| {
+                anyhow!("This keypair does not have a public key, so it cannot verify signatures")
+            })
+            .map_err(|e| {
+                error!("{e:#}");
+                forge::crypto::signature::Error::from_source(
+                    VerificationError::GenericVerificationError,
+                )
+            })?;
+        pk.verify(msg, sig)
     }
 }
 
