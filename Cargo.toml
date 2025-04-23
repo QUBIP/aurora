@@ -17,7 +17,7 @@ export = []
 function_name = "0.3"
 libc = "0.2"
 log = "0.4"
-openssl_provider_forge = { version = "=0.8.2-dev", git = "https://github.com/qubip/openssl-provider-forge-rs", tag = "nt/v0.8.2-alpha2" }
+openssl_provider_forge = { version = "=0.8.3", git = "https://github.com/qubip/openssl-provider-forge-rs", tag = "v0.8.3" }
 env_logger = { version = "0.11.7", optional = true }
 libcrux-kem = "0.0.2-alpha.3"
 rand = "0.8"
