@@ -339,7 +339,7 @@ impl Decoder for DER2SubjectPublicKeyInfo {
         c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='SubjectPublicKeyInfo'";
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
-        mod dispath_table_module {
+        mod dispatch_table_module {
             use super::*;
             use bindings::{OSSL_FUNC_decoder_decode_fn, OSSL_FUNC_DECODER_DECODE};
             use bindings::{OSSL_FUNC_decoder_does_selection_fn, OSSL_FUNC_DECODER_DOES_SELECTION};
@@ -373,7 +373,7 @@ impl Decoder for DER2SubjectPublicKeyInfo {
             ];
         }
 
-        dispath_table_module::DER_DECODER_FUNCTIONS
+        dispatch_table_module::DER_DECODER_FUNCTIONS
     };
 }
 
@@ -393,7 +393,7 @@ impl Decoder for DER2PrivateKeyInfo {
         c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='PrivateKeyInfo'";
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
-        mod dispath_table_module {
+        mod dispatch_table_module {
             use super::*;
             use bindings::{OSSL_FUNC_decoder_decode_fn, OSSL_FUNC_DECODER_DECODE};
             use bindings::{OSSL_FUNC_decoder_does_selection_fn, OSSL_FUNC_DECODER_DOES_SELECTION};
@@ -427,7 +427,7 @@ impl Decoder for DER2PrivateKeyInfo {
             ];
         }
 
-        dispath_table_module::DER_DECODER_FUNCTIONS
+        dispatch_table_module::DER_DECODER_FUNCTIONS
     };
 }
 

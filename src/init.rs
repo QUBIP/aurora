@@ -76,8 +76,8 @@ pub extern "C" fn OSSL_provider_init(
         }
         unsafe { std::slice::from_raw_parts(core_dispatch, i) }
     } else {
-        error!("Got a null core_dispath table");
-        unreachable!("Got a null core_dispath table");
+        error!("Got a null core_dispatch table");
+        unreachable!("Got a null core_dispatch table");
     };
 
     let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch_slice));
