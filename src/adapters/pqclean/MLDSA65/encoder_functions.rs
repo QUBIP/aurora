@@ -275,3 +275,169 @@ impl DoesSelection for PrivateKeyInfo2DER {
 
 // again, even though this is in the "decoder" module, it works for an encoder too
 decoder::make_does_selection_fn!(does_selection_PrivateKeyInfo, PrivateKeyInfo2DER);
+
+// now a bunch of stuff that's mostly the same as above, repeated for the SPKI encoder
+pub(crate) struct SubjectPublicKeyInfo2DER();
+impl Decoder for SubjectPublicKeyInfo2DER {
+    const PROPERTY_DEFINITION: &'static CStr =
+        c"x.author='QUBIP',x.qubip.adapter='pqclean',output='der',structure='SubjectPublicKeyInfo'";
+
+    const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
+        mod dispatch_table_module {
+            use super::*;
+            use bindings::{OSSL_FUNC_encoder_does_selection_fn, OSSL_FUNC_ENCODER_DOES_SELECTION};
+            use bindings::{OSSL_FUNC_encoder_encode_fn, OSSL_FUNC_ENCODER_ENCODE};
+            use bindings::{OSSL_FUNC_encoder_freectx_fn, OSSL_FUNC_ENCODER_FREECTX};
+            use bindings::{OSSL_FUNC_encoder_newctx_fn, OSSL_FUNC_ENCODER_NEWCTX};
+
+            // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
+            // https://docs.openssl.org/3.2/man7/provider-decoder/
+            pub(super) const DER_ENCODER_FUNCTIONS: &[OSSL_DISPATCH] = &[
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_NEWCTX,
+                    OSSL_FUNC_encoder_newctx_fn,
+                    encoder_functions::newctx
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_FREECTX,
+                    OSSL_FUNC_encoder_freectx_fn,
+                    encoder_functions::freectx
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_DOES_SELECTION,
+                    OSSL_FUNC_encoder_does_selection_fn,
+                    encoder_functions::does_selection_SPKI
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_ENCODE,
+                    OSSL_FUNC_encoder_encode_fn,
+                    encoder_functions::encodeSPKI
+                ),
+                OSSL_DISPATCH::END,
+            ];
+        }
+
+        dispatch_table_module::DER_ENCODER_FUNCTIONS
+    };
+}
+
+/// Encodes a SubjectPublicKeyInfo to DER
+///
+/// # Arguments
+///
+/// ## TODO(🛠️): document arguments
+///
+/// # Notes
+///
+/// [`OSSL_FUNC_encoder_encode_fn`][provider-encoder(7ossl)]
+/// functions such as this one are tightly integrated
+/// with the [`super::keymgmt_functions::load`]
+/// implementation exposed
+/// for [their algorithm][`super`].
+///
+/// Eventually the `data_cb` argument calls the
+/// `OSSL_FUNC_keymgmt_load_fn`
+/// exposed by the [keymgmt][`super::keymgmt_functions`]
+/// for [this algorithm][`super`].
+/// Hence they must agree on how the reference is being passed around.
+///
+/// Refer to [provider-decoder(7ossl)],
+/// [provider-keymgmt(7ossl)],
+/// and [provider-object(7ossl)].
+///
+/// [provider-keymgmt(7ossl)]: https://docs.openssl.org/master/man7/provider-keymgmt/
+/// [provider-object(7ossl)]: https://docs.openssl.org/master/man7/provider-object/
+/// [provider-encoder(7ossl)]: https://docs.openssl.org/master/man7/provider-encoder/
+///
+/// # Examples
+///
+/// ## TODO(🛠️): add examples
+///
+#[named]
+pub(super) unsafe extern "C" fn encodeSPKI(
+    vencoderctx: *mut c_void,
+    out: *mut OSSL_CORE_BIO,
+    obj_raw: *const c_void,
+    _obj_abstract: *const OSSL_PARAM,
+    selection: c_int,
+    _cb: OSSL_PASSPHRASE_CALLBACK,
+    _cbarg: *mut c_void,
+) -> c_int {
+    const ERROR_RET: c_int = 0;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    debug!(target: log_target!(), "Got selection in encodeSPKI(): {:#b}", selection);
+    if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
+        error!(target: log_target!(), "Invalid selection: {selection:#?}");
+        return ERROR_RET;
+    }
+
+    let encoderctx: &EncoderContext = handleResult!(vencoderctx.try_into());
+
+    if obj_raw.is_null() {
+        error!(target: log_target!(), "No provider-native object passed to encoder");
+        return ERROR_RET;
+    }
+
+    let keypair: &KeyPair = handleResult!(obj_raw.try_into());
+    debug!(target: log_target!(), "Got keypair in encodeSPKI(): {:?}", keypair);
+    if keypair.public.is_none() {
+        error!(target: log_target!(), "Keypair does not contain a public key");
+        return ERROR_RET;
+    }
+
+    let pubkey_bytes = keypair.public.as_ref().unwrap().encode();
+
+    let result = asn1::write(|w| {
+        w.write_element(&asn1::SequenceWriter::new(&|w| {
+            // algorithm identifier
+            w.write_element(&asn1::SequenceWriter::new(&|w| {
+                w.write_element(&asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18))?;
+                Ok(())
+            }))?;
+            // key data
+            w.write_element(&asn1::OctetStringEncoded::new(pubkey_bytes.as_slice()))?;
+            Ok(())
+        }))
+    });
+
+    let der_bytes = handleResult!(result);
+    let der_bytes = der_bytes.as_slice();
+    match encoderctx
+        .provctx
+        .fn_from_core_dispatch(OSSL_FUNC_BIO_WRITE_EX)
+    {
+        Some(fn_ptr) => {
+            let ffi_BIO_write_ex = unsafe {
+                std::mem::transmute::<
+                    *const (),
+                    unsafe extern "C" fn(
+                        bio: *mut OSSL_CORE_BIO,
+                        data: *const c_void,
+                        data_len: usize,
+                        written: *mut usize,
+                    ) -> c_int,
+                >(fn_ptr as _)
+            };
+            let mut bytes_written: usize = 0;
+            let ret = ffi_BIO_write_ex(
+                out,
+                der_bytes.as_ptr() as *const c_void,
+                der_bytes.len(),
+                &mut bytes_written,
+            );
+            return ret;
+        }
+        None => {
+            error!(target: log_target!(), "Unable to retrieve and use BIO_write_ex() upcall pointer");
+            return ERROR_RET;
+        }
+    }
+}
+
+impl DoesSelection for SubjectPublicKeyInfo2DER {
+    const SELECTION_MASK: Selection = Selection::PUBLIC_KEY;
+}
+
+// again, even though this is in the "decoder" module, it works for an encoder too
+decoder::make_does_selection_fn!(does_selection_SPKI, SubjectPublicKeyInfo2DER);

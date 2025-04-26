@@ -106,19 +106,34 @@ impl AdapterContextTrait for PQCleanAdapter {
 
         handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
 
-        let encoder_algorithms = Box::new([{
-            // the Decoder trait just provides PROPERTY_DEFINITION and DISPATCH_TABLE, so we're
-            // using it here even though this is an Encoder
-            use forge::operations::decoder::Decoder;
-            use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
-            use MLDSA65 as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let encoder_algorithms = Box::new([
+            {
+                // the Decoder trait just provides PROPERTY_DEFINITION and DISPATCH_TABLE, so we're
+                // using it here even though this is an Encoder
+                use forge::operations::decoder::Decoder;
+                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
+                use MLDSA65 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                // the Decoder trait just provides PROPERTY_DEFINITION and DISPATCH_TABLE, so we're
+                // using it here even though this is an Encoder
+                use forge::operations::decoder::Decoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
+                use MLDSA65 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+        ]);
 
         // bad!
         handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
