@@ -41,6 +41,7 @@ use bindings::{OSSL_FUNC_signature_verify_fn, OSSL_FUNC_SIGNATURE_VERIFY};
 use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_INIT};
 
 mod decoder_functions;
+mod encoder_functions;
 mod keymgmt_functions;
 mod signature;
 mod signature_functions;
@@ -364,3 +365,4 @@ pub(super) const KMGMT_FUNCTIONS: &[OSSL_DISPATCH] = &[
 
 pub(super) use decoder_functions::DER2PrivateKeyInfo as DECODER_DER2PrivateKeyInfo;
 pub(super) use decoder_functions::DER2SubjectPublicKeyInfo as DECODER_DER2SubjectPublicKeyInfo;
+pub(super) use encoder_functions::PrivateKeyInfo2DER as ENCODER_PrivateKeyInfo2DER;

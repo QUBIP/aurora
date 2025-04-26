@@ -5,7 +5,9 @@ use aurora::bindings;
 use aurora::forge;
 use aurora::OpenSSLProvider;
 use aurora::{handleResult, named};
-use bindings::{CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_DECODER, OSSL_OP_KEYMGMT};
+use bindings::{
+    CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_DECODER, OSSL_OP_ENCODER, OSSL_OP_KEYMGMT,
+};
 use openssl_provider_forge::bindings::OSSL_OP_SIGNATURE;
 use std::ffi::CStr;
 
@@ -71,6 +73,7 @@ impl AdapterContextTrait for PQCleanAdapter {
         Ok(())
     }
 
+    // FIXME this function currently registers decoders AND an encoder
     #[named]
     fn register_decoders(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
@@ -102,6 +105,23 @@ impl AdapterContextTrait for PQCleanAdapter {
         ]);
 
         handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
+
+        let encoder_algorithms = Box::new([{
+            // the Decoder trait just provides PROPERTY_DEFINITION and DISPATCH_TABLE, so we're
+            // using it here even though this is an Encoder
+            use forge::operations::decoder::Decoder;
+            use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
+            use MLDSA65 as Alg;
+            OSSL_ALGORITHM {
+                algorithm_names: Alg::NAMES.as_ptr(),
+                property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                algorithm_description: Alg::DESCRIPTION.as_ptr(),
+            }
+        }]);
+
+        // bad!
+        handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
 
         Ok(())
     }
