@@ -396,7 +396,8 @@ pub(super) unsafe extern "C" fn encodeSPKI(
                 Ok(())
             }))?;
             // key data
-            w.write_element(&asn1::OctetStringEncoded::new(pubkey_bytes.as_slice()))?;
+            // TODO confirm whether 0 is the right value for padding_bits
+            w.write_element(&asn1::BitString::new(pubkey_bytes.as_slice(), 0))?;
             Ok(())
         }))
     });
