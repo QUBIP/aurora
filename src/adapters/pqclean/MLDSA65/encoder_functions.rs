@@ -193,7 +193,7 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo(
 
     debug!(target: log_target!(), "Got selection in encodePrivateKeyInfo(): {:#b}", selection);
     if (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
-        debug!(target: log_target!(), "Invalid selection: {selection:#?}");
+        error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
     }
 
@@ -205,7 +205,7 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo(
     }
 
     let keypair: &KeyPair = handleResult!(obj_raw.try_into());
-    error!(target: log_target!(), "Got keypair in encodePrivateKeyInfo(): {:?}", keypair);
+    debug!(target: log_target!(), "Got keypair in encodePrivateKeyInfo(): {:?}", keypair);
     if keypair.private.is_none() {
         error!(target: log_target!(), "Keypair does not contain a private key");
         return ERROR_RET;
