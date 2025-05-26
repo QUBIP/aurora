@@ -142,6 +142,17 @@ impl AdapterContextTrait for PQCleanAdapter {
                     algorithm_description: Alg::DESCRIPTION.as_ptr(),
                 }
             },
+            {
+                use forge::operations::decoder::Decoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
+                use MLDSA65 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
         ]);
 
         // bad!

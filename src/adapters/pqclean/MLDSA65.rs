@@ -368,3 +368,4 @@ pub(super) use decoder_functions::DER2SubjectPublicKeyInfo as DECODER_DER2Subjec
 pub(super) use encoder_functions::PrivateKeyInfo2DER as ENCODER_PrivateKeyInfo2DER;
 pub(super) use encoder_functions::PrivateKeyInfo2PEM as ENCODER_PrivateKeyInfo2PEM;
 pub(super) use encoder_functions::SubjectPublicKeyInfo2DER as ENCODER_SubjectPublicKeyInfo2DER;
+pub(super) use encoder_functions::SubjectPublicKeyInfo2PEM as ENCODER_SubjectPublicKeyInfo2PEM;
