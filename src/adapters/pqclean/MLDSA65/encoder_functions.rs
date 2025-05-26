@@ -450,6 +450,22 @@ impl DoesSelection for PrivateKeyInfo2PEM {
 // the make_does_selection_fn macro again.
 
 // now a bunch of stuff that's mostly the same as above, repeated for the SPKI encoder
+fn spki_bytes_to_DER(pubkey_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::WriteError> {
+    asn1::write(|w| {
+        w.write_element(&asn1::SequenceWriter::new(&|w| {
+            // algorithm identifier
+            w.write_element(&asn1::SequenceWriter::new(&|w| {
+                w.write_element(&asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18))?;
+                Ok(())
+            }))?;
+            // key data
+            // TODO confirm whether 0 is the right value for padding_bits
+            w.write_element(&asn1::BitString::new(pubkey_bytes.as_slice(), 0))?;
+            Ok(())
+        }))
+    })
+}
+
 pub(crate) struct SubjectPublicKeyInfo2DER();
 impl Decoder for SubjectPublicKeyInfo2DER {
     const PROPERTY_DEFINITION: &'static CStr =
@@ -561,22 +577,10 @@ pub(super) unsafe extern "C" fn encodeSPKI2DER(
 
     let pubkey_bytes = keypair.public.as_ref().unwrap().encode();
 
-    let result = asn1::write(|w| {
-        w.write_element(&asn1::SequenceWriter::new(&|w| {
-            // algorithm identifier
-            w.write_element(&asn1::SequenceWriter::new(&|w| {
-                w.write_element(&asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18))?;
-                Ok(())
-            }))?;
-            // key data
-            // TODO confirm whether 0 is the right value for padding_bits
-            w.write_element(&asn1::BitString::new(pubkey_bytes.as_slice(), 0))?;
-            Ok(())
-        }))
-    });
-
-    let der_bytes = handleResult!(result);
+    let der_result = spki_bytes_to_DER(pubkey_bytes);
+    let der_bytes = handleResult!(der_result);
     let der_bytes = der_bytes.as_slice();
+
     match encoderctx
         .provctx
         .fn_from_core_dispatch(OSSL_FUNC_BIO_WRITE_EX)
