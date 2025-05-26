@@ -95,6 +95,23 @@ pub(super) unsafe extern "C" fn freectx(vencoderctx: *mut c_void) {
     }
 }
 
+fn private_key_bytes_to_DER(keypair_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::WriteError> {
+    asn1::write(|w| {
+        w.write_element(&asn1::SequenceWriter::new(&|w| {
+            // version (when reading this we discard it)
+            w.write_element(&asn1::BigInt::new(&[0]))?;
+            // algorithm identifier
+            w.write_element(&asn1::SequenceWriter::new(&|w| {
+                w.write_element(&asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18))?;
+                Ok(())
+            }))?;
+            // key data
+            w.write_element(&asn1::OctetStringEncoded::new(keypair_bytes.as_slice()))?;
+            Ok(())
+        }))
+    })
+}
+
 pub(crate) struct PrivateKeyInfo2DER();
 
 use decoder::Decoder;
@@ -220,23 +237,10 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo2DER(
     let mut keypair_bytes = keypair.private.as_ref().unwrap().encode();
     keypair_bytes.extend_from_slice(keypair.public.as_ref().unwrap().encode().as_slice());
 
-    let result = asn1::write(|w| {
-        w.write_element(&asn1::SequenceWriter::new(&|w| {
-            // version (when reading this we discard it)
-            w.write_element(&asn1::BigInt::new(&[0]))?;
-            // algorithm identifier
-            w.write_element(&asn1::SequenceWriter::new(&|w| {
-                w.write_element(&asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18))?;
-                Ok(())
-            }))?;
-            // key data
-            w.write_element(&asn1::OctetStringEncoded::new(keypair_bytes.as_slice()))?;
-            Ok(())
-        }))
-    });
-
-    let der_bytes = handleResult!(result);
+    let der_result = private_key_bytes_to_DER(keypair_bytes);
+    let der_bytes = handleResult!(der_result);
     let der_bytes = der_bytes.as_slice();
+
     match encoderctx
         .provctx
         .fn_from_core_dispatch(OSSL_FUNC_BIO_WRITE_EX)
