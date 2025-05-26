@@ -136,7 +136,7 @@ impl Decoder for PrivateKeyInfo2DER {
                 dispatch_table_entry!(
                     OSSL_FUNC_ENCODER_ENCODE,
                     OSSL_FUNC_encoder_encode_fn,
-                    encoder_functions::encodePrivateKeyInfo
+                    encoder_functions::encodePrivateKeyInfo2DER
                 ),
                 OSSL_DISPATCH::END,
             ];
@@ -179,7 +179,7 @@ impl Decoder for PrivateKeyInfo2DER {
 /// ## TODO(🛠️): add examples
 ///
 #[named]
-pub(super) unsafe extern "C" fn encodePrivateKeyInfo(
+pub(super) unsafe extern "C" fn encodePrivateKeyInfo2DER(
     vencoderctx: *mut c_void,
     out: *mut OSSL_CORE_BIO,
     obj_raw: *const c_void,
@@ -191,7 +191,7 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo(
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in encodePrivateKeyInfo(): {:#b}", selection);
+    debug!(target: log_target!(), "Got selection in encodePrivateKeyInfo2DER(): {:#b}", selection);
     if (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
@@ -205,7 +205,7 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo(
     }
 
     let keypair: &KeyPair = handleResult!(obj_raw.try_into());
-    debug!(target: log_target!(), "Got keypair in encodePrivateKeyInfo(): {:?}", keypair);
+    debug!(target: log_target!(), "Got keypair in encodePrivateKeyInfo2DER(): {:?}", keypair);
     if keypair.private.is_none() {
         error!(target: log_target!(), "Keypair does not contain a private key");
         return ERROR_RET;
@@ -311,7 +311,7 @@ impl Decoder for SubjectPublicKeyInfo2DER {
                 dispatch_table_entry!(
                     OSSL_FUNC_ENCODER_ENCODE,
                     OSSL_FUNC_encoder_encode_fn,
-                    encoder_functions::encodeSPKI
+                    encoder_functions::encodeSPKI2DER
                 ),
                 OSSL_DISPATCH::END,
             ];
@@ -354,7 +354,7 @@ impl Decoder for SubjectPublicKeyInfo2DER {
 /// ## TODO(🛠️): add examples
 ///
 #[named]
-pub(super) unsafe extern "C" fn encodeSPKI(
+pub(super) unsafe extern "C" fn encodeSPKI2DER(
     vencoderctx: *mut c_void,
     out: *mut OSSL_CORE_BIO,
     obj_raw: *const c_void,
