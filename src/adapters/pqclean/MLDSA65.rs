@@ -366,4 +366,5 @@ pub(super) const KMGMT_FUNCTIONS: &[OSSL_DISPATCH] = &[
 pub(super) use decoder_functions::DER2PrivateKeyInfo as DECODER_DER2PrivateKeyInfo;
 pub(super) use decoder_functions::DER2SubjectPublicKeyInfo as DECODER_DER2SubjectPublicKeyInfo;
 pub(super) use encoder_functions::PrivateKeyInfo2DER as ENCODER_PrivateKeyInfo2DER;
+pub(super) use encoder_functions::PrivateKeyInfo2PEM as ENCODER_PrivateKeyInfo2PEM;
 pub(super) use encoder_functions::SubjectPublicKeyInfo2DER as ENCODER_SubjectPublicKeyInfo2DER;
