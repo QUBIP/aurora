@@ -4,8 +4,9 @@ use super::keymgmt_functions::KeyPair;
 use super::signature::*;
 use super::OurError as SignatureError;
 use super::*;
-use bindings::OSSL_PARAM;
+use bindings::{OSSL_PARAM, OSSL_SIGNATURE_PARAM_ALGORITHM_ID};
 use forge::operations::signature::VerificationError;
+use forge::osslparams::OSSLParam;
 use libc::{c_char, c_int, c_uchar, c_void};
 
 type OurResult<T> = anyhow::Result<T, SignatureError>;
@@ -285,18 +286,62 @@ pub(super) extern "C" fn verify(
     }
 }
 
+#[named]
 pub(super) unsafe extern "C" fn gettable_ctx_params(
     _ctx: *mut c_void,
     _provctx: *mut c_void,
 ) -> *const OSSL_PARAM {
-    todo!();
+    trace!(target: log_target!(), "{}", "Called!");
+
+    static LIST: &[CONST_OSSL_PARAM] = &[
+        OSSLParam::new_const_octetstring(OSSL_SIGNATURE_PARAM_ALGORITHM_ID, None),
+        CONST_OSSL_PARAM::END,
+    ];
+
+    std::ptr::from_ref(&LIST[0])
 }
 
+#[named]
 pub(super) unsafe extern "C" fn get_ctx_params(
     _ctx: *mut c_void,
-    _params: *mut OSSL_PARAM,
+    params: *mut OSSL_PARAM,
 ) -> c_int {
-    todo!();
+    const ERROR_RET: c_int = 0;
+    const SUCCESS: c_int = 1;
+
+    trace!(target: log_target!(), "{}", "Called!");
+
+    let params = match OSSLParam::try_from(params) {
+        Ok(params) => params,
+        Err(e) => {
+            error!(target: log_target!(), "Failed decoding params: {:?}", e);
+            return ERROR_RET;
+        }
+    };
+
+    for mut p in params {
+        let key = match p.get_key() {
+            Some(key) => key,
+            None => {
+                error!(target: log_target!(), "Param without valid key {:?}", p);
+                return ERROR_RET;
+            }
+        };
+
+        if key == OSSL_SIGNATURE_PARAM_ALGORITHM_ID {
+            // TODO: This is the DER representation of the OID 2.16.840.1.101.3.4.3.18, and it was
+            // unearthed from a running instance of the OQS provider with gdb; we should use a
+            // "proper" crate instead for encoding the value to DER. The asn1 crate's OID
+            // implementation doesn't let you extract the DER bytes except by writing out a fully
+            // fledged ASN.1 representation, so we need something else, maybe the const-oid crate?
+            let oid_bytes: &[u8] = &[48, 11, 6, 9, 96, 134, 72, 1, 101, 3, 4, 3, 18];
+            let _ = p.set(oid_bytes);
+        } else {
+            debug!(target: log_target!(), "Ignoring param {:?}", key);
+        }
+    }
+
+    SUCCESS
 }
 
 pub(super) unsafe extern "C" fn settable_ctx_params(

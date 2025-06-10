@@ -240,13 +240,11 @@ pub(super) const SIG_FUNCTIONS: &[OSSL_DISPATCH] = &[
         OSSL_FUNC_signature_digest_sign_fn,
         signature_functions::digest_sign
     ),
-    #[cfg(any())]
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_GETTABLE_CTX_PARAMS,
         OSSL_FUNC_signature_gettable_ctx_params_fn,
         signature_functions::gettable_ctx_params
     ),
-    #[cfg(any())]
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_GET_CTX_PARAMS,
         OSSL_FUNC_signature_get_ctx_params_fn,
