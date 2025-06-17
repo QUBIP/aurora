@@ -116,6 +116,7 @@ dependencies = [
  "pqcrypto-traits",
  "rand",
  "rand_core",
+ "regex",
  "zeroize",
 ]
 
