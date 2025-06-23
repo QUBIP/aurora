@@ -52,25 +52,38 @@ struct Algorithm {
 impl Algorithm {
     /// Constructs a new instance of [`Algorithm`]
     pub fn new(names: String, provider: String, props: String) -> Self {
-        let names = names.trim().split(r",").map(|v| v.trim().to_string()).collect();
+        let names = names
+            .trim()
+            .split(r",")
+            .map(|v| v.trim().to_string())
+            .collect();
         let provider = provider.trim().to_string();
-        let props = props.trim().split(",").map(|v| v.trim().to_string()).collect();
-        Self { names, provider, props }
+        let props = props
+            .trim()
+            .split(",")
+            .map(|v| v.trim().to_string())
+            .collect();
+        Self {
+            names,
+            provider,
+            props,
+        }
     }
 }
-
 
 /// List all provided algorithms
 #[test]
 fn openssl_aurora_list_all_algorithms() {
     let testctx = common::setup().expect("Failed to initialize test setup");
     let _ = testctx;
-    let output =
-        run_openssl_with_aurora(["list", "-all-algorithms"]).expect("openssl failed");
+    let output = run_openssl_with_aurora(["list", "-all-algorithms"]).expect("openssl failed");
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // `(?m)` enables multiline mode, so `^` and `$` work per line
-    let algs_re = Regex::new(r"(?m)^\s*\{\s*(?P<algnames>.+)\s*\}\s@\s(?P<provider>.+)\s*\((?P<algprops>.+)\s*\)$").expect("Invalid regex");
+    let algs_re = Regex::new(
+        r"(?m)^\s*\{\s*(?P<algnames>.+)\s*\}\s@\s(?P<provider>.+)\s*\((?P<algprops>.+)\s*\)$",
+    )
+    .expect("Invalid regex");
     let algs: Vec<_> = algs_re
         .captures_iter(&stdout)
         .map(|caps| {
@@ -80,13 +93,17 @@ fn openssl_aurora_list_all_algorithms() {
             Algorithm::new(names, provider, props)
         })
         // Filter those provided by libaurora
-        .filter(|a| { a.provider == "libaurora" } )
+        .filter(|a| a.provider == "libaurora")
         .collect();
 
     // Print all captured algorithms (for debug, optional)
     println!("Captured algs: {:?}", algs);
 
-    assert_eq!(algs.is_empty(), false, "aurora should provide at least one algorithm");
+    assert_eq!(
+        algs.is_empty(),
+        false,
+        "aurora should provide at least one algorithm"
+    );
 
     // For each provided algorithm
     for alg in algs {
