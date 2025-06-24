@@ -6,6 +6,15 @@ use env_logger as logger;
 
 pub(crate) fn setup() -> Result<(), OurError> {
     try_init_logging().expect("Failed to initialize the logging system");
+
+    let profile = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    };
+
+    build::build_cdylib_before_tests(profile);
+    env::set_openssl_modules_env_var(profile);
     Ok(())
 }
 
@@ -32,4 +41,54 @@ fn try_init_logging() -> Result<(), OurError> {
     });
 
     Ok(())
+}
+
+mod build {
+    use std::process::Command;
+
+    pub(super) fn build_cdylib_before_tests(profile: &str) {
+        let profile_arg = match profile {
+            "debug" => None,
+            "release" => {
+                log::error!("{profile:?} is intentionally not supported at the moment");
+                unimplemented!();
+                //Some(format!("--{profile:}"))
+            }
+            _ => {
+                log::error!("Unknown profile: {profile:?}");
+                panic!("Unknown profile: {profile:?}")
+            }
+        };
+
+        let mut args = vec!["build".to_string()];
+        if let Some(arg) = profile_arg {
+            args.push(arg);
+        }
+
+        let status = Command::new("cargo")
+            .args(&args)
+            .status()
+            .expect("Failed to build cdylib");
+
+        assert!(status.success());
+    }
+}
+
+mod env {
+    pub(super) fn set_openssl_modules_env_var(profile: &str) {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
+            .expect("Cannot resolve CARGO_MANIFEST_DIR environment variable");
+        let target_dir = std::path::Path::new(&manifest_dir)
+            .join("target")
+            .join(profile);
+
+        assert!(target_dir.exists(), "{target_dir:?} does not exist");
+        let p = target_dir.as_os_str();
+        let v = "OPENSSL_MODULES";
+        std::env::set_var(v, p);
+        log::info!(
+            "Set {v:?} env variable to {:?}",
+            std::env::var_os(v).unwrap()
+        )
+    }
 }
