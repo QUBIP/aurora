@@ -53,7 +53,7 @@ impl AdapterContextTrait for PQCleanAdapter {
         // FIXME: probably this should be a const/static
         let decoder_algorithms = Box::new([
             {
-                use forge::operations::decoder::Decoder;
+                use forge::operations::transcoders::Decoder;
                 use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
                 use MLDSA65 as Alg;
                 OSSL_ALGORITHM {
@@ -64,7 +64,7 @@ impl AdapterContextTrait for PQCleanAdapter {
                 }
             },
             {
-                use forge::operations::decoder::Decoder;
+                use forge::operations::transcoders::Decoder;
                 use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
                 use MLDSA65 as Alg;
                 OSSL_ALGORITHM {
@@ -79,10 +79,8 @@ impl AdapterContextTrait for PQCleanAdapter {
         handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
 
         let encoder_algorithms = Box::new([
-            // the Decoder trait just provides PROPERTY_DEFINITION and DISPATCH_TABLE, so we're
-            // using it for all of these even though this is an Encoder
             {
-                use forge::operations::decoder::Decoder;
+                use forge::operations::transcoders::Encoder;
                 use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
                 use MLDSA65 as Alg;
                 OSSL_ALGORITHM {
@@ -93,7 +91,7 @@ impl AdapterContextTrait for PQCleanAdapter {
                 }
             },
             {
-                use forge::operations::decoder::Decoder;
+                use forge::operations::transcoders::Encoder;
                 use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
                 use MLDSA65 as Alg;
                 OSSL_ALGORITHM {
@@ -104,7 +102,7 @@ impl AdapterContextTrait for PQCleanAdapter {
                 }
             },
             {
-                use forge::operations::decoder::Decoder;
+                use forge::operations::transcoders::Encoder;
                 use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
                 use MLDSA65 as Alg;
                 OSSL_ALGORITHM {
@@ -115,7 +113,7 @@ impl AdapterContextTrait for PQCleanAdapter {
                 }
             },
             {
-                use forge::operations::decoder::Decoder;
+                use forge::operations::transcoders::Encoder;
                 use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
                 use MLDSA65 as Alg;
                 OSSL_ALGORITHM {

@@ -6,11 +6,11 @@ use bindings::{
     OSSL_KEYMGMT_SELECT_PRIVATE_KEY, OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_OBJECT_PARAM_DATA_TYPE,
     OSSL_OBJECT_PARAM_REFERENCE, OSSL_OBJECT_PARAM_TYPE, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK,
 };
-use decoder::{Decoder, DoesSelection};
-use forge::operations::{decoder, keymgmt};
+use forge::operations::{keymgmt, transcoders};
 use forge::ossl_callback::OSSLCallback;
 use forge::osslparams::*;
 use keymgmt::selection::Selection;
+use transcoders::{Decoder, DoesSelection};
 
 struct DecoderContext<'a> {
     provctx: &'a OpenSSLProvider<'a>,
@@ -381,7 +381,7 @@ impl DoesSelection for DER2SubjectPublicKeyInfo {
     const SELECTION_MASK: Selection = Selection::PUBLIC_KEY;
 }
 
-decoder::make_does_selection_fn!(does_selection_SPKI, DER2SubjectPublicKeyInfo);
+transcoders::make_does_selection_fn!(does_selection_SPKI, DER2SubjectPublicKeyInfo);
 
 /// A _DER_ [Decoder][provider-decoder(7ossl)] for _PrivateKeyInfo_
 ///
@@ -434,4 +434,4 @@ impl Decoder for DER2PrivateKeyInfo {
 impl DoesSelection for DER2PrivateKeyInfo {
     const SELECTION_MASK: Selection = Selection::KEYPAIR;
 }
-decoder::make_does_selection_fn!(does_selection_PrivateKeyInfo, DER2PrivateKeyInfo);
+transcoders::make_does_selection_fn!(does_selection_PrivateKeyInfo, DER2PrivateKeyInfo);

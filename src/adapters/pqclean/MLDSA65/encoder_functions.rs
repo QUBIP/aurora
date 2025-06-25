@@ -8,7 +8,7 @@ use bindings::{
     OSSL_KEYMGMT_SELECT_PRIVATE_KEY, OSSL_KEYMGMT_SELECT_PUBLIC_KEY, OSSL_OBJECT_PARAM_DATA_TYPE,
     OSSL_OBJECT_PARAM_REFERENCE, OSSL_OBJECT_PARAM_TYPE, OSSL_PARAM, OSSL_PASSPHRASE_CALLBACK,
 };
-use forge::operations::{decoder, keymgmt};
+use forge::operations::{keymgmt, transcoders};
 use forge::ossl_callback::OSSLCallback;
 use forge::osslparams::*;
 use keymgmt::selection::Selection;
@@ -115,13 +115,11 @@ fn private_key_bytes_to_DER(keypair_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::Wri
 
 pub(crate) struct PrivateKeyInfo2DER();
 
-use decoder::Decoder;
-use decoder::DoesSelection;
 use openssl_provider_forge::bindings::OSSL_FUNC_BIO_WRITE_EX;
+use transcoders::DoesSelection;
+use transcoders::Encoder;
 
-// the Decoder trait just provides PROPERTY_DEFINITION and DISPATCH_TABLE, so we're
-// using it here even though this is an Encoder
-impl Decoder for PrivateKeyInfo2DER {
+impl Encoder for PrivateKeyInfo2DER {
     const PROPERTY_DEFINITION: &'static CStr =
         c"x.author='QUBIP',x.qubip.adapter='pqclean',output='der',structure='PrivateKeyInfo'";
 
@@ -278,14 +276,11 @@ impl DoesSelection for PrivateKeyInfo2DER {
     const SELECTION_MASK: Selection = Selection::KEYPAIR;
 }
 
-// again, even though this is in the "decoder" module, it works for an encoder too
-decoder::make_does_selection_fn!(does_selection_PrivateKeyInfo, PrivateKeyInfo2DER);
+transcoders::make_does_selection_fn!(does_selection_PrivateKeyInfo, PrivateKeyInfo2DER);
 
 pub(crate) struct PrivateKeyInfo2PEM();
 
-// the Decoder trait just provides PROPERTY_DEFINITION and DISPATCH_TABLE, so we're
-// using it here even though this is an Encoder
-impl Decoder for PrivateKeyInfo2PEM {
+impl Encoder for PrivateKeyInfo2PEM {
     const PROPERTY_DEFINITION: &'static CStr =
         c"x.author='QUBIP',x.qubip.adapter='pqclean',output='pem',structure='PrivateKeyInfo'";
 
@@ -467,7 +462,7 @@ fn spki_bytes_to_DER(pubkey_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::WriteError>
 }
 
 pub(crate) struct SubjectPublicKeyInfo2DER();
-impl Decoder for SubjectPublicKeyInfo2DER {
+impl Encoder for SubjectPublicKeyInfo2DER {
     const PROPERTY_DEFINITION: &'static CStr =
         c"x.author='QUBIP',x.qubip.adapter='pqclean',output='der',structure='SubjectPublicKeyInfo'";
 
@@ -617,11 +612,10 @@ impl DoesSelection for SubjectPublicKeyInfo2DER {
     const SELECTION_MASK: Selection = Selection::PUBLIC_KEY;
 }
 
-// again, even though this is in the "decoder" module, it works for an encoder too
-decoder::make_does_selection_fn!(does_selection_SPKI, SubjectPublicKeyInfo2DER);
+transcoders::make_does_selection_fn!(does_selection_SPKI, SubjectPublicKeyInfo2DER);
 
 pub(crate) struct SubjectPublicKeyInfo2PEM();
-impl Decoder for SubjectPublicKeyInfo2PEM {
+impl Encoder for SubjectPublicKeyInfo2PEM {
     const PROPERTY_DEFINITION: &'static CStr =
         c"x.author='QUBIP',x.qubip.adapter='pqclean',output='pem',structure='SubjectPublicKeyInfo'";
 
