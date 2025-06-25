@@ -51,19 +51,19 @@ pub(crate) use anyhow::anyhow;
 
 // Ensure proper null-terminated C string
 // https://docs.openssl.org/master/man7/provider/#algorithm-naming
-pub(super) const NAMES: &CStr = c"ML-DSA-65:2.16.840.1.101.3.4.3.18:id-ml-dsa-65:mldsa65";
+pub(super) const NAMES: &CStr = c"ML-DSA-87:2.16.840.1.101.3.4.3.19:id-ml-dsa-87:mldsa87";
 
 /// NAME should be a substring of NAMES
-pub(crate) const NAME: &CStr = c"ML-DSA-65";
+pub(crate) const NAME: &CStr = c"ML-DSA-87";
 
 /// OID should be a substring of NAMES
-pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18);
+pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 19);
 
 // Ensure proper null-terminated C string
-pub(super) const DESCRIPTION: &CStr = c"ML-DSA-65 from pqclean";
+pub(super) const DESCRIPTION: &CStr = c"ML-DSA-87 from pqclean";
 
 /// number of bits of security
-pub(crate) const SECURITY_BITS: u32 = 192;
+pub(crate) const SECURITY_BITS: u32 = 256;
 
 #[allow(unused_imports)]
 pub(crate) use keymgmt_functions::{PUBKEY_LEN, SECRETKEY_LEN, SIGNATURE_LEN};
@@ -75,7 +75,7 @@ pub(crate) mod capabilities {
         use forge::osslparams::CONST_OSSL_PARAM;
         use tls_sigalg::*;
 
-        /// A [_unit-like struct_][rustbook:unit-like-structs] implementing [`TLSSigAlg`] for `id-ml-dsa-65`.
+        /// A [_unit-like struct_][rustbook:unit-like-structs] implementing [`TLSSigAlg`] for `id-ml-dsa-87`.
         ///
         /// [rustbook:unit-like-structs]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#unit-like-structs-without-any-fields
         pub(crate) struct TLSSigAlgCap;
@@ -99,7 +99,7 @@ pub(crate) mod capabilities {
             /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
             /// > as IANA does not list ML-DSA in the registry yet.
             /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
-            const SIGALG_IANA_NAME: &CStr = c"mldsa65";
+            const SIGALG_IANA_NAME: &CStr = c"mldsa87";
 
             /// The TLS algorithm ID value as given in the [IANA TLS SignatureScheme registry][IANA:tls-signaturescheme].
             ///
@@ -110,7 +110,7 @@ pub(crate) mod capabilities {
             /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
             /// > as IANA does not list ML-DSA in the registry yet.
             /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
-            const SIGALG_CODEPOINT: u32 = 0x0905; // 2309 in decimal notation
+            const SIGALG_CODEPOINT: u32 = 0x0906; // 2310 in decimal notation
 
             /// A name for the signature algorithm as known by the provider.
             ///
@@ -120,7 +120,7 @@ pub(crate) mod capabilities {
             ///
             /// [SSL_CONF_cmd(3ossl):cli]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-command-line-commands
             /// [SSL_CONF_cmd(3ossl):conf]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-configuration-file-commands
-            const SIGALG_NAME: &CStr = c"ML-DSA-65";
+            const SIGALG_NAME: &CStr = c"ML-DSA-87";
 
             /// The OID of the [`Self::SIGALG_SIG_NAME`] algorithm in canonical numeric text form. \[optional\]
             ///
@@ -129,7 +129,7 @@ pub(crate) mod capabilities {
             /// > The OIDs for ML-DSA come from the [NIST Computer Security Objects Register](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration).
             ///
             /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
-            const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.101.3.4.3.18");
+            const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.101.3.4.3.19");
 
             const SECURITY_BITS: u32 = super::super::SECURITY_BITS;
 
@@ -145,7 +145,7 @@ pub(crate) mod capabilities {
 
         /// Implement [`TLSSigAlg`] for [`OQScompatCap`].
         ///
-        /// This is identical to [`TLSSigAlgCap`], but uses `"mldsa65"` for [`TLSSigAlg::SIGALG_NAME`] for compatiblity with the OQS provider.
+        /// This is identical to [`TLSSigAlgCap`], but uses `"mldsa87"` for [`TLSSigAlg::SIGALG_NAME`] for compatiblity with the OQS provider.
         impl TLSSigAlg for OQScompatCap {
             /// A name for the signature algorithm as known by the provider.
             ///
@@ -153,11 +153,11 @@ pub(crate) mod capabilities {
             /// [`SSL_CONF_cmd(-sigalgs)`][SSL_CONF_cmd(3ossl):cli]/[`SSL_CONF_cmd(SignatureAlgorithms)`][SSL_CONF_cmd(3ossl):conf]
             /// will support.
             ///
-            /// Here we use `"mldsa65"` for compatiblity with the OQS provider.
+            /// Here we use `"mldsa87"` for compatiblity with the OQS provider.
             ///
             /// [SSL_CONF_cmd(3ossl):cli]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-command-line-commands
             /// [SSL_CONF_cmd(3ossl):conf]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-configuration-file-commands
-            const SIGALG_NAME: &CStr = c"mldsa65";
+            const SIGALG_NAME: &CStr = c"mldsa87";
 
             const SIGALG_IANA_NAME: &CStr = TLSSigAlgCap::SIGALG_IANA_NAME;
             const SIGALG_CODEPOINT: u32 = TLSSigAlgCap::SIGALG_CODEPOINT;

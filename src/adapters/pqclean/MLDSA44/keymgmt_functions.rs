@@ -18,7 +18,7 @@ use std::{
     fmt::Debug,
 };
 
-use pqcrypto_mldsa::mldsa65 as backend_module;
+use pqcrypto_mldsa::mldsa44 as backend_module;
 
 use super::OurError as KMGMTError;
 type OurResult<T> = anyhow::Result<T, KMGMTError>;
@@ -42,7 +42,7 @@ impl PublicKey {
         let k = <backend_module::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(bytes)
             .map_err(|e| {
                 anyhow!(
-                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
+                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA44) returned {:?}",
                     e
                 )
             })?;
@@ -109,7 +109,7 @@ impl PrivateKey {
         let k = <backend_module::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(bytes)
             .map_err(|e| {
                 anyhow!(
-                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA65) returned {:?}",
+                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA44) returned {:?}",
                     e
                 )
             })?;
@@ -891,11 +891,11 @@ mod tests {
         crate::tests::common::setup().expect("Failed to initialize test setup");
 
         // Compare against https://github.com/openssl/openssl/blob/openssl-3.5/crypto/ml_dsa/ml_dsa_params.c#L61-L76
-        assert_eq!(PUBKEY_LEN, 1952);
-        assert_eq!(SECRETKEY_LEN, 4032);
-        assert_eq!(SIGNATURE_LEN, 3309);
+        assert_eq!(PUBKEY_LEN, 1312);
+        assert_eq!(SECRETKEY_LEN, 2560);
+        assert_eq!(SIGNATURE_LEN, 2420);
 
         // Compare against https://github.com/openssl/openssl/blob/openssl-3.5/crypto/ml_dsa/ml_dsa_params.c#L64
-        assert_eq!(SECURITY_BITS, 192);
+        assert_eq!(SECURITY_BITS, 128);
     }
 }

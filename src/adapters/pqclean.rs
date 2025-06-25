@@ -16,7 +16,11 @@ pub(crate) type OurError = aurora::Error;
 const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='pqclean'";
 
 #[allow(non_snake_case)]
+pub(crate) mod MLDSA44;
+#[allow(non_snake_case)]
 pub(crate) mod MLDSA65;
+#[allow(non_snake_case)]
+pub(crate) mod MLDSA87;
 
 #[derive(Debug)]
 struct PQCleanAdapter;
@@ -26,32 +30,94 @@ impl AdapterContextTrait for PQCleanAdapter {
     fn register_algorithms(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let signature_algorithms = Box::new([{
-            use MLDSA65 as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: PROPERTY_DEFINITION.as_ptr(),
-                implementation: Alg::SIG_FUNCTIONS.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let signature_algorithms = Box::new([
+            {
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use MLDSA65 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+        ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_SIGNATURE, signature_algorithms.into_iter())?;
 
-        let keymgmt_algorithms = Box::new([{
-            use MLDSA65 as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: PROPERTY_DEFINITION.as_ptr(),
-                implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let keymgmt_algorithms = Box::new([
+            {
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use MLDSA65 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+        ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
 
         // FIXME: probably this should be a const/static
         let decoder_algorithms = Box::new([
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
             {
                 use forge::operations::transcoders::Decoder;
                 use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
@@ -74,11 +140,77 @@ impl AdapterContextTrait for PQCleanAdapter {
                     algorithm_description: Alg::DESCRIPTION.as_ptr(),
                 }
             },
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
         ]);
 
         handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
 
         let encoder_algorithms = Box::new([
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
+                use MLDSA44 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
             {
                 use forge::operations::transcoders::Encoder;
                 use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
@@ -123,9 +255,52 @@ impl AdapterContextTrait for PQCleanAdapter {
                     algorithm_description: Alg::DESCRIPTION.as_ptr(),
                 }
             },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
+                use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
         ]);
 
-        // bad!
         handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
 
         Ok(())
@@ -139,9 +314,15 @@ impl AdapterContextTrait for PQCleanAdapter {
         trace!(target: log_target!(), "{}", "Called!");
 
         let tls_sigalgs = [
+            MLDSA44::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
+            // Add second sigalg capability for better compatibility with OQS-provider
+            MLDSA44::capabilities::tls_sigalg::OSSL_PARAM_ARRAY_OQSCOMP,
             MLDSA65::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
-            // Add second sigalg capability for MLDSA65, for better compatibility with OQS-provider
+            // Add second sigalg capability for better compatibility with OQS-provider
             MLDSA65::capabilities::tls_sigalg::OSSL_PARAM_ARRAY_OQSCOMP,
+            MLDSA87::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
+            // Add second sigalg capability for better compatibility with OQS-provider
+            MLDSA87::capabilities::tls_sigalg::OSSL_PARAM_ARRAY_OQSCOMP,
         ];
         for a in tls_sigalgs {
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);

@@ -60,8 +60,22 @@ fn openssl_gencert(alg: &str, _der_keyoutform: bool) -> OutputResult {
 }
 
 #[test]
+fn openssl_gencert_mldsa44() {
+    let alg = "ML-DSA-44";
+    let output = openssl_gencert(alg, false).unwrap();
+    assert!(output.status.success());
+}
+
+#[test]
 fn openssl_gencert_mldsa65() {
     let alg = "ML-DSA-65";
+    let output = openssl_gencert(alg, false).unwrap();
+    assert!(output.status.success());
+}
+
+#[test]
+fn openssl_gencert_mldsa87() {
+    let alg = "ML-DSA-87";
     let output = openssl_gencert(alg, false).unwrap();
     assert!(output.status.success());
 }
