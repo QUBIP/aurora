@@ -14,6 +14,7 @@ use anyhow::anyhow;
 mod libcrux;
 mod libcrux_draft;
 mod pqclean;
+mod rustcrypto;
 
 pub(crate) mod common;
 
@@ -267,6 +268,7 @@ impl<'a> FinalizedAdaptersHandle {
         libcrux::init(&mut handle).expect("Failure initializing adapter `libcrux`");
         libcrux_draft::init(&mut handle).expect("Failure initializing adapter `libcrux_draft`");
         pqclean::init(&mut handle).expect("Failure initializing adapter `pqclean`");
+        rustcrypto::init(&mut handle).expect("Failure initializing adapter `rustcrypto`");
 
         let mut contexts = std::mem::take(&mut handle.contexts); // Temporarily move out
 

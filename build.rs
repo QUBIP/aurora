@@ -35,6 +35,7 @@ fn compile_with_rasn() -> Result<(), Box<dyn Error>> {
     match Compiler::<RasnBackend, _>::new()
         // add a single ASN1 source file
         .add_asn_by_path(PathBuf::from("data/asn1/X509-ML-DSA-2025.asn"))
+        .add_asn_by_path(PathBuf::from("data/asn1/X509-SLH-DSA-Module-2024.asn"))
         // add several ASN1 source files
         //.add_asn_sources_by_path(
         //    vec![PathBuf::from("spec_2.asn"), PathBuf::from("spec_3.asn")].iter(),

@@ -134,6 +134,11 @@ impl TestParam for MLDSA65ED25519Tests {
     const ALG_NAME: &str = "mldsa65_ed25519";
 }
 
+struct SLHDSASHAKE192fTests();
+impl TestParam for SLHDSASHAKE192fTests {
+    const ALG_NAME: &str = "id-slh-dsa-shake-192f";
+}
+
 use paste::paste;
 macro_rules! generate_tests {
     ( $suffix:ident, $( $type:ty ),* ) => {
@@ -154,12 +159,14 @@ generate_tests!(
     MLDSA65Tests,
     MLDSA87Tests,
     MLDSA44Tests,
-    MLDSA65ED25519Tests
+    MLDSA65ED25519Tests,
+    SLHDSASHAKE192fTests
 );
 generate_tests!(
     openssl_gencert_der,
     MLDSA65Tests,
     MLDSA87Tests,
     MLDSA44Tests,
-    MLDSA65ED25519Tests
+    MLDSA65ED25519Tests,
+    SLHDSASHAKE192fTests
 );

@@ -1,0 +1,11 @@
+-- From https://datatracker.ietf.org/doc/html/draft-ietf-lamps-x509-slhdsa-09#name-asn1-module
+X509-SLH-DSA-Module-2024
+
+DEFINITIONS IMPLICIT TAGS ::= BEGIN
+
+EXPORTS ALL;
+
+SLH-DSA-PrivateKey ::= OCTET STRING -- as raw bytes (i.e., only the V of the TLV encoding of the OCTET STRING)
+SLH-DSA-PublicKey ::= OCTET STRING
+
+END

@@ -65,6 +65,11 @@ impl TestParam for MLDSA87Tests {
     const ALG_DIR: &str = "mldsa87";
 }
 
+struct SLHDSASHAKE192fTests();
+impl TestParam for SLHDSASHAKE192fTests {
+    const ALG_DIR: &str = "slhdsa_shake_192f";
+}
+
 use paste::paste;
 macro_rules! generate_tests {
     ( $suffix:ident, $( $type:ty ),* ) => {
@@ -80,11 +85,24 @@ macro_rules! generate_tests {
     }
 }
 
-generate_tests!(openssl_load_pk35, MLDSA65Tests, MLDSA87Tests, MLDSA44Tests);
+generate_tests!(
+    openssl_load_pk35,
+    MLDSA65Tests,
+    MLDSA87Tests,
+    MLDSA44Tests,
+    SLHDSASHAKE192fTests
+);
 generate_tests!(
     openssl_load_cert35,
     MLDSA65Tests,
     MLDSA87Tests,
-    MLDSA44Tests
+    MLDSA44Tests,
+    SLHDSASHAKE192fTests
 );
-generate_tests!(openssl_load_sk35, MLDSA65Tests, MLDSA87Tests, MLDSA44Tests);
+generate_tests!(
+    openssl_load_sk35,
+    MLDSA65Tests,
+    MLDSA87Tests,
+    MLDSA44Tests,
+    SLHDSASHAKE192fTests
+);
