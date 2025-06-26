@@ -79,3 +79,10 @@ fn openssl_gencert_mldsa87() {
     let output = openssl_gencert(alg, false).unwrap();
     assert!(output.status.success());
 }
+
+#[test]
+fn openssl_gencert_mldsa65_ed25519() {
+    let alg = "mldsa65_ed25519";
+    let output = openssl_gencert(alg, false).unwrap();
+    assert!(output.status.success());
+}

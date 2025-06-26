@@ -30,6 +30,8 @@ pqcrypto-traits = "0.3.5"
 asn1 = "0.21.0"
 zeroize = "1.8.1"
 pem = "3.0.5"
+ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
+sha2 = "0.10.9"
 
 [dev-dependencies]
 regex = "1"

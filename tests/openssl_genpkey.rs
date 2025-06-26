@@ -31,3 +31,13 @@ fn openssl_genpkey_mldsa87() {
         openssl::genpkey("mldsa87", std::iter::empty::<OsString>()).expect("openssl failed");
     assert!(output.status.success());
 }
+
+/// Verifies that we can generate mldsa65_ed25519 keys
+#[test]
+fn openssl_genpkey_mldsa65_ed25519() {
+    let testctx = common::setup().expect("Failed to initialize test setup");
+    let _ = testctx;
+    let output = openssl::genpkey("mldsa65_ed25519", std::iter::empty::<OsString>())
+        .expect("openssl failed");
+    assert!(output.status.success());
+}

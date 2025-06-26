@@ -20,6 +20,8 @@ pub(crate) mod MLDSA44;
 #[allow(non_snake_case)]
 pub(crate) mod MLDSA65;
 #[allow(non_snake_case)]
+pub(crate) mod MLDSA65_Ed25519;
+#[allow(non_snake_case)]
 pub(crate) mod MLDSA87;
 
 #[derive(Debug)]
@@ -58,6 +60,15 @@ impl AdapterContextTrait for PQCleanAdapter {
                     algorithm_description: Alg::DESCRIPTION.as_ptr(),
                 }
             },
+            {
+                use MLDSA65_Ed25519 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
         ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_SIGNATURE, signature_algorithms.into_iter())?;
@@ -83,6 +94,15 @@ impl AdapterContextTrait for PQCleanAdapter {
             },
             {
                 use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use MLDSA65_Ed25519 as Alg;
                 OSSL_ALGORITHM {
                     algorithm_names: Alg::NAMES.as_ptr(),
                     property_definition: PROPERTY_DEFINITION.as_ptr(),
@@ -155,6 +175,28 @@ impl AdapterContextTrait for PQCleanAdapter {
                 use forge::operations::transcoders::Decoder;
                 use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
                 use MLDSA87 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
+                use MLDSA65_Ed25519 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
+                use MLDSA65_Ed25519 as Alg;
                 OSSL_ALGORITHM {
                     algorithm_names: Alg::NAMES.as_ptr(),
                     property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
@@ -299,6 +341,50 @@ impl AdapterContextTrait for PQCleanAdapter {
                     algorithm_description: Alg::DESCRIPTION.as_ptr(),
                 }
             },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
+                use MLDSA65_Ed25519 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
+                use MLDSA65_Ed25519 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
+                use MLDSA65_Ed25519 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
+                use MLDSA65_Ed25519 as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
         ]);
 
         handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
@@ -323,6 +409,7 @@ impl AdapterContextTrait for PQCleanAdapter {
             MLDSA87::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
             // Add second sigalg capability for better compatibility with OQS-provider
             MLDSA87::capabilities::tls_sigalg::OSSL_PARAM_ARRAY_OQSCOMP,
+            MLDSA65_Ed25519::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
         ];
         for a in tls_sigalgs {
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);
