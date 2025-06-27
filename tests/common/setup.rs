@@ -75,11 +75,36 @@ mod build {
 }
 
 mod env {
+    use std::{path::PathBuf, str::FromStr};
+
+    pub(super) fn cargo_metadata() -> serde_json::Result<serde_json::Value> {
+        use std::process::Command;
+
+        let output = Command::new("cargo")
+            .args(["metadata", "--format-version", "1"])
+            .output()
+            .expect("Failure running `cargo metadata`");
+        assert!(output.status.success());
+
+        let stdout = output.stdout.as_slice();
+
+        let v = serde_json::from_slice(stdout)?;
+
+        serde_json::Result::Ok(v)
+    }
+
+    pub(super) fn cargo_target_directory() -> Option<PathBuf> {
+        let m = cargo_metadata().expect("Failure running `cargo metadata`");
+        let target_dir = m
+            .get("target_directory")
+            .expect("Missing key: \"target_directory\"");
+        let target_dir = target_dir.as_str().expect("Invalid value");
+        std::path::PathBuf::from_str(target_dir).ok()
+    }
+
     pub(super) fn set_openssl_modules_env_var(profile: &str) {
-        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-            .expect("Cannot resolve CARGO_MANIFEST_DIR environment variable");
-        let target_dir = std::path::Path::new(&manifest_dir)
-            .join("target")
+        let target_dir = cargo_target_directory()
+            .expect("Unable to determine target_directory")
             .join(profile);
 
         assert!(target_dir.exists(), "{target_dir:?} does not exist");
