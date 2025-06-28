@@ -59,6 +59,19 @@ pub(crate) const NAME: &CStr = c"ML-DSA-87";
 /// OID should be a substring of NAMES
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 19);
 
+/// [RFC 5280 AlgorithmIdentifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.1.1.2)
+/// in DER-encoded format.
+use std::sync::LazyLock;
+pub(crate) static ALGORITHM_ID_DER: LazyLock<Vec<u8>> = LazyLock::new(|| {
+    asn1::write(|w| {
+        w.write_element(&asn1::SequenceWriter::new(&|w| {
+            w.write_element(&OID)?;
+            Ok(())
+        }))
+    })
+    .expect("OID should be encodable as AlgorithmIdentifier")
+});
+
 // Ensure proper null-terminated C string
 pub(super) const DESCRIPTION: &CStr = c"ML-DSA-87 from pqclean";
 

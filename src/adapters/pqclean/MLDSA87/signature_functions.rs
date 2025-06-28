@@ -329,13 +329,7 @@ pub(super) unsafe extern "C" fn get_ctx_params(
         };
 
         if key == OSSL_SIGNATURE_PARAM_ALGORITHM_ID {
-            // TODO: This is the DER representation of the OID 2.16.840.1.101.3.4.3.18, and it was
-            // unearthed from a running instance of the OQS provider with gdb; we should use a
-            // "proper" crate instead for encoding the value to DER. The asn1 crate's OID
-            // implementation doesn't let you extract the DER bytes except by writing out a fully
-            // fledged ASN.1 representation, so we need something else, maybe the const-oid crate?
-            let oid_bytes: &[u8] = &[48, 11, 6, 9, 96, 134, 72, 1, 101, 3, 4, 3, 18];
-            let _ = p.set(oid_bytes);
+            let _ = p.set(super::ALGORITHM_ID_DER.as_slice());
         } else {
             debug!(target: log_target!(), "Ignoring param {:?}", key);
         }

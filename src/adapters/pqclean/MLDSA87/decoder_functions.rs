@@ -171,7 +171,6 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     // information to be able to infer types, so I left it like this for now
     let (oid, key) = handleResult!(result);
 
-    // yes, this really is the "right" way to do this (see the asn1::ObjectIdentifier docs)
     if oid != super::OID {
         trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID);
         return ERROR_RET;
@@ -286,7 +285,6 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     // information to be able to infer types, so I left it like this for now
     let (oid, keydata) = handleResult!(result);
 
-    // yes, this really is the "right" way to do this (see the asn1::ObjectIdentifier docs)
     if oid != super::OID {
         trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID);
         return ERROR_RET;

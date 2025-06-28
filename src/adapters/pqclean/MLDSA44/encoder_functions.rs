@@ -102,6 +102,8 @@ fn private_key_bytes_to_DER(keypair_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::Wri
             // version (when reading this we discard it)
             w.write_element(&asn1::BigInt::new(&[0]))?;
             // algorithm identifier
+            // (here we can't just use super::ALGORITHM_ID_DER, because it's already just a byte
+            // array and therefore the asn1 module would encode it as an OCTET STRING)
             w.write_element(&asn1::SequenceWriter::new(&|w| {
                 w.write_element(&super::OID)?;
                 Ok(())
@@ -449,6 +451,8 @@ fn spki_bytes_to_DER(pubkey_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::WriteError>
     asn1::write(|w| {
         w.write_element(&asn1::SequenceWriter::new(&|w| {
             // algorithm identifier
+            // (here we can't just use super::ALGORITHM_ID_DER, because it's already just a byte
+            // array and therefore the asn1 module would encode it as an OCTET STRING)
             w.write_element(&asn1::SequenceWriter::new(&|w| {
                 w.write_element(&super::OID)?;
                 Ok(())
