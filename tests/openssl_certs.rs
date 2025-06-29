@@ -6,7 +6,7 @@ use tempfile::tempdir;
 static DISABLE_CLEANUP: bool = true;
 
 /// Verifies that we can generate keys and certs, and parse them
-fn openssl_gencert(alg: &str, _der_keyoutform: bool) -> OutputResult {
+fn openssl_gencert(alg: &str, _der_keyoutform: bool, verify: bool) -> OutputResult {
     let testctx = common::setup().expect("Failed to initialize test setup");
     let _ = testctx;
 
@@ -55,6 +55,13 @@ fn openssl_gencert(alg: &str, _der_keyoutform: bool) -> OutputResult {
         .expect("openssl failed");
     assert!(output.status.success());
 
+    if verify {
+        let output =
+            openssl::run_openssl_with_aurora(["verify", "-CAfile", str_cert_path, str_cert_path])
+                .expect("openssl failed");
+        assert!(output.status.success());
+    }
+
     assert!(dir.path().exists());
     Ok(output)
 }
@@ -62,27 +69,59 @@ fn openssl_gencert(alg: &str, _der_keyoutform: bool) -> OutputResult {
 #[test]
 fn openssl_gencert_mldsa44() {
     let alg = "ML-DSA-44";
-    let output = openssl_gencert(alg, false).unwrap();
+    let output = openssl_gencert(alg, false, false).unwrap();
     assert!(output.status.success());
 }
 
 #[test]
 fn openssl_gencert_mldsa65() {
     let alg = "ML-DSA-65";
-    let output = openssl_gencert(alg, false).unwrap();
+    let output = openssl_gencert(alg, false, false).unwrap();
     assert!(output.status.success());
 }
 
 #[test]
 fn openssl_gencert_mldsa87() {
     let alg = "ML-DSA-87";
-    let output = openssl_gencert(alg, false).unwrap();
+    let output = openssl_gencert(alg, false, false).unwrap();
     assert!(output.status.success());
 }
 
 #[test]
 fn openssl_gencert_mldsa65_ed25519() {
     let alg = "mldsa65_ed25519";
-    let output = openssl_gencert(alg, false).unwrap();
+    let output = openssl_gencert(alg, false, false).unwrap();
+    assert!(output.status.success());
+}
+
+#[test]
+#[ignore]
+fn openssl_gencert_with_verify_mldsa44() {
+    let alg = "ML-DSA-44";
+    let output = openssl_gencert(alg, false, true).unwrap();
+    assert!(output.status.success());
+}
+
+#[test]
+#[ignore]
+fn openssl_gencert_with_verify_mldsa65() {
+    let alg = "ML-DSA-65";
+    let output = openssl_gencert(alg, false, true).unwrap();
+    assert!(output.status.success());
+}
+
+#[test]
+#[ignore]
+fn openssl_gencert_with_verify_mldsa87() {
+    let alg = "ML-DSA-87";
+    let output = openssl_gencert(alg, false, true).unwrap();
+    assert!(output.status.success());
+}
+
+#[test]
+#[ignore]
+fn openssl_gencert_with_verify_mldsa65_ed25519() {
+    let alg = "mldsa65_ed25519";
+    let output = openssl_gencert(alg, false, true).unwrap();
     assert!(output.status.success());
 }
