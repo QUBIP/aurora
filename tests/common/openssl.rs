@@ -45,7 +45,17 @@ where
     S: AsRef<OsStr>,
 {
     let aurora_args = ["-provider", "libaurora", "-provider", "default"];
-    let full_args = append_arguments(args.into_iter(), aurora_args.iter().copied());
+    let mut iter = args.into_iter();
+
+    let full_args: Vec<OsString> = if let Some(first) = iter.next() {
+        // append aurora_args after first argument
+        let a = append_arguments(std::iter::once(first), aurora_args.iter().copied());
+        // then append the rest of the original arguments
+        append_arguments(a, iter).collect()
+    } else {
+        // Empty args case: just run with the aurora args
+        append_arguments(iter, aurora_args.iter().copied()).collect()
+    };
 
     run_openssl(full_args)
 }
