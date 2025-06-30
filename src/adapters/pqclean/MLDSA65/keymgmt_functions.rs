@@ -194,6 +194,22 @@ impl PrivateKey {
         };
         Ok((privkey, opt_pubkey))
     }
+
+    #[named]
+    pub fn to_DER(&self) -> OurResult<Vec<u8>> {
+        use asn_definitions::PrivateKey as ASNPrivateKey;
+
+        let raw_sk_bytes = self.encode();
+        let asn_sk = ASNPrivateKey::expandedKey(raw_sk_bytes.into());
+        let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(target: log_target!(), "Failed to encode private key: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+        Ok(asn_sk_bytes)
+    }
 }
 
 impl Signer<Signature> for PrivateKey {
