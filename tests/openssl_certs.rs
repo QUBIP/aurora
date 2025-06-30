@@ -3,125 +3,131 @@ mod common;
 use common::{openssl, OutputResult};
 use tempfile::tempdir;
 
+#[allow(dead_code)]
 static DISABLE_CLEANUP: bool = true;
 
-/// Verifies that we can generate keys and certs, and parse them
-fn openssl_gencert(alg: &str, _der_keyoutform: bool, verify: bool) -> OutputResult {
-    let testctx = common::setup().expect("Failed to initialize test setup");
-    let _ = testctx;
+pub trait TestParam {
+    const ALG_NAME: &str;
 
-    let mut dir = tempdir().expect("Failed to create temp dir");
-    dir.disable_cleanup(DISABLE_CLEANUP);
-    let dir = dir;
+    /// Verifies that we can generate keys and certs, and parse them
+    fn openssl_gencert(use_der_format: bool) -> OutputResult {
+        let testctx = common::setup().expect("Failed to initialize test setup");
+        let _ = testctx;
 
-    let privkey_path = dir.path().join(format!("{alg:}.privkey"));
-    let pubkey_path = dir.path().join(format!("{alg:}.pubkey"));
-    let cert_path = dir.path().join(format!("{alg:}.cert"));
+        let alg = Self::ALG_NAME;
 
-    let str_privkey_path = privkey_path.to_str().expect("Path is not valid UTF-8");
-    let str_pubkey_path = pubkey_path.to_str().expect("Path is not valid UTF-8");
-    let str_cert_path = cert_path.to_str().expect("Path is not valid UTF-8");
+        let mut dir = tempdir().expect("Failed to create temp dir");
+        dir.disable_cleanup(DISABLE_CLEANUP);
+        let dir = dir;
 
-    // Create a new keypair
-    let output = openssl::genpkey(
-        alg,
-        ["-out", str_privkey_path, "-outpubkey", str_pubkey_path],
-    )
-    .expect("openssl failed");
-    assert!(output.status.success());
+        let (extension, fmt) = match use_der_format {
+            true => ("der", "DER"),
+            false => ("pem", "PEM"),
+        };
+        let privkey_path = dir.path().join(format!("{alg:}.privkey.{extension}"));
+        let pubkey_path = dir.path().join(format!("{alg:}.pubkey.{extension}"));
+        let cert_path = dir.path().join(format!("{alg:}.cert.{extension}"));
 
-    assert!(privkey_path.exists());
-    assert!(pubkey_path.exists());
+        let str_privkey_path = privkey_path.to_str().expect("Path is not valid UTF-8");
+        let str_pubkey_path = pubkey_path.to_str().expect("Path is not valid UTF-8");
+        let str_cert_path = cert_path.to_str().expect("Path is not valid UTF-8");
 
-    // Request a new self-signed certificate
-    let output = openssl::req([
-        "-new",
-        "-x509",
-        "-nodes",
-        "-key",
-        str_privkey_path,
-        "-out",
-        str_cert_path,
-        "-days",
-        "30",
-        "-subj",
-        "/CN=localhost",
-    ])
-    .expect("openssl failed");
-    assert!(output.status.success());
-    assert!(cert_path.exists());
-
-    let output = openssl::run_openssl_with_aurora(["x509", "-in", str_cert_path, "-text"])
+        // Create a new keypair
+        let output = openssl::genpkey(
+            alg,
+            [
+                "-out",
+                str_privkey_path,
+                "-outpubkey",
+                str_pubkey_path,
+                "-outform",
+                fmt,
+            ],
+        )
         .expect("openssl failed");
-    assert!(output.status.success());
+        assert!(output.status.success());
 
-    if verify {
+        assert!(privkey_path.exists());
+        assert!(pubkey_path.exists());
+
+        // Request a new self-signed certificate
+        let output = openssl::req([
+            "-new",
+            "-x509",
+            "-nodes",
+            "-key",
+            str_privkey_path,
+            "-inform",
+            fmt,
+            "-out",
+            str_cert_path,
+            "-outform",
+            fmt,
+            "-days",
+            "30",
+            "-subj",
+            "/CN=localhost",
+        ])
+        .expect("openssl failed");
+        assert!(output.status.success());
+        assert!(cert_path.exists());
+
+        let output = openssl::run_openssl_with_aurora([
+            "x509",
+            "-in",
+            str_cert_path,
+            "-inform",
+            fmt,
+            "-text",
+        ])
+        .expect("openssl failed");
+        assert!(output.status.success());
+
+        #[cfg(any())]
         let output =
             openssl::run_openssl_with_aurora(["verify", "-CAfile", str_cert_path, str_cert_path])
                 .expect("openssl failed");
         assert!(output.status.success());
+
+        assert!(dir.path().exists());
+        Ok(output)
     }
 
-    assert!(dir.path().exists());
-    Ok(output)
+    fn openssl_gencert_pem() {
+        let output = Self::openssl_gencert(false).expect("openssl failed");
+        assert!(output.status.success());
+    }
+
+    fn openssl_gencert_der() {
+        let output = Self::openssl_gencert(true).expect("openssl failed");
+        assert!(output.status.success());
+    }
 }
 
-#[test]
-fn openssl_gencert_mldsa44() {
-    let alg = "ML-DSA-44";
-    let output = openssl_gencert(alg, false, false).unwrap();
-    assert!(output.status.success());
+struct MLDSA65Tests();
+impl TestParam for MLDSA65Tests {
+    const ALG_NAME: &str = "id-ml-dsa-65";
 }
 
-#[test]
-fn openssl_gencert_mldsa65() {
-    let alg = "ML-DSA-65";
-    let output = openssl_gencert(alg, false, false).unwrap();
-    assert!(output.status.success());
+//struct MLDSA65ED25519Tests();
+//impl TestParam for MLDSA65ED25519Tests  {
+//    const ALG_NAME: &str = "mldsa65_ed25519";
+//}
+
+use paste::paste;
+macro_rules! generate_tests {
+    ( $suffix:ident, $( $type:ty ),* ) => {
+        $(
+            paste! {
+                #[test]
+                #[allow(non_snake_case)]
+                fn [<$type:lower _ $suffix>]() {
+                    <$type>::$suffix();
+                }
+            }
+        )*
+    }
 }
 
-#[test]
-fn openssl_gencert_mldsa87() {
-    let alg = "ML-DSA-87";
-    let output = openssl_gencert(alg, false, false).unwrap();
-    assert!(output.status.success());
-}
-
-#[test]
-fn openssl_gencert_mldsa65_ed25519() {
-    let alg = "mldsa65_ed25519";
-    let output = openssl_gencert(alg, false, false).unwrap();
-    assert!(output.status.success());
-}
-
-#[test]
-#[ignore]
-fn openssl_gencert_with_verify_mldsa44() {
-    let alg = "ML-DSA-44";
-    let output = openssl_gencert(alg, false, true).unwrap();
-    assert!(output.status.success());
-}
-
-#[test]
-#[ignore]
-fn openssl_gencert_with_verify_mldsa65() {
-    let alg = "ML-DSA-65";
-    let output = openssl_gencert(alg, false, true).unwrap();
-    assert!(output.status.success());
-}
-
-#[test]
-#[ignore]
-fn openssl_gencert_with_verify_mldsa87() {
-    let alg = "ML-DSA-87";
-    let output = openssl_gencert(alg, false, true).unwrap();
-    assert!(output.status.success());
-}
-
-#[test]
-#[ignore]
-fn openssl_gencert_with_verify_mldsa65_ed25519() {
-    let alg = "mldsa65_ed25519";
-    let output = openssl_gencert(alg, false, true).unwrap();
-    assert!(output.status.success());
-}
+generate_tests!(openssl_gencert_pem, MLDSA65Tests);
+generate_tests!(openssl_gencert_der, MLDSA65Tests);
