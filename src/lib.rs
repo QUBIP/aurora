@@ -28,6 +28,8 @@ mod init;
 mod query;
 pub(crate) mod random;
 
+pub(crate) mod asn_definitions;
+
 #[cfg(test)]
 pub(crate) mod tests;
 
