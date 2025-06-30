@@ -157,6 +157,43 @@ impl PrivateKey {
             }
         }
     }
+
+    #[named]
+    pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, Option<PublicKey>)> {
+        use asn_definitions::PrivateKey as ASNPrivateKey;
+
+        let decodedprivkey = match rasn::der::decode::<ASNPrivateKey>(sk_der_bytes) {
+            Ok(p) => p,
+            Err(e) => {
+                error!(target: log_target!(), "Failed to decode the inner private key: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+
+        debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
+
+        let (privkey, opt_pubkey) = match decodedprivkey {
+            ASNPrivateKey::seed(_seed) => unimplemented!(),
+            ASNPrivateKey::expandedKey(expandedKey) => {
+                let slice: &[u8] = &expandedKey;
+                let privkey = keymgmt_functions::PrivateKey::decode(slice)?;
+
+                // We need to derive a public key from the private key, without a seed
+                let pubkey = match privkey.derive_public_key() {
+                    Some(k) => k,
+                    None => {
+                        error!(target: log_target!(), "Could not derive the public key from the inner private key");
+                        return Err(anyhow!(
+                            "Could not derive the public key from the inner private key"
+                        ));
+                    }
+                };
+                (privkey, Some(pubkey))
+            }
+            ASNPrivateKey::both(_private_key_both) => unimplemented!(),
+        };
+        Ok((privkey, opt_pubkey))
+    }
 }
 
 impl Signer<Signature> for PrivateKey {
