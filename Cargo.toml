@@ -34,6 +34,7 @@ ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
 sha2 = "0.10.9"
 rasn = "=0.27.0"
 lazy_static = "1.5.0"
+pkcs8 = { version = "0.10.2" }
 
 [build-dependencies]
 rasn-compiler = "0.11.0"

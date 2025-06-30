@@ -130,6 +130,7 @@ dependencies = [
  "openssl_provider_forge",
  "paste",
  "pem",
+ "pkcs8",
  "pqcrypto-mldsa",
  "pqcrypto-traits",
  "rand",

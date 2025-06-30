@@ -841,6 +841,14 @@ pub(super) unsafe extern "C" fn match_(
     return 1;
 }
 
+pub(super) mod asn_definitions {
+    use crate::asn_definitions::x509_ml_dsa_2025 as defns;
+
+    pub use defns::*;
+
+    pub use defns::MLDSA65PrivateKey as PrivateKey;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

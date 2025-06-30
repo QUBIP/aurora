@@ -58,6 +58,8 @@ pub(crate) const NAME: &CStr = c"ML-DSA-65";
 
 /// OID should be a substring of NAMES
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18);
+pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
+    pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.3.18");
 
 /// [RFC 5280 AlgorithmIdentifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.1.1.2)
 /// in DER-encoded format.
