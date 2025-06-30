@@ -123,6 +123,40 @@ impl PrivateKey {
     pub const fn signature_bytes() -> usize {
         backend_module::signature_bytes()
     }
+
+    /// Derive a matching public key from this private key
+    #[named]
+    pub fn derive_public_key(&self) -> Option<PublicKey> {
+        // pqclean does not provide support to derive the public key from an
+        // expanded private key so we resort to a fork of
+        // RustCrypto::sigantures::ml-dsa to work around this
+        use rustcrypto_mldsa_custom as cmldsa;
+
+        use cmldsa::MlDsa65 as P;
+        type SigningKey = cmldsa::SigningKey<P>;
+
+        let encoded_sk = self.encode();
+        let encoded_sk = match encoded_sk.as_slice().try_into() {
+            Ok(p) => p,
+            Err(e) => {
+                error!(target: log_target!(), "Slice should be exactly {SECRETKEY_LEN:} bytes long: {e:?}");
+                return None;
+            }
+        };
+        let csk: SigningKey = SigningKey::decode(encoded_sk);
+        let cpk = csk.verifying_key();
+        let pk_bytes = cpk.encode();
+        let pk_bytes = pk_bytes.as_slice();
+
+        let res = keymgmt_functions::PublicKey::decode(pk_bytes);
+        match res {
+            Ok(pk) => Some(pk),
+            Err(e) => {
+                error!(target: log_target!(), "Failed to derive the public key from the inner private key: {e:?}");
+                return None;
+            }
+        }
+    }
 }
 
 impl Signer<Signature> for PrivateKey {
