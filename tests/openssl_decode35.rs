@@ -1,0 +1,76 @@
+mod common;
+
+use common::openssl;
+use std::{path::PathBuf, sync::LazyLock};
+
+static DATA_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("data")
+        .join("openssl35")
+});
+
+pub trait TestParam {
+    const ALG_DIR: &str;
+
+    fn openssl_load_sk35() {
+        let testctx = common::setup().expect("Failed to initialize test setup");
+        let _ = testctx;
+
+        let path = DATA_DIR.join(Self::ALG_DIR).join("sk.pem");
+        let pstr = path.to_str().expect("Path is not valid UTF-8");
+
+        let output =
+            openssl::run_openssl_with_aurora(["pkey", "-in", pstr]).expect("openssl failed");
+        assert!(output.status.success());
+    }
+
+    fn openssl_load_pk35() {
+        let testctx = common::setup().expect("Failed to initialize test setup");
+        let _ = testctx;
+
+        let path = DATA_DIR.join(Self::ALG_DIR).join("pk.pem");
+        let pstr = path.to_str().expect("Path is not valid UTF-8");
+
+        let output = openssl::run_openssl_with_aurora(["pkey", "-pubin", "-in", pstr])
+            .expect("openssl failed");
+        assert!(output.status.success());
+    }
+
+    fn openssl_load_cert35() {
+        let testctx = common::setup().expect("Failed to initialize test setup");
+        let _ = testctx;
+
+        let path = DATA_DIR.join(Self::ALG_DIR).join("cert.pem");
+        let pstr = path.to_str().expect("Path is not valid UTF-8");
+
+        let output =
+            openssl::run_openssl_with_aurora(["x509", "-in", pstr]).expect("openssl failed");
+        assert!(output.status.success());
+    }
+}
+
+struct MLDSA65Tests();
+
+impl TestParam for MLDSA65Tests {
+    const ALG_DIR: &str = "mldsa65";
+}
+
+use paste::paste;
+macro_rules! generate_tests {
+    ( $suffix:ident, $( $type:ty ),* ) => {
+        $(
+            paste! {
+                #[test]
+                #[allow(non_snake_case)]
+                fn [<$type:lower _ $suffix>]() {
+                    <$type>::$suffix();
+                }
+            }
+        )*
+    }
+}
+
+generate_tests!(openssl_load_pk35, MLDSA65Tests);
+generate_tests!(openssl_load_cert35, MLDSA65Tests);
+generate_tests!(openssl_load_sk35, MLDSA65Tests);

@@ -112,6 +112,7 @@ dependencies = [
  "libcrux-kem",
  "log",
  "openssl_provider_forge",
+ "paste",
  "pem",
  "pqcrypto-mldsa",
  "pqcrypto-traits",
