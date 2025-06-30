@@ -43,11 +43,16 @@
 <!--
 - [Usage](#usage)
 !-->
+- [About](#about)
+  - [Supported algorithms](#supported-algorithms)
+    - [Key Encapsulation Methods](#key-encapsulation-methods)
+    - [Digital Signatures](#digital-signatures)
+    - [Composite Signatures](#composite-signatures)
 - [Roadmap](#roadmap)
 - [Support](#support)
 - [Project assistance](#project-assistance)
 - [Contributing](#contributing)
-- [Authors & contributors](#authors--contributors)
+- [Authors \& contributors](#authors--contributors)
 - [Security](#security)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
@@ -95,18 +100,30 @@ The current supported algorithms are summarized in the following tables.
 
 #### Key Encapsulation Methods
 
-| Algorithm               | Adapter       | PQ/T Hybrid |
-|-------------------------|---------------|-------------|
-| X25519MLKEM768          | libcrux       | ✅          |
-| SecP256r1MLKEM768       | libcrux       | ✅          |
-| X25519MLKEM768Draft00 (⚠️  experimental)  | libcrux_draft | ✅          |
+| Algorithm                               | Adapter       | PQ/T Hybrid |
+| --------------------------------------- | ------------- | ----------- |
+| X25519MLKEM768                          | libcrux       | ✅           |
+| SecP256r1MLKEM768                       | libcrux       | ✅           |
+| X25519MLKEM768Draft00 (⚠️  experimental) | libcrux_draft | ✅           |
 
 #### Digital Signatures
 
-| Algorithm               | Adapter       |
-|-------------------------|---------------|
-|_ML-DSA-65_ (⚠️  pending) | _pending_
+| Algorithm            | Adapter   |
+| -------------------- | --------- |
+| _ML-DSA-44_          | pqclean |
+| _ML-DSA-65_          | pqclean |
+| _ML-DSA-87_          | pqclean |
+| _SLH-DSA-SHAKE-192F_ | rustcrypto |
 
+#### Composite Signatures
+
+| Algorithm             | Adapter   |
+| --------------------- | --------- |
+| _ML-DSA-65_ED25519_ | pqclean |
+
+> [!Note]
+> `ML-DSA-65_ED25519` algorithm also uses `ed25519-dalek`
+> for the traditional part of the signature.
 
 <!--
 ## Getting Started
