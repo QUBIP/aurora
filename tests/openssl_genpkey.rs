@@ -1,6 +1,6 @@
 mod common;
 
-use common::{openssl, OutputResult};
+use common::{openssl, OsString, OutputResult};
 use tempfile::tempdir;
 
 #[allow(dead_code)]
@@ -70,7 +70,7 @@ pub trait TestParam {
         let str_pubkey_path = pubkey_path.to_str().expect("Path is not valid UTF-8");
 
         // Create a new pubkey
-        let output = openssl::genpkey(alg, ["-pubout", str_pubkey_path, "-outform", fmt])
+        let output = openssl::genpkey(alg, ["-outpubkey", str_pubkey_path, "-outform", fmt])
             .expect("openssl failed to format the generated public key");
         assert!(
             output.status.success(),
@@ -108,7 +108,8 @@ pub trait TestParam {
         dir.disable_cleanup(DISABLE_CLEANUP);
         let dir = dir;
 
-        let output = openssl::genpkey(alg, ["-noout"]).expect("openssl failed to generate keypair");
+        let output = openssl::genpkey(alg, std::iter::empty::<OsString>())
+            .expect("openssl failed to generate keypair");
         assert!(output.status.success());
 
         let (extension, fmt) = match use_der_format {
@@ -151,9 +152,15 @@ pub trait TestParam {
 
         // Parse public key
         assert!(pubkey_path.exists());
-        let output =
-            openssl::run_openssl_with_aurora(["pkey", "-in", str_pubkey_path, "-inform", fmt])
-                .expect("openssl failed to parse public key");
+        let output = openssl::run_openssl_with_aurora([
+            "pkey",
+            "-pubin",
+            "-in",
+            str_pubkey_path,
+            "-inform",
+            fmt,
+        ])
+        .expect("openssl failed to parse public key");
         assert!(
             output.status.success(),
             "openssl failed to parse public key in {fmt:} format"
@@ -217,8 +224,8 @@ macro_rules! generate_tests {
 generate_tests!(openssl_genprivkey_pem, MLDSA65Tests);
 generate_tests!(openssl_genprivkey_der, MLDSA65Tests);
 
-//generate_tests!(openssl_genpubkey_pem, MLDSA65Tests);
-//generate_tests!(openssl_genpubkey_der, MLDSA65Tests);
-//
-//generate_tests!(openssl_genpkey_pem, MLDSA65Tests);
-//generate_tests!(openssl_genpkey_der, MLDSA65Tests);
+generate_tests!(openssl_genpubkey_pem, MLDSA65Tests);
+generate_tests!(openssl_genpubkey_der, MLDSA65Tests);
+
+generate_tests!(openssl_genpkey_pem, MLDSA65Tests);
+generate_tests!(openssl_genpkey_der, MLDSA65Tests);
