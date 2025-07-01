@@ -100,6 +100,13 @@ impl PublicKey {
 
         Ok(pubkey)
     }
+
+    #[named]
+    pub fn to_DER(&self) -> OurResult<Vec<u8>> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        Ok(self.encode())
+    }
 }
 
 impl Verifier<Signature> for PublicKey {
