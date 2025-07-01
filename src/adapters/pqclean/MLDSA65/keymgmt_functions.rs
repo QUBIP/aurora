@@ -61,6 +61,45 @@ impl PublicKey {
     pub const fn signature_bytes() -> usize {
         PrivateKey::signature_bytes()
     }
+
+    #[named]
+    pub fn from_DER(pk_der_bytes: &[u8]) -> OurResult<Self> {
+        use asn_definitions::PublicKey as ASNPublicKey;
+
+        trace!(target: log_target!(), "{}", "Called!");
+
+        let decodedpubkey: ASNPublicKey;
+        let slice = match pk_der_bytes.len() {
+            PUBKEY_LEN => pk_der_bytes,
+
+            #[cfg(any())]
+            _ => {
+                decodedpubkey = match rasn::der::decode(pk_der_bytes) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(target: log_target!(), "Failed to decode the inner public key: {e:?}");
+                        return Err(OurError::from(e));
+                    }
+                };
+
+                debug!(target: log_target!(), "Parsed public key material out of ASN.1 for decoding!");
+
+                let slice: &[u8] = decodedpubkey.0.as_slice();
+                slice
+            }
+
+            #[cfg(not(any()))]
+            _ => {
+                let _ = decodedpubkey;
+                unreachable!();
+            }
+        };
+
+        debug_assert_eq!(slice.len(), PUBKEY_LEN);
+        let pubkey = Self::decode(slice)?;
+
+        Ok(pubkey)
+    }
 }
 
 impl Verifier<Signature> for PublicKey {
@@ -929,11 +968,10 @@ pub(super) unsafe extern "C" fn match_(
 }
 
 pub(super) mod asn_definitions {
-    use crate::asn_definitions::x509_ml_dsa_2025 as defns;
-
-    pub use defns::*;
+    pub use crate::asn_definitions::x509_ml_dsa_2025 as defns;
 
     pub use defns::MLDSA65PrivateKey as PrivateKey;
+    pub use defns::MLDSA65PublicKey as PublicKey;
 }
 
 #[cfg(test)]

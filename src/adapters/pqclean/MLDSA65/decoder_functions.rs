@@ -11,6 +11,7 @@ use forge::operations::{keymgmt, transcoders};
 use forge::ossl_callback::OSSLCallback;
 use forge::osslparams::*;
 use keymgmt::selection::Selection;
+use pkcs8::der::Decode;
 use transcoders::{Decoder, DoesSelection};
 
 use pkcs8;
@@ -161,28 +162,42 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
     // debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
 
-    let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
-        return d.read_element::<asn1::Sequence>()?.parse(|d| {
-            let algorithm_identifier = d.read_element::<asn1::Sequence>()?.parse(|d| {
-                let algorithm_identifier = d.read_element::<asn1::ObjectIdentifier>()?;
-                return Ok(algorithm_identifier);
-            })?;
-            let subject_public_key = d.read_element::<asn1::BitString>()?;
-            return Ok((algorithm_identifier, subject_public_key));
-        });
-    });
+    let spki = pkcs8::spki::SubjectPublicKeyInfoRef::from_der(bytes.as_ref());
 
-    // wrapping the asn1::parse() call itself in handleResult!() leaves the compiler too little
-    // information to be able to infer types, so I left it like this for now
-    let (oid, key) = handleResult!(result);
-
-    if oid != super::OID {
-        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID);
+    let spki = match spki {
+        Ok(spki) => spki,
+        Err(e) => {
+            trace!(target: log_target!(), "Failed to decode SubjectPublicKeyInfo: {e:?}");
+            return ERROR_RET;
+        }
+    };
+    let oid = spki.algorithm.oid;
+    if oid != super::OID_PKCS8 {
+        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
         return ERROR_RET;
     }
 
-    let key_bytes = key.as_bytes();
-    let pk = handleResult!(keymgmt_functions::PublicKey::decode(key_bytes));
+    // After this point errors are logged as such, as supposedly this decoder should be authoritative for this algorithm
+
+    if spki.algorithm.parameters.is_some() {
+        error!(target: log_target!(), "Algorithm parameters are not allowed for this decoder");
+        return ERROR_RET;
+    }
+
+    let derpubkey = match spki.subject_public_key.as_bytes() {
+        Some(b) => b,
+        None => {
+            error!(target: log_target!(), "Nested bit-string is not octet aligned, hence it is not DER-encoded");
+            return ERROR_RET;
+        }
+    };
+    let pk = match keymgmt_functions::PublicKey::from_DER(derpubkey) {
+        Ok(pk) => pk,
+        Err(e) => {
+            error!(target: log_target!(), "Failed to decode public key: {e:?}");
+            return ERROR_RET;
+        }
+    };
     let kp: Box<keymgmt_functions::KeyPair<'_>> = Box::new(
         super::keymgmt_functions::KeyPair::from_parts(decoderctx.provctx, None, Some(pk)),
     );
