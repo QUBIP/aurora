@@ -61,6 +61,52 @@ impl PublicKey {
     pub const fn signature_bytes() -> usize {
         PrivateKey::signature_bytes()
     }
+
+    #[named]
+    pub fn from_DER(pk_der_bytes: &[u8]) -> OurResult<Self> {
+        use asn_definitions::PublicKey as ASNPublicKey;
+
+        trace!(target: log_target!(), "{}", "Called!");
+
+        let decodedpubkey: ASNPublicKey;
+        let slice = match pk_der_bytes.len() {
+            PUBKEY_LEN => pk_der_bytes,
+
+            #[cfg(any())]
+            _ => {
+                decodedpubkey = match rasn::der::decode(pk_der_bytes) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(target: log_target!(), "Failed to decode the inner public key: {e:?}");
+                        return Err(OurError::from(e));
+                    }
+                };
+
+                debug!(target: log_target!(), "Parsed public key material out of ASN.1 for decoding!");
+
+                let slice: &[u8] = decodedpubkey.0.as_slice();
+                slice
+            }
+
+            #[cfg(not(any()))]
+            _ => {
+                let _ = decodedpubkey;
+                unreachable!();
+            }
+        };
+
+        debug_assert_eq!(slice.len(), PUBKEY_LEN);
+        let pubkey = Self::decode(slice)?;
+
+        Ok(pubkey)
+    }
+
+    #[named]
+    pub fn to_DER(&self) -> OurResult<Vec<u8>> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        Ok(self.encode())
+    }
 }
 
 impl Verifier<Signature> for PublicKey {
@@ -122,6 +168,93 @@ impl PrivateKey {
 
     pub const fn signature_bytes() -> usize {
         backend_module::signature_bytes()
+    }
+
+    /// Derive a matching public key from this private key
+    #[named]
+    pub fn derive_public_key(&self) -> Option<PublicKey> {
+        // pqclean does not provide support to derive the public key from an
+        // expanded private key so we resort to a fork of
+        // RustCrypto::sigantures::ml-dsa to work around this
+        use rustcrypto_mldsa_custom as cmldsa;
+
+        use cmldsa::MlDsa44 as P;
+        type SigningKey = cmldsa::SigningKey<P>;
+
+        let encoded_sk = self.encode();
+        let encoded_sk = match encoded_sk.as_slice().try_into() {
+            Ok(p) => p,
+            Err(e) => {
+                error!(target: log_target!(), "Slice should be exactly {SECRETKEY_LEN:} bytes long: {e:?}");
+                return None;
+            }
+        };
+        let csk: SigningKey = SigningKey::decode(encoded_sk);
+        let cpk = csk.verifying_key();
+        let pk_bytes = cpk.encode();
+        let pk_bytes = pk_bytes.as_slice();
+
+        let res = keymgmt_functions::PublicKey::decode(pk_bytes);
+        match res {
+            Ok(pk) => Some(pk),
+            Err(e) => {
+                error!(target: log_target!(), "Failed to derive the public key from the inner private key: {e:?}");
+                return None;
+            }
+        }
+    }
+
+    #[named]
+    pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, Option<PublicKey>)> {
+        use asn_definitions::PrivateKey as ASNPrivateKey;
+
+        let decodedprivkey = match rasn::der::decode::<ASNPrivateKey>(sk_der_bytes) {
+            Ok(p) => p,
+            Err(e) => {
+                error!(target: log_target!(), "Failed to decode the inner private key: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+
+        debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
+
+        let (privkey, opt_pubkey) = match decodedprivkey {
+            ASNPrivateKey::seed(_seed) => unimplemented!(),
+            ASNPrivateKey::expandedKey(expandedKey) => {
+                let slice: &[u8] = &expandedKey;
+                let privkey = keymgmt_functions::PrivateKey::decode(slice)?;
+
+                // We need to derive a public key from the private key, without a seed
+                let pubkey = match privkey.derive_public_key() {
+                    Some(k) => k,
+                    None => {
+                        error!(target: log_target!(), "Could not derive the public key from the inner private key");
+                        return Err(anyhow!(
+                            "Could not derive the public key from the inner private key"
+                        ));
+                    }
+                };
+                (privkey, Some(pubkey))
+            }
+            ASNPrivateKey::both(_private_key_both) => unimplemented!(),
+        };
+        Ok((privkey, opt_pubkey))
+    }
+
+    #[named]
+    pub fn to_DER(&self) -> OurResult<Vec<u8>> {
+        use asn_definitions::PrivateKey as ASNPrivateKey;
+
+        let raw_sk_bytes = self.encode();
+        let asn_sk = ASNPrivateKey::expandedKey(raw_sk_bytes.into());
+        let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(target: log_target!(), "Failed to encode private key: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+        Ok(asn_sk_bytes)
     }
 }
 
@@ -839,6 +972,13 @@ pub(super) unsafe extern "C" fn match_(
     }
 
     return 1;
+}
+
+pub(super) mod asn_definitions {
+    pub use crate::asn_definitions::x509_ml_dsa_2025 as defns;
+
+    pub use defns::MLDSA44PrivateKey as PrivateKey;
+    pub use defns::MLDSA44PublicKey as PublicKey;
 }
 
 #[cfg(test)]

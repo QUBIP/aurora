@@ -104,6 +104,11 @@ pub trait TestParam {
     }
 }
 
+struct MLDSA44Tests();
+impl TestParam for MLDSA44Tests {
+    const ALG_NAME: &str = "id-ml-dsa-44";
+}
+
 struct MLDSA65Tests();
 impl TestParam for MLDSA65Tests {
     const ALG_NAME: &str = "id-ml-dsa-65";
@@ -133,5 +138,15 @@ macro_rules! generate_tests {
     }
 }
 
-generate_tests!(openssl_gencert_pem, MLDSA65Tests, MLDSA87Tests);
-generate_tests!(openssl_gencert_der, MLDSA65Tests, MLDSA87Tests);
+generate_tests!(
+    openssl_gencert_pem,
+    MLDSA65Tests,
+    MLDSA87Tests,
+    MLDSA44Tests
+);
+generate_tests!(
+    openssl_gencert_der,
+    MLDSA65Tests,
+    MLDSA87Tests,
+    MLDSA44Tests
+);
