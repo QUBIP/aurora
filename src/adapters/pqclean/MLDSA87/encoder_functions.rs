@@ -14,6 +14,9 @@ use forge::osslparams::*;
 use keymgmt::selection::Selection;
 use pem;
 
+use super::OurError as EncoderError;
+type OurResult<T> = anyhow::Result<T, EncoderError>;
+
 struct EncoderContext<'a> {
     provctx: &'a OpenSSLProvider<'a>,
 }
@@ -118,6 +121,8 @@ fn private_key_bytes_to_DER(keypair_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::Wri
 pub(crate) struct PrivateKeyInfo2DER();
 
 use openssl_provider_forge::bindings::OSSL_FUNC_BIO_WRITE_EX;
+use pkcs8::der::Encode;
+use pkcs8::spki::{AlgorithmIdentifier, AlgorithmIdentifierWithOid};
 use transcoders::DoesSelection;
 use transcoders::Encoder;
 
@@ -164,6 +169,81 @@ impl Encoder for PrivateKeyInfo2DER {
     };
 }
 
+impl KeyPair<'_> {
+    #[named]
+    fn to_PrivateKeyInfoDER(&self, _encoderctx: &EncoderContext) -> OurResult<Vec<u8>> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        debug!(target: log_target!(), "Got keypair: {self:?}");
+        if self.private.is_none() {
+            error!(target: log_target!(), "Keypair does not contain a private key");
+            return Err(anyhow!("Keypair does not contain a private key"));
+        }
+        if self.public.is_none() {
+            error!(target: log_target!(), "Keypair does not contain a public key");
+            return Err(anyhow!("Keypair does not contain a public key"));
+        }
+
+        let der_sk_bytes = match self.private.as_ref().unwrap().to_DER() {
+            Ok(v) => v,
+            Err(e) => {
+                error!(target: log_target!(), "privkey.to_DER() failed: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+
+        let aid = AlgorithmIdentifier {
+            oid: super::OID_PKCS8,
+            parameters: None,
+        };
+        let pki = pkcs8::PrivateKeyInfo::new(aid, &der_sk_bytes);
+        assert_eq!(pki.version(), pkcs8::Version::V1);
+
+        pki.to_der().map_err(|e| {
+            error!(target: log_target!(), "privkey.to_DER() failed: {e:?}");
+            anyhow!("Error: {e:?}")
+        })
+    }
+
+    #[named]
+    fn to_SPKIDER(&self, _encoderctx: &EncoderContext) -> OurResult<Vec<u8>> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        debug!(target: log_target!(), "Got keypair: {self:?}");
+        if self.public.is_none() {
+            error!(target: log_target!(), "Keypair does not contain a public key");
+            return Err(anyhow!("Keypair does not contain a public key"));
+        }
+
+        let der_pk_bytes = match self.public.as_ref().unwrap().to_DER() {
+            Ok(v) => v,
+            Err(e) => {
+                error!(target: log_target!(), "pubkey.to_DER() failed: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+        let bitstring =
+            pkcs8::der::asn1::BitString::from_bytes(der_pk_bytes.as_slice()).map_err(|e| {
+                error!(target: log_target!(), "Failed to encode bitstring: {e:?}");
+                anyhow!("Error: {e:?}")
+            })?;
+
+        let aid = AlgorithmIdentifier {
+            oid: super::OID_PKCS8,
+            parameters: None,
+        };
+        let spki = pkcs8::spki::SubjectPublicKeyInfoOwned {
+            algorithm: aid,
+            subject_public_key: bitstring,
+        };
+
+        spki.to_der().map_err(|e| {
+            error!(target: log_target!(), "spki.to_der() failed: {e:?}");
+            anyhow!("Error: {e:?}")
+        })
+    }
+}
+
 /// Encodes a PrivateKeyInfo to DER
 ///
 /// # Arguments
@@ -206,10 +286,11 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo2DER(
     _cb: OSSL_PASSPHRASE_CALLBACK,
     _cbarg: *mut c_void,
 ) -> c_int {
+    const SUCCESS: c_int = 1;
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in encodePrivateKeyInfo2DER(): {:#b}", selection);
+    debug!(target: log_target!(), "Got selection: {selection:#b}");
     if (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
@@ -223,55 +304,20 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo2DER(
     }
 
     let keypair: &KeyPair = handleResult!(obj_raw.try_into());
-    debug!(target: log_target!(), "Got keypair in encodePrivateKeyInfo2DER(): {:?}", keypair);
-    if keypair.private.is_none() {
-        error!(target: log_target!(), "Keypair does not contain a private key");
-        return ERROR_RET;
-    }
-    if keypair.public.is_none() {
-        error!(target: log_target!(), "Keypair does not contain a public key");
-        return ERROR_RET;
-    }
+    let pki_bytes_der = handleResult!(keypair.to_PrivateKeyInfoDER(encoderctx).map_err(|e| {
+        error!(target: log_target!(), "Failed to generate PrivateKeyInfo: {e:?}");
+        OurError::from(e)
+    }));
 
-    // I'm not 100% sure that this is the right order for them to be in, but we definitely need to
-    // include both to get the total number of bytes right
-    let mut keypair_bytes = keypair.private.as_ref().unwrap().encode();
-    keypair_bytes.extend_from_slice(keypair.public.as_ref().unwrap().encode().as_slice());
-
-    let der_result = private_key_bytes_to_DER(keypair_bytes);
-    let der_bytes = handleResult!(der_result);
-    let der_bytes = der_bytes.as_slice();
-
-    match encoderctx
-        .provctx
-        .fn_from_core_dispatch(OSSL_FUNC_BIO_WRITE_EX)
-    {
-        Some(fn_ptr) => {
-            let ffi_BIO_write_ex = unsafe {
-                std::mem::transmute::<
-                    *const (),
-                    unsafe extern "C" fn(
-                        bio: *mut OSSL_CORE_BIO,
-                        data: *const c_void,
-                        data_len: usize,
-                        written: *mut usize,
-                    ) -> c_int,
-                >(fn_ptr as _)
-            };
-            let mut bytes_written: usize = 0;
-            let ret = ffi_BIO_write_ex(
-                out,
-                der_bytes.as_ptr() as *const c_void,
-                der_bytes.len(),
-                &mut bytes_written,
-            );
-            return ret;
-        }
-        None => {
-            error!(target: log_target!(), "Unable to retrieve and use BIO_write_ex() upcall pointer");
+    match encoderctx.provctx.BIO_write_ex(out, &pki_bytes_der) {
+        Ok(_bytes_written) => {}
+        Err(e) => {
+            error!(target: log_target!(), "Failure using BIO_write_ex() upcall pointer: {e:?}");
             return ERROR_RET;
         }
-    }
+    };
+
+    SUCCESS
 }
 
 impl DoesSelection for PrivateKeyInfo2DER {
@@ -367,10 +413,11 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo2PEM(
     _cb: OSSL_PASSPHRASE_CALLBACK,
     _cbarg: *mut c_void,
 ) -> c_int {
+    const SUCCESS: c_int = 1;
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in encodePrivateKeyInfo2PEM(): {:#b}", selection);
+    debug!(target: log_target!(), "Got selection: {selection:#b}");
     if (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
@@ -384,59 +431,24 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo2PEM(
     }
 
     let keypair: &KeyPair = handleResult!(obj_raw.try_into());
-    debug!(target: log_target!(), "Got keypair in encodePrivateKeyInfo2PEM(): {:?}", keypair);
-    if keypair.private.is_none() {
-        error!(target: log_target!(), "Keypair does not contain a private key");
-        return ERROR_RET;
-    }
-    if keypair.public.is_none() {
-        error!(target: log_target!(), "Keypair does not contain a public key");
-        return ERROR_RET;
-    }
+    let pki_bytes_der = handleResult!(keypair.to_PrivateKeyInfoDER(encoderctx).map_err(|e| {
+        error!(target: log_target!(), "Failed to generate PrivateKeyInfo: {e:?}");
+        OurError::from(e)
+    }));
+    let pki_bytes_der = pki_bytes_der.as_slice();
 
-    // I'm not 100% sure that this is the right order for them to be in, but we definitely need to
-    // include both to get the total number of bytes right
-    let mut keypair_bytes = keypair.private.as_ref().unwrap().encode();
-    keypair_bytes.extend_from_slice(keypair.public.as_ref().unwrap().encode().as_slice());
-
-    let der_result = private_key_bytes_to_DER(keypair_bytes);
-    let der_bytes = handleResult!(der_result);
-    let der_bytes = der_bytes.as_slice();
-
-    let pem = pem::Pem::new("PRIVATE KEY", der_bytes);
+    let pem = pem::Pem::new("PRIVATE KEY", pki_bytes_der);
     let pem_bytes = pem::encode(&pem).into_bytes();
-    let pem_bytes = pem_bytes.as_slice();
 
-    match encoderctx
-        .provctx
-        .fn_from_core_dispatch(OSSL_FUNC_BIO_WRITE_EX)
-    {
-        Some(fn_ptr) => {
-            let ffi_BIO_write_ex = unsafe {
-                std::mem::transmute::<
-                    *const (),
-                    unsafe extern "C" fn(
-                        bio: *mut OSSL_CORE_BIO,
-                        data: *const c_void,
-                        data_len: usize,
-                        written: *mut usize,
-                    ) -> c_int,
-                >(fn_ptr as _)
-            };
-            let mut bytes_written: usize = 0;
-            let ret = ffi_BIO_write_ex(
-                out,
-                pem_bytes.as_ptr() as *const c_void,
-                pem_bytes.len(),
-                &mut bytes_written,
-            );
-            return ret;
-        }
-        None => {
-            error!(target: log_target!(), "Unable to retrieve and use BIO_write_ex() upcall pointer");
+    match encoderctx.provctx.BIO_write_ex(out, &pem_bytes) {
+        Ok(_bytes_written) => {}
+        Err(e) => {
+            error!(target: log_target!(), "Failure using BIO_write_ex() upcall pointer: {e:?}");
             return ERROR_RET;
         }
-    }
+    };
+
+    SUCCESS
 }
 
 impl DoesSelection for PrivateKeyInfo2PEM {
@@ -445,25 +457,6 @@ impl DoesSelection for PrivateKeyInfo2PEM {
 
 // We can use the same does_selection function as PrivateKeyInfo2DER, so there's no need to call
 // the make_does_selection_fn macro again.
-
-// now a bunch of stuff that's mostly the same as above, repeated for the SPKI encoder
-fn spki_bytes_to_DER(pubkey_bytes: Vec<u8>) -> Result<Vec<u8>, asn1::WriteError> {
-    asn1::write(|w| {
-        w.write_element(&asn1::SequenceWriter::new(&|w| {
-            // algorithm identifier
-            // (here we can't just use super::ALGORITHM_ID_DER, because it's already just a byte
-            // array and therefore the asn1 module would encode it as an OCTET STRING)
-            w.write_element(&asn1::SequenceWriter::new(&|w| {
-                w.write_element(&super::OID)?;
-                Ok(())
-            }))?;
-            // key data
-            // TODO confirm whether 0 is the right value for padding_bits
-            w.write_element(&asn1::BitString::new(pubkey_bytes.as_slice(), 0))?;
-            Ok(())
-        }))
-    })
-}
 
 pub(crate) struct SubjectPublicKeyInfo2DER();
 impl Encoder for SubjectPublicKeyInfo2DER {
@@ -551,10 +544,11 @@ pub(super) unsafe extern "C" fn encodeSPKI2DER(
     _cb: OSSL_PASSPHRASE_CALLBACK,
     _cbarg: *mut c_void,
 ) -> c_int {
+    const SUCCESS: c_int = 1;
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in encodeSPKI(): {:#b}", selection);
+    debug!(target: log_target!(), "Got selection: {selection:#b}");
     if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
@@ -568,48 +562,19 @@ pub(super) unsafe extern "C" fn encodeSPKI2DER(
     }
 
     let keypair: &KeyPair = handleResult!(obj_raw.try_into());
-    debug!(target: log_target!(), "Got keypair in encodeSPKI(): {:?}", keypair);
-    if keypair.public.is_none() {
-        error!(target: log_target!(), "Keypair does not contain a public key");
-        return ERROR_RET;
-    }
-
-    let pubkey_bytes = keypair.public.as_ref().unwrap().encode();
-
-    let der_result = spki_bytes_to_DER(pubkey_bytes);
-    let der_bytes = handleResult!(der_result);
-    let der_bytes = der_bytes.as_slice();
-
-    match encoderctx
-        .provctx
-        .fn_from_core_dispatch(OSSL_FUNC_BIO_WRITE_EX)
-    {
-        Some(fn_ptr) => {
-            let ffi_BIO_write_ex = unsafe {
-                std::mem::transmute::<
-                    *const (),
-                    unsafe extern "C" fn(
-                        bio: *mut OSSL_CORE_BIO,
-                        data: *const c_void,
-                        data_len: usize,
-                        written: *mut usize,
-                    ) -> c_int,
-                >(fn_ptr as _)
-            };
-            let mut bytes_written: usize = 0;
-            let ret = ffi_BIO_write_ex(
-                out,
-                der_bytes.as_ptr() as *const c_void,
-                der_bytes.len(),
-                &mut bytes_written,
-            );
-            return ret;
-        }
-        None => {
-            error!(target: log_target!(), "Unable to retrieve and use BIO_write_ex() upcall pointer");
+    let spki_bytes_der = handleResult!(keypair.to_SPKIDER(encoderctx).map_err(|e| {
+        error!(target: log_target!(), "Failed to encode SubjectPublicKeyInfo: {e:?}");
+        OurError::from(e)
+    }));
+    match encoderctx.provctx.BIO_write_ex(out, &spki_bytes_der) {
+        Ok(_bytes_written) => {}
+        Err(e) => {
+            error!(target: log_target!(), "Failure using BIO_write_ex() upcall pointer: {e:?}");
             return ERROR_RET;
         }
-    }
+    };
+
+    SUCCESS
 }
 
 impl DoesSelection for SubjectPublicKeyInfo2DER {
@@ -704,10 +669,11 @@ pub(super) unsafe extern "C" fn encodeSPKI2PEM(
     _cb: OSSL_PASSPHRASE_CALLBACK,
     _cbarg: *mut c_void,
 ) -> c_int {
+    const SUCCESS: c_int = 1;
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in encodeSPKI2PEM(): {:#b}", selection);
+    debug!(target: log_target!(), "Got selection: {selection:#b}");
     if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
@@ -721,52 +687,23 @@ pub(super) unsafe extern "C" fn encodeSPKI2PEM(
     }
 
     let keypair: &KeyPair = handleResult!(obj_raw.try_into());
-    debug!(target: log_target!(), "Got keypair in encodeSPKI2PEM(): {:?}", keypair);
-    if keypair.public.is_none() {
-        error!(target: log_target!(), "Keypair does not contain a public key");
-        return ERROR_RET;
-    }
-
-    let pubkey_bytes = keypair.public.as_ref().unwrap().encode();
-
-    let der_result = spki_bytes_to_DER(pubkey_bytes);
-    let der_bytes = handleResult!(der_result);
-    let der_bytes = der_bytes.as_slice();
-
-    let pem = pem::Pem::new("PUBLIC KEY", der_bytes);
+    let spki_bytes_der = handleResult!(keypair.to_SPKIDER(encoderctx).map_err(|e| {
+        error!(target: log_target!(), "Failed to encode SubjectPublicKeyInfo: {e:?}");
+        OurError::from(e)
+    }));
+    let pem = pem::Pem::new("PUBLIC KEY", spki_bytes_der.as_slice());
     let pem_bytes = pem::encode(&pem).into_bytes();
     let pem_bytes = pem_bytes.as_slice();
 
-    match encoderctx
-        .provctx
-        .fn_from_core_dispatch(OSSL_FUNC_BIO_WRITE_EX)
-    {
-        Some(fn_ptr) => {
-            let ffi_BIO_write_ex = unsafe {
-                std::mem::transmute::<
-                    *const (),
-                    unsafe extern "C" fn(
-                        bio: *mut OSSL_CORE_BIO,
-                        data: *const c_void,
-                        data_len: usize,
-                        written: *mut usize,
-                    ) -> c_int,
-                >(fn_ptr as _)
-            };
-            let mut bytes_written: usize = 0;
-            let ret = ffi_BIO_write_ex(
-                out,
-                pem_bytes.as_ptr() as *const c_void,
-                pem_bytes.len(),
-                &mut bytes_written,
-            );
-            return ret;
-        }
-        None => {
-            error!(target: log_target!(), "Unable to retrieve and use BIO_write_ex() upcall pointer");
+    match encoderctx.provctx.BIO_write_ex(out, &pem_bytes) {
+        Ok(_bytes_written) => {}
+        Err(e) => {
+            error!(target: log_target!(), "Failure using BIO_write_ex() upcall pointer: {e:?}");
             return ERROR_RET;
         }
-    }
+    };
+
+    SUCCESS
 }
 
 impl DoesSelection for SubjectPublicKeyInfo2PEM {

@@ -51,9 +51,12 @@ pub trait TestParam {
 }
 
 struct MLDSA65Tests();
-
 impl TestParam for MLDSA65Tests {
     const ALG_DIR: &str = "mldsa65";
+}
+struct MLDSA87Tests();
+impl TestParam for MLDSA87Tests {
+    const ALG_DIR: &str = "mldsa87";
 }
 
 use paste::paste;
@@ -71,6 +74,6 @@ macro_rules! generate_tests {
     }
 }
 
-generate_tests!(openssl_load_pk35, MLDSA65Tests);
-generate_tests!(openssl_load_cert35, MLDSA65Tests);
-generate_tests!(openssl_load_sk35, MLDSA65Tests);
+generate_tests!(openssl_load_pk35, MLDSA65Tests, MLDSA87Tests);
+generate_tests!(openssl_load_cert35, MLDSA65Tests, MLDSA87Tests);
+generate_tests!(openssl_load_sk35, MLDSA65Tests, MLDSA87Tests);

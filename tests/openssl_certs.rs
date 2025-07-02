@@ -108,6 +108,10 @@ struct MLDSA65Tests();
 impl TestParam for MLDSA65Tests {
     const ALG_NAME: &str = "id-ml-dsa-65";
 }
+struct MLDSA87Tests();
+impl TestParam for MLDSA87Tests {
+    const ALG_NAME: &str = "id-ml-dsa-87";
+}
 
 //struct MLDSA65ED25519Tests();
 //impl TestParam for MLDSA65ED25519Tests  {
@@ -129,5 +133,5 @@ macro_rules! generate_tests {
     }
 }
 
-generate_tests!(openssl_gencert_pem, MLDSA65Tests);
-generate_tests!(openssl_gencert_der, MLDSA65Tests);
+generate_tests!(openssl_gencert_pem, MLDSA65Tests, MLDSA87Tests);
+generate_tests!(openssl_gencert_der, MLDSA65Tests, MLDSA87Tests);

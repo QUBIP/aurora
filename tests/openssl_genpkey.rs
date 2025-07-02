@@ -205,6 +205,11 @@ impl TestParam for MLDSA65Tests {
     const ALG_NAME: &str = "id-ml-dsa-65";
 }
 
+struct MLDSA87Tests();
+impl TestParam for MLDSA87Tests {
+    const ALG_NAME: &str = "id-ml-dsa-87";
+}
+
 use paste::paste;
 macro_rules! generate_tests {
     ( $suffix:ident, $( $type:ty ),* ) => {
@@ -221,11 +226,11 @@ macro_rules! generate_tests {
     }
 }
 
-generate_tests!(openssl_genprivkey_pem, MLDSA65Tests);
-generate_tests!(openssl_genprivkey_der, MLDSA65Tests);
+generate_tests!(openssl_genprivkey_pem, MLDSA65Tests, MLDSA87Tests);
+generate_tests!(openssl_genprivkey_der, MLDSA65Tests, MLDSA87Tests);
 
-generate_tests!(openssl_genpubkey_pem, MLDSA65Tests);
-generate_tests!(openssl_genpubkey_der, MLDSA65Tests);
+generate_tests!(openssl_genpubkey_pem, MLDSA65Tests, MLDSA87Tests);
+generate_tests!(openssl_genpubkey_der, MLDSA65Tests, MLDSA87Tests);
 
-generate_tests!(openssl_genpkey_pem, MLDSA65Tests);
-generate_tests!(openssl_genpkey_der, MLDSA65Tests);
+generate_tests!(openssl_genpkey_pem, MLDSA65Tests, MLDSA87Tests);
+generate_tests!(openssl_genpkey_der, MLDSA65Tests, MLDSA87Tests);

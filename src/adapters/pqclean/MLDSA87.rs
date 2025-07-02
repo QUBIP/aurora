@@ -58,6 +58,9 @@ pub(crate) const NAME: &CStr = c"ML-DSA-87";
 
 /// OID should be a substring of NAMES
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 19);
+pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
+    pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.3.19");
+pub(crate) const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.101.3.4.3.19");
 
 /// [RFC 5280 AlgorithmIdentifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.1.1.2)
 /// in DER-encoded format.
@@ -142,7 +145,7 @@ pub(crate) mod capabilities {
             /// > The OIDs for ML-DSA come from the [NIST Computer Security Objects Register](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration).
             ///
             /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
-            const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.101.3.4.3.19");
+            const SIGALG_OID: Option<&CStr> = super::super::SIGALG_OID;
 
             const SECURITY_BITS: u32 = super::super::SECURITY_BITS;
 
