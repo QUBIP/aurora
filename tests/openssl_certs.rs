@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO: cleanup
+
 mod common;
 
 use common::{openssl, OutputResult};
@@ -95,7 +97,6 @@ pub trait TestParam {
         .expect("openssl failed");
         assert!(output.status.success());
 
-        #[cfg(any())]
         let output =
             openssl::run_openssl_with_aurora(["verify", "-CAfile", str_cert_path, str_cert_path])
                 .expect("openssl failed");
