@@ -81,6 +81,18 @@ pub extern "C" fn OSSL_provider_init(
     };
 
     let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch_slice));
+    let objects = vec![(c"2.16.840.1.101.3.4.3.18", c"ML-DSA-65", c"id-ml-dsa-65")];
+    for (oid, sn, ln) in objects {
+        match prov.OBJ_create(oid, sn, ln) {
+            Ok(_) => {
+                debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
+            }
+            Err(e) => {
+                error!(target: log_target!(), "Failed to OBJ_create({oid:?},{sn:?},{ln:?}): {e:?}");
+            }
+        }
+    }
+
     let ourdispatch = prov.get_provider_dispatch();
     unsafe {
         *provctx = Box::into_raw(prov).cast();
