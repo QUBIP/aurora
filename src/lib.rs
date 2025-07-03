@@ -3,7 +3,7 @@ extern crate log;
 
 pub(crate) use ::function_name::named;
 use std::collections::HashMap;
-use std::ffi::{c_int, c_void, CStr, CString};
+use std::ffi::{CStr, CString};
 use std::sync::{LazyLock, OnceLock};
 use zeroize::{Zeroize, Zeroizing};
 
@@ -39,8 +39,7 @@ use bindings::OSSL_PARAM;
 use bindings::{
     OSSL_FUNC_provider_get_capabilities_fn, OSSL_FUNC_provider_get_params_fn,
     OSSL_FUNC_provider_gettable_params_fn, OSSL_FUNC_provider_query_operation_fn,
-    OSSL_FUNC_provider_teardown_fn, OSSL_CORE_BIO, OSSL_DISPATCH, OSSL_FUNC_BIO_READ_EX,
-    OSSL_FUNC_BIO_WRITE_EX, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS,
+    OSSL_FUNC_provider_teardown_fn, OSSL_DISPATCH, OSSL_FUNC_PROVIDER_GETTABLE_PARAMS,
     OSSL_FUNC_PROVIDER_GET_CAPABILITIES, OSSL_FUNC_PROVIDER_GET_PARAMS,
     OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_BUILDINFO,
     OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION,
@@ -60,7 +59,7 @@ use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
 #[derive(Debug)]
 pub struct OpenSSLProvider<'a> {
     pub data: [u8; 10],
-    _handle: *const OSSL_CORE_HANDLE,
+    handle: *const OSSL_CORE_HANDLE,
     #[expect(dead_code)]
     core_dispatch_slice: &'a [OSSL_DISPATCH],
     core_dispatch_map: HashMap<u32, &'a OSSL_DISPATCH>,
@@ -98,7 +97,7 @@ impl<'a> OpenSSLProvider<'a> {
         }
         Self {
             data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
-            _handle: handle,
+            handle,
             core_dispatch_slice,
             core_dispatch_map,
             name: PROV_NAME,

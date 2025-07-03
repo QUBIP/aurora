@@ -1,4 +1,9 @@
 use super::*;
+use anyhow::anyhow;
+use bindings::{
+    OSSL_CORE_BIO, OSSL_FUNC_BIO_READ_EX, OSSL_FUNC_BIO_WRITE_EX, OSSL_FUNC_CORE_OBJ_CREATE,
+};
+use std::ffi::{c_char, c_int, c_void, CStr};
 
 impl<'a> OpenSSLProvider<'a> {
     fn fn_from_core_dispatch(&self, id: u32) -> Option<unsafe extern "C" fn()> {
@@ -189,5 +194,55 @@ impl<'a> OpenSSLProvider<'a> {
             }
         }
         Ok(total_bytes_written)
+    }
+
+    #[allow(dead_code)]
+    #[expect(non_snake_case)]
+    /// Makes a core_obj_create() core upcall.
+    ///
+    /// Refer to [provider-base(7ossl)](https://docs.openssl.org/3.2/man7/provider-base/#core-functions)
+    /// and [OBJ_create(3ossl)](https://docs.openssl.org/3.2/man3/OBJ_create/).
+    pub(crate) fn OBJ_create(&self, oid: &CStr, sn: &CStr, ln: &CStr) -> Result<(), Error> {
+        static CELL: OnceLock<Option<unsafe extern "C" fn()>> = OnceLock::new();
+        let fn_ptr = CELL.get_or_init(|| {
+            let f = self.fn_from_core_dispatch(OSSL_FUNC_CORE_OBJ_CREATE);
+            f
+        });
+        let fn_ptr = match fn_ptr {
+            Some(f) => f,
+            None => {
+                return Err(anyhow::anyhow!("No upcall pointer"));
+            }
+        };
+
+        // FIXME: is there a way to just specify the type using the type alias OSSL_FUNC_core_obj_create_fn
+        // instead of writing it all out again?
+        let ffi_core_obj_create = unsafe {
+            std::mem::transmute::<
+                *const (),
+                unsafe extern "C" fn(
+                    prov: *const OSSL_CORE_HANDLE,
+                    oid: *const c_char,
+                    sn: *const c_char,
+                    ln: *const c_char,
+                ) -> c_int,
+            >(*fn_ptr as _)
+        };
+
+        let handle = self.handle;
+        let oid: *const c_char = oid.as_ptr();
+        let sn: *const c_char = sn.as_ptr();
+        let ln: *const c_char = ln.as_ptr();
+
+        /// Refer to [provider-base(7ossl)](https://docs.openssl.org/3.2/man7/provider-base/#core-functions)
+        const RET_SUCCESS: c_int = 1;
+        const RET_FAILURE: c_int = 0;
+
+        let ret = unsafe { ffi_core_obj_create(handle, oid, sn, ln) };
+        match ret {
+            RET_SUCCESS => Ok(()),
+            RET_FAILURE => Err(anyhow!("core_obj_create() upcall failed")),
+            _ => unreachable!(),
+        }
     }
 }
