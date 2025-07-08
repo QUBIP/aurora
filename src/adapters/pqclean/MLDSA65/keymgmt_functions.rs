@@ -928,7 +928,7 @@ pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const
 /// [provider-decoder(7ossl)]: https://docs.openssl.org/master/man7/provider-decoder/
 pub(super) unsafe extern "C" fn load(reference: *const c_void, reference_sz: usize) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
-    trace!(target: log_target!(), "{}", "Called!");
+    debug!(target: log_target!(), "{}", "Called!");
 
     assert_eq!(reference_sz, std::mem::size_of::<KeyPair>());
     if reference.is_null() {
@@ -937,7 +937,7 @@ pub(super) unsafe extern "C" fn load(reference: *const c_void, reference_sz: usi
     }
 
     let keypair = handleResult!(<&KeyPair>::try_from(reference as *mut c_void));
-    debug!(target: log_target!(), "keypair: {keypair:#?}");
+    trace!(target: log_target!(), "keypair: {keypair:#?}");
 
     return std::ptr::from_ref(keypair).cast_mut() as *mut c_void;
 }

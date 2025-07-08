@@ -74,7 +74,7 @@ impl<'a> OpenSSLProvider<'a> {
             };
             match (ret, bytes_read) {
                 (0, 0) => {
-                    debug!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes => stopping for EOF");
+                    trace!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes => stopping for EOF");
                     break;
                 }
                 (0, _n) => {
@@ -84,7 +84,7 @@ impl<'a> OpenSSLProvider<'a> {
                     warn!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes");
                 }
                 (1, _n) => {
-                    debug!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes => 👍");
+                    trace!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes => 👍");
                 }
                 (_r, _n) => {
                     error!("Underlying upcall #{cnt:} to BIO_read_ex returned {ret:} after {bytes_read:} bytes");

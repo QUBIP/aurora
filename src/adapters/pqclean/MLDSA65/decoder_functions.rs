@@ -146,7 +146,7 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     const ERROR_RET: c_int = 0;
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
+    trace!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
     if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         debug!(target: log_target!(), "Bailing out");
@@ -157,7 +157,7 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     let cb = handleResult!(OSSLCallback::try_new(data_cb, data_cbarg));
 
     let bytes = handleResult!(decoderctx.provctx.BIO_read_ex(in_));
-    debug!(target: log_target!(), "Read {} bytes in decode()", bytes.len());
+    trace!(target: log_target!(), "Read {} bytes in decode()", bytes.len());
 
     // I don't think these are used, since set_ctx_params is never called to set them....
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
