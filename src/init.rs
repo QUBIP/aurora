@@ -85,12 +85,32 @@ pub extern "C" fn OSSL_provider_init(
     // FIXME: the following block should actually be done by adapters and individual enabled algorithms,
     // we are doing it here now just for rapid development and debugging
     {
-        let objects = vec![(
-            c"2.16.840.1.101.3.4.3.18",
-            c"ML-DSA-65",
-            c"id-ml-dsa-65",
-            None,
-        )];
+        let objects = vec![
+            (
+                c"2.16.840.1.101.3.4.3.18",
+                c"ML-DSA-65",
+                c"id-ml-dsa-65",
+                None,
+            ),
+            (
+                c"2.16.840.1.101.3.4.3.19",
+                c"ML-DSA-87",
+                c"id-ml-dsa-87",
+                None,
+            ),
+            (
+                c"2.16.840.1.101.3.4.3.17",
+                c"ML-DSA-44",
+                c"id-ml-dsa-44",
+                None,
+            ),
+            (
+                c"2.16.840.1.114027.80.9.1.11",
+                c"mldsa65_ed25519",
+                c"mldsa65_ed25519",
+                None,
+            ),
+        ];
         for (oid, sn, ln, digest_name) in objects {
             match prov.OBJ_create(oid, sn, ln) {
                 Ok(_) => {

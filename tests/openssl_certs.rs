@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO: cleanup
-
 mod common;
 
 use common::{openssl, OutputResult};
@@ -151,18 +149,17 @@ macro_rules! generate_tests {
     }
 }
 
-generate_tests!(openssl_gencert_der, MLDSA65Tests);
-// generate_tests!(
-//     openssl_gencert_pem,
-//     MLDSA65Tests,
-//     MLDSA87Tests,
-//     MLDSA44Tests,
-//     MLDSA65ED25519Tests
-// );
-// generate_tests!(
-//     openssl_gencert_der,
-//     MLDSA65Tests,
-//     MLDSA87Tests,
-//     MLDSA44Tests,
-//     MLDSA65ED25519Tests
-// );
+generate_tests!(
+    openssl_gencert_pem,
+    MLDSA65Tests,
+    MLDSA87Tests,
+    MLDSA44Tests,
+    MLDSA65ED25519Tests
+);
+generate_tests!(
+    openssl_gencert_der,
+    MLDSA65Tests,
+    MLDSA87Tests,
+    MLDSA44Tests,
+    MLDSA65ED25519Tests
+);
