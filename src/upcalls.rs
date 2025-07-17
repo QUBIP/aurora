@@ -1,9 +1,10 @@
 use super::*;
 use anyhow::anyhow;
+use bindings::ffi_c_types::{c_char, c_int, c_void, CStr};
 use bindings::{
-    OSSL_CORE_BIO, OSSL_FUNC_BIO_READ_EX, OSSL_FUNC_BIO_WRITE_EX, OSSL_FUNC_CORE_OBJ_CREATE,
+    OSSL_CORE_BIO, OSSL_FUNC_BIO_READ_EX, OSSL_FUNC_BIO_WRITE_EX, OSSL_FUNC_CORE_OBJ_ADD_SIGID,
+    OSSL_FUNC_CORE_OBJ_CREATE,
 };
-use std::ffi::{c_char, c_int, c_void, CStr};
 
 impl<'a> OpenSSLProvider<'a> {
     fn fn_from_core_dispatch(&self, id: u32) -> Option<unsafe extern "C" fn()> {
@@ -242,6 +243,89 @@ impl<'a> OpenSSLProvider<'a> {
         match ret {
             RET_SUCCESS => Ok(()),
             RET_FAILURE => Err(anyhow!("core_obj_create() upcall failed")),
+            _ => unreachable!(),
+        }
+    }
+
+    #[allow(dead_code)]
+    #[expect(non_snake_case)]
+    /// Makes a `core_obj_add_sigid()` core upcall.
+    ///
+    /// The `core_obj_add_sigid()` function registers a new composite signature
+    /// algorithm (`sign_name`) consisting of an underlying signature algorithm
+    /// (`pkey_name`) and digest algorithm (`digest_name`) for the given handle.
+    ///
+    /// It assumes that the OIDs for the composite signature algorithm as well
+    /// as for the underlying signature and digest algorithms are either already
+    /// known to OpenSSL or have been registered via a call to
+    /// `core_obj_create()`.
+    ///
+    /// It corresponds to the OpenSSL function
+    /// [`OBJ_add_sigid(3ossl)`](https://docs.openssl.org/3.2/man3/OBJ_add_sigid/),
+    /// except that the objects are identified by name rather
+    /// than a numeric NID.
+    ///
+    /// Any name (OID, short name or long name) can be used
+    /// to identify the object.
+    ///
+    /// It will treat as success the case where the
+    /// composite signature algorithm already exists (even if registered against
+    /// a different underlying signature or digest algorithm).
+    ///
+    /// For `digest_name`, `NULL` or an empty string is permissible for
+    /// signature algorithms that do not need a digest to operate correctly.
+    /// The function returns 1 on success or 0 on failure.
+    ///
+    /// Refer to [provider-base(7ossl)](https://docs.openssl.org/3.2/man7/provider-base/#core-functions)
+    /// and [OBJ_add_sigid(3ossl)](https://docs.openssl.org/3.2/man3/OBJ_add_sigid/).
+    pub(crate) fn OBJ_add_sigid(
+        &self,
+        sign_name: &CStr,
+        digest_name: Option<&CStr>,
+        pkey_name: &CStr,
+    ) -> Result<(), Error> {
+        static CELL: OnceLock<Option<unsafe extern "C" fn()>> = OnceLock::new();
+        let fn_ptr = CELL.get_or_init(|| {
+            let f = self.fn_from_core_dispatch(OSSL_FUNC_CORE_OBJ_ADD_SIGID);
+            f
+        });
+        let fn_ptr = match fn_ptr {
+            Some(f) => f,
+            None => {
+                return Err(anyhow::anyhow!("No upcall pointer"));
+            }
+        };
+
+        // FIXME: is there a way to just specify the type using the type alias OSSL_FUNC_core_obj_create_fn
+        // instead of writing it all out again?
+        let ffi_core_obj_add_sigid = unsafe {
+            std::mem::transmute::<
+                *const (),
+                unsafe extern "C" fn(
+                    prov: *const OSSL_CORE_HANDLE,
+                    sign_name: *const c_char,
+                    digest_name: *const c_char,
+                    pkey_name: *const c_char,
+                ) -> c_int,
+            >(*fn_ptr as _)
+        };
+
+        let handle = self.handle;
+        let sign_name: *const c_char = sign_name.as_ptr();
+        let pkey_name: *const c_char = pkey_name.as_ptr();
+        let digest_name: *const c_char = match digest_name {
+            Some(s) => s.as_ptr(),
+            None => core::ptr::null(),
+        };
+
+        /// Refer to [provider-base(7ossl)](https://docs.openssl.org/3.2/man7/provider-base/#core-functions)
+        const RET_SUCCESS: c_int = 1;
+        const RET_FAILURE: c_int = 0;
+
+        let ret = unsafe { ffi_core_obj_add_sigid(handle, sign_name, digest_name, pkey_name) };
+        match ret {
+            RET_SUCCESS => Ok(()),
+            RET_FAILURE => Err(anyhow!("core_obj_add_sigid() upcall failed")),
             _ => unreachable!(),
         }
     }

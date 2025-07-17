@@ -81,14 +81,37 @@ pub extern "C" fn OSSL_provider_init(
     };
 
     let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch_slice));
-    let objects = vec![(c"2.16.840.1.101.3.4.3.18", c"ML-DSA-65", c"id-ml-dsa-65")];
-    for (oid, sn, ln) in objects {
-        match prov.OBJ_create(oid, sn, ln) {
-            Ok(_) => {
-                debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
+
+    // FIXME: the following block should actually be done by adapters and individual enabled algorithms,
+    // we are doing it here now just for rapid development and debugging
+    {
+        let objects = vec![(
+            c"2.16.840.1.101.3.4.3.18",
+            c"ML-DSA-65",
+            c"id-ml-dsa-65",
+            None,
+        )];
+        for (oid, sn, ln, digest_name) in objects {
+            match prov.OBJ_create(oid, sn, ln) {
+                Ok(_) => {
+                    debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
+                }
+                Err(e) => {
+                    error!(target: log_target!(), "Failed to OBJ_create({oid:?},{sn:?},{ln:?}): {e:?}");
+                    continue;
+                }
             }
-            Err(e) => {
-                error!(target: log_target!(), "Failed to OBJ_create({oid:?},{sn:?},{ln:?}): {e:?}");
+
+            let sign_name = oid;
+            let pkey_name = ln;
+            match prov.OBJ_add_sigid(sign_name, digest_name, pkey_name) {
+                Ok(_) => {
+                    debug!(target: log_target!(), "Registered OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?})");
+                }
+                Err(e) => {
+                    error!(target: log_target!(), "Failed to OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?}): {e:?}");
+                    continue;
+                }
             }
         }
     }
