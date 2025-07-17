@@ -27,15 +27,18 @@ pub struct AdapterContext {
     op_keymgmt_ptr: Option<*const OSSL_ALGORITHM>,
 }
 
-pub struct AdaptersHandle {
+type ObjSigId<'a> = (&'a CStr, &'a CStr, &'a CStr, Option<&'a CStr>);
+
+pub struct AdaptersHandle<'a> {
     contexts: Vec<Box<dyn AdapterContextTrait>>,
     algorithms: HashMap<u32, *const OSSL_ALGORITHM>,
     alg_iters: HashMap<u32, Box<dyn Iterator<Item = OSSL_ALGORITHM>>>,
     capabilities: HashMap<&'static CStr, Vec<*const OSSL_PARAM>>,
+    obj_sigids: Vec<ObjSigId<'a>>,
     finalized: bool,
 }
 
-impl std::fmt::Debug for AdaptersHandle {
+impl std::fmt::Debug for AdaptersHandle<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AdaptersHandle")
             .field(
@@ -45,12 +48,13 @@ impl std::fmt::Debug for AdaptersHandle {
             .field("algorithms", &self.algorithms)
             //.field("alg_iters", &self.alg_iters)
             .field("capabilities", &self.capabilities)
+            .field("obj_sigids", &self.obj_sigids)
             .field("finalized", &self.finalized)
             .finish()
     }
 }
 
-impl AdaptersHandle {
+impl<'a> AdaptersHandle<'a> {
     #[named]
     pub fn register_adapter<T: AdapterContextTrait + std::fmt::Debug + 'static>(&mut self, ctx: T) {
         trace!(target: log_target!(), "{}", "Called!");
@@ -151,6 +155,13 @@ impl AdaptersHandle {
     }
 
     #[named]
+    pub fn register_obj_sigid(&mut self, obj_sigid: ObjSigId<'a>) -> Result<(), aurora::Error> {
+        trace!(target: log_target!(), "Registering obj_sigid {obj_sigid:?}:");
+        self.obj_sigids.push(obj_sigid);
+        Ok(())
+    }
+
+    #[named]
     fn finalize(&mut self) {
         trace!(target: log_target!(), "{}", "Called!");
         if self.finalized {
@@ -195,9 +206,13 @@ impl AdaptersHandle {
             it as Box<dyn Iterator<Item = _>>
         })
     }
+
+    pub(crate) fn get_obj_sigids(&self) -> &[ObjSigId<'_>] {
+        self.obj_sigids.as_slice()
+    }
 }
 
-impl Default for AdaptersHandle {
+impl<'a> Default for AdaptersHandle<'a> {
     // after default() returns, we should have a valid (fully initialized) AdaptersHandle struct
     fn default() -> Self {
         let mut handle = Self {
@@ -205,6 +220,7 @@ impl Default for AdaptersHandle {
             algorithms: Default::default(),
             alg_iters: Default::default(),
             capabilities: Default::default(),
+            obj_sigids: Default::default(),
             finalized: false,
         };
         // initialize and register each adapter
@@ -238,6 +254,20 @@ impl Default for AdaptersHandle {
             }
             Err(e) => {
                 error!("Failed registering capabilities: {e:?}");
+                panic!()
+            }
+        };
+
+        let res = contexts.iter().try_for_each(|ctx| {
+            debug!("🚀 🌟 Calling register_obj_sigids() on {ctx:?}");
+            ctx.register_obj_sigids(&mut handle)
+        });
+        match res {
+            Ok(_) => {
+                trace!("Registered all obj_sigids from all registered adapters");
+            }
+            Err(e) => {
+                error!("Failed registering obj_sigids: {e:?}");
                 panic!()
             }
         };

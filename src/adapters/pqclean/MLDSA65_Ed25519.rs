@@ -56,6 +56,9 @@ pub(super) const NAMES: &CStr = c"mldsa65_ed25519:2.16.840.1.114027.80.9.1.11";
 /// NAME should be a substring of NAMES
 pub(crate) const NAME: &CStr = c"mldsa65_ed25519";
 
+/// LONG_NAME should be a substring of NAMES
+pub(crate) const LONG_NAME: &CStr = NAME;
+
 /// OID should be a substring of NAMES
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 11);
 pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =

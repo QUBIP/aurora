@@ -67,7 +67,7 @@ pub struct OpenSSLProvider<'a> {
     pub version: &'a str,
     params: Vec<OSSLParam<'a>>,
     param_array_ptr: Option<*mut [OSSL_PARAM]>,
-    pub(crate) adapters_ctx: adapters::AdaptersHandle,
+    pub(crate) adapters_ctx: adapters::AdaptersHandle<'a>,
 }
 
 /// We implement the Drop trait to make it explicit when a provider
@@ -112,6 +112,8 @@ impl<'a> OpenSSLProvider<'a> {
         }
         // it's not ideal that here we return an object which is in an "invalid" state bc the
         // adapters haven't been initialized yet
+        // ^ XXX is this comment correct? seems like AdaptersHandle::default() does initialize the
+        // adapters
     }
 
     /// Retrieve a heap allocated `OSSL_DISPATCH` table associated with this provider instance.

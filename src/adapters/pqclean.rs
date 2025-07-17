@@ -418,6 +418,45 @@ impl AdapterContextTrait for PQCleanAdapter {
         }
         Ok(())
     }
+
+    #[named]
+    fn register_obj_sigids(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        // XXX the .unwrap()s here aren't very nice, we may want to do something about that
+        let obj_sigids = vec![
+            (
+                MLDSA44::SIGALG_OID.unwrap(),
+                MLDSA44::NAME,
+                MLDSA44::LONG_NAME,
+                None,
+            ),
+            (
+                MLDSA65::SIGALG_OID.unwrap(),
+                MLDSA65::NAME,
+                MLDSA65::LONG_NAME,
+                None,
+            ),
+            (
+                MLDSA87::SIGALG_OID.unwrap(),
+                MLDSA87::NAME,
+                MLDSA87::LONG_NAME,
+                None,
+            ),
+            (
+                MLDSA65_Ed25519::SIGALG_OID.unwrap(),
+                MLDSA65_Ed25519::NAME,
+                MLDSA65_Ed25519::LONG_NAME,
+                None,
+            ),
+        ];
+
+        for obj_sigid in obj_sigids {
+            handle.register_obj_sigid(obj_sigid)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[named]

@@ -82,56 +82,30 @@ pub extern "C" fn OSSL_provider_init(
 
     let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch_slice));
 
-    // FIXME: the following block should actually be done by adapters and individual enabled algorithms,
-    // we are doing it here now just for rapid development and debugging
-    {
-        let objects = vec![
-            (
-                c"2.16.840.1.101.3.4.3.18",
-                c"ML-DSA-65",
-                c"id-ml-dsa-65",
-                None,
-            ),
-            (
-                c"2.16.840.1.101.3.4.3.19",
-                c"ML-DSA-87",
-                c"id-ml-dsa-87",
-                None,
-            ),
-            (
-                c"2.16.840.1.101.3.4.3.17",
-                c"ML-DSA-44",
-                c"id-ml-dsa-44",
-                None,
-            ),
-            (
-                c"2.16.840.1.114027.80.9.1.11",
-                c"mldsa65_ed25519",
-                c"mldsa65_ed25519",
-                None,
-            ),
-        ];
-        for (oid, sn, ln, digest_name) in objects {
-            match prov.OBJ_create(oid, sn, ln) {
-                Ok(_) => {
-                    debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
-                }
-                Err(e) => {
-                    error!(target: log_target!(), "Failed to OBJ_create({oid:?},{sn:?},{ln:?}): {e:?}");
-                    continue;
-                }
+    let obj_sigids = prov.adapters_ctx.get_obj_sigids();
+    for (oid, sn, ln, digest_name) in obj_sigids {
+        match prov.OBJ_create(oid, sn, ln) {
+            Ok(_) => {
+                debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
             }
+            Err(e) => {
+                error!(target: log_target!(), "Failed to OBJ_create({oid:?},{sn:?},{ln:?}): {e:?}");
+                continue;
+            }
+        }
 
-            let sign_name = oid;
-            let pkey_name = ln;
-            match prov.OBJ_add_sigid(sign_name, digest_name, pkey_name) {
-                Ok(_) => {
-                    debug!(target: log_target!(), "Registered OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?})");
-                }
-                Err(e) => {
-                    error!(target: log_target!(), "Failed to OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?}): {e:?}");
-                    continue;
-                }
+        let sign_name = oid;
+        let pkey_name = ln;
+        // XXX dereferencing the borrow here (`*digest_name`) is super weird, we should find a
+        // different way of getting the type we're iterating over to be just (&CStr, ...) instead of
+        // (&&CStr, ...)
+        match prov.OBJ_add_sigid(sign_name, *digest_name, pkey_name) {
+            Ok(_) => {
+                debug!(target: log_target!(), "Registered OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?})");
+            }
+            Err(e) => {
+                error!(target: log_target!(), "Failed to OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?}): {e:?}");
+                continue;
             }
         }
     }
