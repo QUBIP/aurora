@@ -1,6 +1,7 @@
 use crate as aurora;
 use aurora::bindings;
 use aurora::forge;
+use aurora::upcalls::{traits::*, CoreDispatchWithCoreHandle};
 use bindings::OSSL_ALGORITHM;
 use bindings::OSSL_PARAM;
 use forge::osslparams::OSSLParam;
@@ -19,14 +20,6 @@ pub(crate) mod common;
 mod traits;
 pub use traits::AdapterContextTrait;
 
-#[derive(Debug, PartialEq, Default)]
-pub struct AdapterContext {
-    algorithms: HashMap<u32, Vec<*const OSSL_ALGORITHM>>,
-    capabilities: HashMap<&'static CStr, Vec<*const OSSL_PARAM>>,
-    op_kem_ptr: Option<*const OSSL_ALGORITHM>,
-    op_keymgmt_ptr: Option<*const OSSL_ALGORITHM>,
-}
-
 #[derive(Debug)]
 pub(crate) struct ObjSigId {
     pub oid: &'static CStr,
@@ -35,7 +28,8 @@ pub(crate) struct ObjSigId {
     pub digest_name: Option<&'static CStr>,
 }
 
-pub struct AdaptersHandle {
+pub struct AdaptersHandle<'a> {
+    upcaller: &'a CoreDispatchWithCoreHandle<'a>,
     contexts: Vec<Box<dyn AdapterContextTrait>>,
     algorithms: HashMap<u32, *const OSSL_ALGORITHM>,
     alg_iters: HashMap<u32, Box<dyn Iterator<Item = OSSL_ALGORITHM>>>,
@@ -44,9 +38,10 @@ pub struct AdaptersHandle {
     finalized: bool,
 }
 
-impl std::fmt::Debug for AdaptersHandle {
+impl<'a> std::fmt::Debug for AdaptersHandle<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AdaptersHandle")
+            .field("upcaller", &self.upcaller)
             .field(
                 "contexts",
                 &format!("(there are {} of them)", self.contexts.len()),
@@ -60,7 +55,28 @@ impl std::fmt::Debug for AdaptersHandle {
     }
 }
 
-impl AdaptersHandle {
+pub struct FinalizedAdaptersHandle {
+    contexts: Vec<Box<dyn AdapterContextTrait>>,
+    algorithms: HashMap<u32, *const OSSL_ALGORITHM>,
+    capabilities: HashMap<&'static CStr, Vec<*const OSSL_PARAM>>,
+    obj_sigids: Vec<ObjSigId>,
+}
+
+impl std::fmt::Debug for FinalizedAdaptersHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AdaptersHandle")
+            .field(
+                "contexts",
+                &format!("(there are {} of them)", self.contexts.len()),
+            )
+            .field("algorithms", &self.algorithms)
+            .field("capabilities", &self.capabilities)
+            .field("obj_sigids", &self.obj_sigids)
+            .finish()
+    }
+}
+
+impl<'a> AdaptersHandle<'a> {
     #[named]
     pub fn register_adapter<T: AdapterContextTrait + std::fmt::Debug + 'static>(&mut self, ctx: T) {
         trace!(target: log_target!(), "{}", "Called!");
@@ -161,18 +177,55 @@ impl AdaptersHandle {
     }
 
     #[named]
-    pub fn register_obj_sigid(&mut self, obj_sigid: ObjSigId) -> Result<(), aurora::Error> {
+    pub fn register_obj_sigid(&self, obj_sigid: ObjSigId) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "Registering obj_sigid {obj_sigid:?}:");
-        self.obj_sigids.push(obj_sigid);
+
+        #[cfg(test)]
+        {
+            // Note test builds are those built for integration and unit tests by cargo, in which case we are not loading
+            // the provider from within OpenSSL but rather using it standalone.
+            // In such case, we do not have valid core_handle or core_dispatch pointers, so we cannot do upcalls.
+            debug!(target: log_target!(), "In test builds, we skip registering obj_sigid {obj_sigid:?}:");
+            return Ok(());
+        }
+
+        #[allow(unreachable_code)]
+        let (oid, sn, ln, digest_name) = (
+            obj_sigid.oid,
+            obj_sigid.short_name,
+            obj_sigid.long_name,
+            obj_sigid.digest_name,
+        );
+        match self.OBJ_create(oid, sn, ln) {
+            Ok(_) => {
+                debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
+            }
+            Err(e) => {
+                error!(target: log_target!(), "Failed to OBJ_create({oid:?},{sn:?},{ln:?}): {e:?}");
+                return Err(e.into());
+            }
+        }
+
+        let sign_name = oid;
+        let pkey_name = ln;
+        match self.OBJ_add_sigid(sign_name, digest_name, pkey_name) {
+            Ok(_) => {
+                debug!(target: log_target!(), "Registered OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?})");
+            }
+            Err(e) => {
+                error!(target: log_target!(), "Failed to OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?}): {e:?}");
+                return Err(e.into());
+            }
+        }
+
         Ok(())
     }
 
     #[named]
-    fn finalize(&mut self) {
+    fn finalize(mut self) -> FinalizedAdaptersHandle {
         trace!(target: log_target!(), "{}", "Called!");
         if self.finalized {
-            error!("AdaptersHandle struct was already finalized!");
-            return;
+            unreachable!("AdaptersHandle struct was already finalized!");
         }
 
         // allocate a C array with OSSL_ALGORITHM_END for each operation ID
@@ -192,36 +245,27 @@ impl AdaptersHandle {
             .collect();
 
         self.finalized = true;
-    }
 
-    #[named]
-    pub(crate) fn get_algorithms_by_op_id(&self, op: u32) -> Option<*const OSSL_ALGORITHM> {
-        trace!(target: log_target!(), "{}", "Called!");
-        // HashMap::get() returns an Option<&*const OSSL_ALGORITHM>, so we have to dereference
-        self.algorithms.get(&op).map(|p| *p)
-    }
+        let fh = FinalizedAdaptersHandle {
+            contexts: self.contexts,
+            algorithms: self.algorithms,
+            capabilities: self.capabilities,
+            obj_sigids: self.obj_sigids,
+        };
 
-    #[named]
-    pub(crate) fn get_capabilities(
-        &self,
-        capability: &'static CStr,
-    ) -> Option<Box<dyn Iterator<Item = *const OSSL_PARAM> + '_>> {
-        trace!(target: log_target!(), "{}", "Called!");
-        self.capabilities.get(&capability).map(|p| {
-            let it = Box::new(p.iter().copied());
-            it as Box<dyn Iterator<Item = _>>
-        })
-    }
-
-    pub(crate) fn get_obj_sigids(&self) -> &[ObjSigId] {
-        self.obj_sigids.as_slice()
+        fh
     }
 }
 
-impl Default for AdaptersHandle {
-    // after default() returns, we should have a valid (fully initialized) AdaptersHandle struct
-    fn default() -> Self {
-        let mut handle = Self {
+impl<'a> FinalizedAdaptersHandle {
+    // After `new()` returns, we should have a valid (fully initialized)
+    // `FinalizedAdaptersHandle` struct.
+    //
+    // Internally, an `AdaptersHandle` is temporarily used while each adapter is
+    // initialized, and dropped before returning the `FinalizedAdaptersHandle`.
+    pub fn new(upcaller: &'a CoreDispatchWithCoreHandle<'a>) -> Self {
+        let mut handle = AdaptersHandle {
+            upcaller,
             contexts: Default::default(),
             algorithms: Default::default(),
             alg_iters: Default::default(),
@@ -229,6 +273,7 @@ impl Default for AdaptersHandle {
             obj_sigids: Default::default(),
             finalized: false,
         };
+
         // initialize and register each adapter
         libcrux::init(&mut handle).expect("Failure initializing adapter `libcrux`");
         libcrux_draft::init(&mut handle).expect("Failure initializing adapter `libcrux_draft`");
@@ -246,7 +291,7 @@ impl Default for AdaptersHandle {
             }
             Err(e) => {
                 error!("Failed registering algorithms: {e:?}");
-                panic!()
+                panic!("Failed registering algorithms: {e:?}")
             }
         };
 
@@ -274,14 +319,44 @@ impl Default for AdaptersHandle {
             }
             Err(e) => {
                 error!("Failed registering obj_sigids: {e:?}");
-                panic!()
+                panic!("Failed registering obj_sigids: {e:?}")
             }
         };
 
         std::mem::swap(&mut handle.contexts, &mut contexts); // Place it back
 
         // then finalize
-        handle.finalize();
-        handle
+        handle.finalize()
+    }
+
+    #[named]
+    pub(crate) fn get_algorithms_by_op_id(&self, op: u32) -> Option<*const OSSL_ALGORITHM> {
+        trace!(target: log_target!(), "{}", "Called!");
+        // HashMap::get() returns an Option<&*const OSSL_ALGORITHM>, so we have to dereference
+        self.algorithms.get(&op).map(|p| *p)
+    }
+
+    #[named]
+    pub(crate) fn get_capabilities(
+        &self,
+        capability: &'static CStr,
+    ) -> Option<Box<dyn Iterator<Item = *const OSSL_PARAM> + '_>> {
+        trace!(target: log_target!(), "{}", "Called!");
+        self.capabilities.get(&capability).map(|p| {
+            let it = Box::new(p.iter().copied());
+            it as Box<dyn Iterator<Item = _>>
+        })
+    }
+}
+
+impl<'a> CoreUpcaller for AdaptersHandle<'a> {
+    fn fn_from_core_dispatch(&self, id: u32) -> Option<unsafe extern "C" fn()> {
+        self.upcaller.fn_from_core_dispatch(id)
+    }
+}
+
+impl<'a> CoreUpcallerWithCoreHandle for AdaptersHandle<'a> {
+    fn get_core_handle(&self) -> *const crate::init::OSSL_CORE_HANDLE {
+        self.upcaller.get_core_handle()
     }
 }

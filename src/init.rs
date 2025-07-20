@@ -1,5 +1,4 @@
 use crate::forge::{bindings, osslparams};
-use crate::traits::*;
 use crate::Error as OurError;
 use crate::OpenSSLProvider;
 use crate::{named, CoreDispatch};
@@ -72,37 +71,6 @@ pub extern "C" fn OSSL_provider_init(
         }
     };
     let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch));
-
-    let obj_sigids = prov.adapters_ctx.get_obj_sigids();
-    for obj_sigid in obj_sigids {
-        let (oid, sn, ln, digest_name) = (
-            obj_sigid.oid,
-            obj_sigid.short_name,
-            obj_sigid.long_name,
-            obj_sigid.digest_name,
-        );
-        match prov.OBJ_create(oid, sn, ln) {
-            Ok(_) => {
-                debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
-            }
-            Err(e) => {
-                error!(target: log_target!(), "Failed to OBJ_create({oid:?},{sn:?},{ln:?}): {e:?}");
-                continue;
-            }
-        }
-
-        let sign_name = oid;
-        let pkey_name = ln;
-        match prov.OBJ_add_sigid(sign_name, digest_name, pkey_name) {
-            Ok(_) => {
-                debug!(target: log_target!(), "Registered OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?})");
-            }
-            Err(e) => {
-                error!(target: log_target!(), "Failed to OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?}): {e:?}");
-                continue;
-            }
-        }
-    }
 
     let ourdispatch = prov.get_provider_dispatch();
     unsafe {

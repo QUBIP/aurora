@@ -66,7 +66,7 @@ pub struct OpenSSLProvider<'a> {
     pub version: &'a str,
     params: Vec<OSSLParam<'a>>,
     param_array_ptr: Option<*mut [OSSL_PARAM]>,
-    pub(crate) adapters_ctx: adapters::AdaptersHandle,
+    pub(crate) adapters_ctx: adapters::FinalizedAdaptersHandle,
 }
 
 /// We implement the Drop trait to make it explicit when a provider
@@ -91,7 +91,9 @@ pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 impl<'a> OpenSSLProvider<'a> {
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: CoreDispatch<'a>) -> Self {
         let upcaller: CoreDispatchWithCoreHandle<'a> = (core_dispatch, handle).into();
-        let _ = upcaller;
+
+        let adapters_ctx = { adapters::FinalizedAdaptersHandle::new(&upcaller) };
+
         let core_dispatch: CoreDispatch = upcaller.into();
 
         Self {
@@ -106,12 +108,8 @@ impl<'a> OpenSSLProvider<'a> {
                 OSSLParam::Utf8Ptr(Utf8PtrData::new_null(OSSL_PROV_PARAM_VERSION)),
                 OSSLParam::Utf8Ptr(Utf8PtrData::new_null(OSSL_PROV_PARAM_BUILDINFO)),
             ],
-            adapters_ctx: adapters::AdaptersHandle::default(),
+            adapters_ctx,
         }
-        // it's not ideal that here we return an object which is in an "invalid" state bc the
-        // adapters haven't been initialized yet
-        // ^ XXX is this comment correct? seems like AdaptersHandle::default() does initialize the
-        // adapters
     }
 
     /// Retrieve a heap allocated `OSSL_DISPATCH` table associated with this provider instance.
