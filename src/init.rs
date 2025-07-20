@@ -1,7 +1,8 @@
 use crate::forge::{bindings, osslparams};
-use crate::named;
+use crate::traits::*;
 use crate::Error as OurError;
 use crate::OpenSSLProvider;
+use crate::{named, CoreDispatch};
 use bindings::OSSL_DISPATCH;
 use bindings::OSSL_PARAM;
 use bindings::{OSSL_PROV_PARAM_BUILDINFO, OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION};
@@ -54,36 +55,32 @@ pub extern "C" fn OSSL_provider_init(
     provider_dispatch: *mut *const OSSL_DISPATCH,
     provctx: *mut *mut c_void,
 ) -> c_int {
+    const RET_SUCCESS: c_int = 1;
+    const RET_FAILURE: c_int = 0;
+
     #[cfg(feature = "env_logger")]
     try_init_logging().expect("Failed initializing logger subsystem");
 
     trace!(target: log_target!(), "Just called a 🦀 Rust function from C!");
     trace!(target: log_target!(), "This is 🌌 {} v{}", PROV_NAME, PROV_VER);
 
-    // convert the upcall table to a slice for easier handling
-    let core_dispatch_slice = if !core_dispatch.is_null() {
-        let mut i: usize = 0;
-        loop {
-            let f = unsafe { *core_dispatch.offset(i as isize) };
-            if f.function_id == OSSL_DISPATCH::END.function_id {
-                break;
-            }
-            assert!(
-                i < 512,
-                "the core_dispatch table seems to be excessively long, bailing!"
-            );
-            i += 1;
+    let core_dispatch = match CoreDispatch::try_from(core_dispatch) {
+        Ok(cd) => cd,
+        Err(e) => {
+            error!(target: log_target!(), "Failed to import core_dspatch: {e:?}");
+            return RET_FAILURE;
         }
-        unsafe { std::slice::from_raw_parts(core_dispatch, i) }
-    } else {
-        error!("Got a null core_dispatch table");
-        unreachable!("Got a null core_dispatch table");
     };
-
-    let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch_slice));
+    let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch));
 
     let obj_sigids = prov.adapters_ctx.get_obj_sigids();
-    for (oid, sn, ln, digest_name) in obj_sigids {
+    for obj_sigid in obj_sigids {
+        let (oid, sn, ln, digest_name) = (
+            obj_sigid.oid,
+            obj_sigid.short_name,
+            obj_sigid.long_name,
+            obj_sigid.digest_name,
+        );
         match prov.OBJ_create(oid, sn, ln) {
             Ok(_) => {
                 debug!(target: log_target!(), "Registered OBJ_create({oid:?},{sn:?},{ln:?})");
@@ -96,10 +93,7 @@ pub extern "C" fn OSSL_provider_init(
 
         let sign_name = oid;
         let pkey_name = ln;
-        // XXX dereferencing the borrow here (`*digest_name`) is super weird, we should find a
-        // different way of getting the type we're iterating over to be just (&CStr, ...) instead of
-        // (&&CStr, ...)
-        match prov.OBJ_add_sigid(sign_name, *digest_name, pkey_name) {
+        match prov.OBJ_add_sigid(sign_name, digest_name, pkey_name) {
             Ok(_) => {
                 debug!(target: log_target!(), "Registered OBJ_add_sigid({sign_name:?}, {digest_name:?}, {pkey_name:?})");
             }
@@ -118,7 +112,7 @@ pub extern "C" fn OSSL_provider_init(
     //std::mem::forget(prov);
     trace!(target: log_target!(), "{}", "Just written to C pointers from a 🦀 Rust function!");
 
-    1
+    RET_SUCCESS
 }
 
 #[named]

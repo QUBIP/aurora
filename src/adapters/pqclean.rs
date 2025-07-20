@@ -1,8 +1,10 @@
 use crate as aurora;
+use crate::adapters::ObjSigId;
 
 use aurora::adapters::AdapterContextTrait;
 use aurora::bindings;
 use aurora::forge;
+use aurora::traits::*;
 use aurora::OpenSSLProvider;
 use aurora::{handleResult, named};
 use bindings::{
@@ -450,6 +452,16 @@ impl AdapterContextTrait for PQCleanAdapter {
                 None,
             ),
         ];
+        // XXX FIXME: quick hack
+        let obj_sigids: Vec<_> = obj_sigids
+            .iter()
+            .map(|(oid, sn, ln, digest_name)| ObjSigId {
+                oid,
+                short_name: sn,
+                long_name: ln,
+                digest_name: *digest_name,
+            })
+            .collect();
 
         for obj_sigid in obj_sigids {
             handle.register_obj_sigid(obj_sigid)?;

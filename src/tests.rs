@@ -2,7 +2,8 @@ use super::*;
 
 pub fn new_provctx_for_testing<'a>() -> OpenSSLProvider<'a> {
     let handle = std::ptr::null();
-    let core_dispatch = &[];
+    let core_dispatch =
+        CoreDispatch::try_from(core::ptr::null()).expect("Could not create a test CoreDispatch");
 
     return OpenSSLProvider::new(handle, core_dispatch);
 }

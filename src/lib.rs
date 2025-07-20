@@ -2,7 +2,6 @@
 extern crate log;
 
 pub(crate) use ::function_name::named;
-use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::sync::{LazyLock, OnceLock};
 use zeroize::{Zeroize, Zeroizing};
@@ -34,6 +33,7 @@ pub(crate) mod asn_definitions;
 #[cfg(test)]
 pub(crate) mod tests;
 
+pub use crate::upcalls::CoreDispatch;
 use bindings::dispatch_table_entry;
 use bindings::OSSL_PARAM;
 use bindings::{
@@ -46,6 +46,7 @@ use bindings::{
 };
 use init::OSSL_CORE_HANDLE;
 use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
+use upcalls::traits::{CoreUpcaller, CoreUpcallerWithCoreHandle};
 
 /// This is an abstract representation of one Provider instance.
 /// Remember that a single provider module could be loaded multiple
@@ -59,15 +60,13 @@ use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
 #[derive(Debug)]
 pub struct OpenSSLProvider<'a> {
     pub data: [u8; 10],
-    handle: *const OSSL_CORE_HANDLE,
-    #[expect(dead_code)]
-    core_dispatch_slice: &'a [OSSL_DISPATCH],
-    core_dispatch_map: HashMap<u32, &'a OSSL_DISPATCH>,
+    core_handle: *const OSSL_CORE_HANDLE,
+    core_dispatch: CoreDispatch<'a>,
     pub name: &'a str,
     pub version: &'a str,
     params: Vec<OSSLParam<'a>>,
     param_array_ptr: Option<*mut [OSSL_PARAM]>,
-    pub(crate) adapters_ctx: adapters::AdaptersHandle<'a>,
+    pub(crate) adapters_ctx: adapters::AdaptersHandle,
 }
 
 /// We implement the Drop trait to make it explicit when a provider
@@ -90,16 +89,11 @@ pub static PROV_VER: &str = env!("CARGO_PKG_VERSION");
 pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
 impl<'a> OpenSSLProvider<'a> {
-    pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch_slice: &'a [OSSL_DISPATCH]) -> Self {
-        let mut core_dispatch_map = HashMap::with_capacity(core_dispatch_slice.len());
-        for entry in core_dispatch_slice {
-            core_dispatch_map.insert(entry.function_id as u32, entry);
-        }
+    pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: CoreDispatch<'a>) -> Self {
         Self {
             data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
-            handle,
-            core_dispatch_slice,
-            core_dispatch_map,
+            core_handle: handle,
+            core_dispatch,
             name: PROV_NAME,
             version: PROV_VER,
             param_array_ptr: None,
@@ -256,4 +250,20 @@ macro_rules! handleResult {
     //        }
     //    }
     //};
+}
+
+impl CoreUpcaller for OpenSSLProvider<'_> {
+    fn fn_from_core_dispatch(&self, id: u32) -> Option<unsafe extern "C" fn()> {
+        self.core_dispatch.fn_from_core_dispatch(id)
+    }
+}
+
+impl CoreUpcallerWithCoreHandle for OpenSSLProvider<'_> {
+    fn get_core_handle(&self) -> *const OSSL_CORE_HANDLE {
+        self.core_handle
+    }
+}
+
+pub mod traits {
+    pub use super::upcalls::traits::{CoreUpcaller, CoreUpcallerWithCoreHandle};
 }

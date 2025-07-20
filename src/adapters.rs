@@ -27,18 +27,24 @@ pub struct AdapterContext {
     op_keymgmt_ptr: Option<*const OSSL_ALGORITHM>,
 }
 
-type ObjSigId<'a> = (&'a CStr, &'a CStr, &'a CStr, Option<&'a CStr>);
+#[derive(Debug)]
+pub(crate) struct ObjSigId {
+    pub oid: &'static CStr,
+    pub short_name: &'static CStr,
+    pub long_name: &'static CStr,
+    pub digest_name: Option<&'static CStr>,
+}
 
-pub struct AdaptersHandle<'a> {
+pub struct AdaptersHandle {
     contexts: Vec<Box<dyn AdapterContextTrait>>,
     algorithms: HashMap<u32, *const OSSL_ALGORITHM>,
     alg_iters: HashMap<u32, Box<dyn Iterator<Item = OSSL_ALGORITHM>>>,
     capabilities: HashMap<&'static CStr, Vec<*const OSSL_PARAM>>,
-    obj_sigids: Vec<ObjSigId<'a>>,
+    obj_sigids: Vec<ObjSigId>,
     finalized: bool,
 }
 
-impl std::fmt::Debug for AdaptersHandle<'_> {
+impl std::fmt::Debug for AdaptersHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AdaptersHandle")
             .field(
@@ -54,7 +60,7 @@ impl std::fmt::Debug for AdaptersHandle<'_> {
     }
 }
 
-impl<'a> AdaptersHandle<'a> {
+impl AdaptersHandle {
     #[named]
     pub fn register_adapter<T: AdapterContextTrait + std::fmt::Debug + 'static>(&mut self, ctx: T) {
         trace!(target: log_target!(), "{}", "Called!");
@@ -155,7 +161,7 @@ impl<'a> AdaptersHandle<'a> {
     }
 
     #[named]
-    pub fn register_obj_sigid(&mut self, obj_sigid: ObjSigId<'a>) -> Result<(), aurora::Error> {
+    pub fn register_obj_sigid(&mut self, obj_sigid: ObjSigId) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "Registering obj_sigid {obj_sigid:?}:");
         self.obj_sigids.push(obj_sigid);
         Ok(())
@@ -207,12 +213,12 @@ impl<'a> AdaptersHandle<'a> {
         })
     }
 
-    pub(crate) fn get_obj_sigids(&self) -> &[ObjSigId<'_>] {
+    pub(crate) fn get_obj_sigids(&self) -> &[ObjSigId] {
         self.obj_sigids.as_slice()
     }
 }
 
-impl<'a> Default for AdaptersHandle<'a> {
+impl Default for AdaptersHandle {
     // after default() returns, we should have a valid (fully initialized) AdaptersHandle struct
     fn default() -> Self {
         let mut handle = Self {
