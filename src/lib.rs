@@ -33,7 +33,7 @@ pub(crate) mod asn_definitions;
 #[cfg(test)]
 pub(crate) mod tests;
 
-pub use crate::upcalls::CoreDispatch;
+pub use crate::upcalls::{CoreDispatch, CoreDispatchWithCoreHandle};
 use bindings::dispatch_table_entry;
 use bindings::OSSL_PARAM;
 use bindings::{
@@ -90,6 +90,10 @@ pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
 impl<'a> OpenSSLProvider<'a> {
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: CoreDispatch<'a>) -> Self {
+        let upcaller: CoreDispatchWithCoreHandle<'a> = (core_dispatch, handle).into();
+        let _ = upcaller;
+        let core_dispatch: CoreDispatch = upcaller.into();
+
         Self {
             data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
             core_handle: handle,

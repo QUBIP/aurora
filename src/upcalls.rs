@@ -431,9 +431,10 @@ impl<'a> CoreUpcaller for CoreDispatch<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct CoreDispatchWithCoreHandle<'a> {
-    pub core_dispatch: CoreDispatch<'a>,
-    pub core_handle: *const OSSL_CORE_HANDLE,
+    core_dispatch: CoreDispatch<'a>,
+    core_handle: *const OSSL_CORE_HANDLE,
 }
 
 impl CoreUpcaller for CoreDispatchWithCoreHandle<'_> {
@@ -445,5 +446,30 @@ impl CoreUpcaller for CoreDispatchWithCoreHandle<'_> {
 impl CoreUpcallerWithCoreHandle for CoreDispatchWithCoreHandle<'_> {
     fn get_core_handle(&self) -> *const OSSL_CORE_HANDLE {
         self.core_handle
+    }
+}
+
+impl<'a> From<CoreDispatchWithCoreHandle<'a>> for CoreDispatch<'a> {
+    fn from(value: CoreDispatchWithCoreHandle<'a>) -> Self {
+        value.core_dispatch
+    }
+}
+
+impl<'a> From<(CoreDispatch<'a>, *const OSSL_CORE_HANDLE)> for CoreDispatchWithCoreHandle<'a> {
+    fn from(value: (CoreDispatch<'a>, *const OSSL_CORE_HANDLE)) -> Self {
+        let (core_dispatch, core_handle) = value;
+        Self {
+            core_dispatch,
+            core_handle,
+        }
+    }
+}
+
+impl<'a> From<CoreDispatchWithCoreHandle<'a>> for (CoreDispatch<'a>, *const OSSL_CORE_HANDLE) {
+    fn from(value: CoreDispatchWithCoreHandle<'a>) -> Self {
+        let core_handle = value.get_core_handle();
+        let core_dispatch = value.into();
+
+        (core_dispatch, core_handle)
     }
 }
