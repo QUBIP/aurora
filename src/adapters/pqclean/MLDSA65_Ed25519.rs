@@ -84,6 +84,15 @@ pub(super) const DESCRIPTION: &CStr = c"mldsa65_ed25519 from pqclean and libcrux
 /// number of bits of security
 pub(crate) const SECURITY_BITS: u32 = 192;
 
+/// used to register an Signature Id Object within OpenSSL
+/// for this algorithm
+pub(crate) const OBJ_SIGID: ObjSigId = ObjSigId {
+    oid: SIGALG_OID.unwrap(),
+    short_name: NAME,
+    long_name: LONG_NAME,
+    digest_name: None,
+};
+
 #[allow(unused_imports)]
 pub(crate) use keymgmt_functions::{PUBKEY_LEN, SECRETKEY_LEN, SIGNATURE_LEN};
 
