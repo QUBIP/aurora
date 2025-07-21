@@ -55,25 +55,14 @@ impl<'a> std::fmt::Debug for AdaptersHandle<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct FinalizedAdaptersHandle {
+    #[expect(dead_code)]
     contexts: Vec<Box<dyn AdapterContextTrait>>,
     algorithms: HashMap<u32, *const OSSL_ALGORITHM>,
     capabilities: HashMap<&'static CStr, Vec<*const OSSL_PARAM>>,
+    #[expect(dead_code)]
     obj_sigids: Vec<ObjSigId>,
-}
-
-impl std::fmt::Debug for FinalizedAdaptersHandle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AdaptersHandle")
-            .field(
-                "contexts",
-                &format!("(there are {} of them)", self.contexts.len()),
-            )
-            .field("algorithms", &self.algorithms)
-            .field("capabilities", &self.capabilities)
-            .field("obj_sigids", &self.obj_sigids)
-            .finish()
-    }
 }
 
 impl<'a> AdaptersHandle<'a> {
