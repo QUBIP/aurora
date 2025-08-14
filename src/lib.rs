@@ -3,8 +3,7 @@ extern crate log;
 
 pub(crate) use ::function_name::named;
 use std::ffi::{CStr, CString};
-use std::sync::{LazyLock, OnceLock};
-use zeroize::{Zeroize, Zeroizing};
+use std::sync::LazyLock;
 
 pub type Error = anyhow::Error;
 
@@ -20,20 +19,17 @@ macro_rules! log_target {
     };
 }
 
-pub(crate) mod forge;
-use forge::{bindings, osslparams};
 pub(crate) mod adapters;
+pub(crate) mod forge;
 mod init;
 mod query;
 pub(crate) mod random;
-mod upcalls;
 
 pub(crate) mod asn_definitions;
 
 #[cfg(test)]
 pub(crate) mod tests;
 
-pub use crate::upcalls::{CoreDispatch, CoreDispatchWithCoreHandle};
 use bindings::dispatch_table_entry;
 use bindings::OSSL_PARAM;
 use bindings::{
@@ -44,9 +40,11 @@ use bindings::{
     OSSL_FUNC_PROVIDER_QUERY_OPERATION, OSSL_FUNC_PROVIDER_TEARDOWN, OSSL_PROV_PARAM_BUILDINFO,
     OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_VERSION,
 };
-use init::OSSL_CORE_HANDLE;
+use forge::{bindings, osslparams, upcalls};
 use osslparams::{OSSLParam, OSSLParamData, Utf8PtrData, OSSL_PARAM_END};
 use upcalls::traits::{CoreUpcaller, CoreUpcallerWithCoreHandle};
+use upcalls::OSSL_CORE_HANDLE;
+pub use upcalls::{CoreDispatch, CoreDispatchWithCoreHandle};
 
 /// This is an abstract representation of one Provider instance.
 /// Remember that a single provider module could be loaded multiple

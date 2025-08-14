@@ -1,4 +1,4 @@
-use crate::forge::{bindings, osslparams};
+use crate::forge::{bindings, osslparams, upcalls};
 use crate::Error as OurError;
 use crate::OpenSSLProvider;
 use crate::{named, CoreDispatch};
@@ -8,18 +8,12 @@ use bindings::{OSSL_PROV_PARAM_BUILDINFO, OSSL_PROV_PARAM_NAME, OSSL_PROV_PARAM_
 use libc::{c_int, c_void};
 use osslparams::OSSLParam;
 use std::sync::Once;
+use upcalls::OSSL_CORE_HANDLE;
 
 use crate::{PROV_NAME, PROV_VER};
 
 #[cfg(feature = "env_logger")]
 pub use env_logger as logger;
-
-#[repr(C)]
-#[allow(non_camel_case_types)]
-pub struct OSSL_CORE_HANDLE {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
 
 #[cfg(feature = "env_logger")]
 fn inner_try_init_logging() -> Result<(), OurError> {

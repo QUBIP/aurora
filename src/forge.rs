@@ -1,5 +1,13 @@
 pub use openssl_provider_forge::*;
 
+pub mod upcalls {
+    pub use openssl_provider_forge::upcalls::*;
+
+    pub mod traits {
+        pub use openssl_provider_forge::upcalls::traits::*;
+    }
+}
+
 #[cfg(any())]
 pub(crate) mod bindings {
     pub(super) const OSSL_FUNC_KEYMGMT_UNUSED: u32 = 42;

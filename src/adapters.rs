@@ -1,10 +1,10 @@
 use crate as aurora;
 use aurora::bindings;
 use aurora::forge;
-use aurora::upcalls::{traits::*, CoreDispatchWithCoreHandle};
 use bindings::OSSL_ALGORITHM;
 use bindings::OSSL_PARAM;
 use forge::osslparams::OSSLParam;
+use forge::upcalls::{traits::*, CoreDispatchWithCoreHandle};
 use function_name::named;
 use std::collections::HashMap;
 use std::ffi::CStr;
@@ -347,7 +347,7 @@ impl<'a> CoreUpcaller for AdaptersHandle<'a> {
 }
 
 impl<'a> CoreUpcallerWithCoreHandle for AdaptersHandle<'a> {
-    fn get_core_handle(&self) -> *const crate::init::OSSL_CORE_HANDLE {
+    fn get_core_handle(&self) -> *const forge::upcalls::OSSL_CORE_HANDLE {
         self.upcaller.get_core_handle()
     }
 }
