@@ -83,6 +83,18 @@ pub trait TestParam {
         .expect("openssl failed");
         assert!(output.status.success());
 
+        let output = openssl::run_openssl_with_aurora([
+            "x509",
+            "-in",
+            str_cert_path,
+            "-inform",
+            fmt,
+            "-noout",
+            "-pubkey",
+        ])
+        .expect("openssl failed");
+        assert!(output.status.success());
+
         #[cfg(any())]
         let output =
             openssl::run_openssl_with_aurora(["verify", "-CAfile", str_cert_path, str_cert_path])
