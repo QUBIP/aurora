@@ -181,6 +181,8 @@ impl PrivateKey {
         use cmldsa::MlDsa65 as P;
         type SigningKey = cmldsa::SigningKey<P>;
 
+        trace!(target: log_target!(), "Called");
+
         let encoded_sk = self.encode();
         let encoded_sk = match encoded_sk.as_slice().try_into() {
             Ok(p) => p,

@@ -149,6 +149,7 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     debug!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
     if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
+        debug!(target: log_target!(), "Bailing out");
         return ERROR_RET;
     }
 
@@ -168,12 +169,14 @@ pub(super) unsafe extern "C" fn decodeSPKI(
         Ok(spki) => spki,
         Err(e) => {
             trace!(target: log_target!(), "Failed to decode SubjectPublicKeyInfo: {e:?}");
+            debug!(target: log_target!(), "Bailing out");
             return ERROR_RET;
         }
     };
     let oid = spki.algorithm.oid;
     if oid != super::OID_PKCS8 {
         trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
+        debug!(target: log_target!(), "Bailing out");
         return ERROR_RET;
     }
 
@@ -293,17 +296,20 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
         Ok(pki) => pki,
         Err(e) => {
             trace!(target: log_target!(), "Failed to decode PrivateKeyInfo: {e:?}");
+            debug!(target: log_target!(), "Bailing out");
             return ERROR_RET;
         }
     };
     if pki.version() != pkcs8::Version::V1 {
         trace!(target: log_target!(), "This decoder only supports RFC5208 (PKCS8 V1)");
+        debug!(target: log_target!(), "Bailing out");
         return ERROR_RET;
     }
 
     let oid = pki.algorithm.oid;
     if oid != super::OID_PKCS8 {
         trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
+        debug!(target: log_target!(), "Bailing out");
         return ERROR_RET;
     }
 

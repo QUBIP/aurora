@@ -42,7 +42,7 @@ use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_IN
 
 mod decoder_functions;
 mod encoder_functions;
-mod keymgmt_functions;
+pub(super) mod keymgmt_functions;
 mod signature;
 mod signature_functions;
 
