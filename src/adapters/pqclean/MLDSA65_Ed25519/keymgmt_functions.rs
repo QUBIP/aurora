@@ -1,3 +1,5 @@
+#![allow(unreachable_code)]
+
 use super::*;
 use bindings::{
     OSSL_CALLBACK, OSSL_KEYMGMT_SELECT_KEYPAIR, OSSL_KEYMGMT_SELECT_PRIVATE_KEY,
@@ -22,6 +24,11 @@ use std::{
 use ed25519_dalek as trad_backend_module;
 use pqcrypto_mldsa::mldsa65 as pq_backend_module;
 
+type PQPublicKey = pq_backend_module::PublicKey;
+type PQPrivateKey = pq_backend_module::SecretKey;
+type TPublicKey = trad_backend_module::VerifyingKey;
+type TPrivateKey = trad_backend_module::SecretKey;
+
 use super::OurError as KMGMTError;
 type OurResult<T> = anyhow::Result<T, KMGMTError>;
 
@@ -35,30 +42,21 @@ pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 // with the pqcrypto sign and verify functions.
 #[derive(PartialEq)]
 pub struct PublicKey {
-    pq_public_key: pq_backend_module::PublicKey,
-    trad_public_key: trad_backend_module::VerifyingKey,
+    pq_public_key: PQPublicKey,
+    trad_public_key: TPublicKey,
 }
 
 #[derive(PartialEq)]
 pub struct PrivateKey {
-    pq_private_key: pq_backend_module::SecretKey,
-    trad_private_key: trad_backend_module::SecretKey,
+    pq_private_key: PQPrivateKey,
+    trad_private_key: TPrivateKey,
 }
 
 impl PublicKey {
-    pub fn encode(&self) -> Vec<u8> {
-        let Self {
-            pq_public_key,
-            trad_public_key,
-        } = self;
-        let mut bytes =
-            <pq_backend_module::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(
-                pq_public_key,
-            )
-            .to_vec();
-        bytes.extend(trad_public_key.as_bytes());
-        bytes
-    }
+    const PQ_PUBLIC_KEY_LEN: usize = pq_backend_module::public_key_bytes();
+    const T_PUBLIC_KEY_LEN: usize = trad_backend_module::PUBLIC_KEY_LENGTH;
+    const PQ_SIGNATURE_LEN: usize = pq_backend_module::signature_bytes();
+    const T_SIGNATURE_LEN: usize = trad_backend_module::SIGNATURE_LENGTH;
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
         if bytes.len() != Self::byte_len() {
@@ -70,9 +68,11 @@ impl PublicKey {
         }
 
         // if we're here, then the length is correct, and we can safely split_at() and expect()
-        let (pq_bytes, trad_bytes) = bytes.split_at(pq_backend_module::public_key_bytes());
-        let trad_bytes: &[u8; trad_backend_module::PUBLIC_KEY_LENGTH] =
-            trad_bytes.try_into().expect("slice should have length 32");
+        let (pq_bytes, trad_bytes) = bytes.split_at(Self::PQ_PUBLIC_KEY_LEN);
+        let pq_bytes: &[u8; Self::PQ_PUBLIC_KEY_LEN] =
+            pq_bytes.try_into().expect("slice has unexpected size");
+        let trad_bytes: &[u8; Self::T_PUBLIC_KEY_LEN] =
+            trad_bytes.try_into().expect("slice has unexpected size");
 
         let pq_public_key =
             <pq_backend_module::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(
@@ -97,20 +97,83 @@ impl PublicKey {
         })
     }
 
+    pub fn encode(&self) -> Vec<u8> {
+        let Self {
+            pq_public_key,
+            trad_public_key,
+        } = self;
+        let mut bytes =
+            <pq_backend_module::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(
+                pq_public_key,
+            )
+            .to_vec();
+        bytes.extend(trad_public_key.as_bytes());
+        bytes
+    }
+
     pub const fn byte_len() -> usize {
-        pq_backend_module::public_key_bytes() + trad_backend_module::PUBLIC_KEY_LENGTH
+        Self::PQ_PUBLIC_KEY_LEN + Self::T_PUBLIC_KEY_LEN
     }
 
     pub const fn signature_bytes() -> usize {
         PrivateKey::signature_bytes()
     }
+
+    #[named]
+    pub fn from_DER(pk_der_bytes: &[u8]) -> OurResult<Self> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        use asn_definitions::PublicKey as ASNPublicKey;
+
+        let decodedpubkey: ASNPublicKey;
+        let slice = match pk_der_bytes.len() {
+            PUBKEY_LEN => pk_der_bytes,
+
+            #[cfg(any())]
+            _ => {
+                decodedpubkey = match rasn::der::decode(pk_der_bytes) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(target: log_target!(), "Failed to decode the inner public key: {e:?}");
+                        return Err(OurError::from(e));
+                    }
+                };
+
+                debug!(target: log_target!(), "Parsed public key material out of ASN.1 for decoding!");
+
+                let slice: &[u8] = decodedpubkey.0.as_slice();
+                slice
+            }
+
+            #[cfg(not(any()))]
+            _ => {
+                let _ = decodedpubkey;
+                unreachable!();
+            }
+        };
+
+        debug_assert_eq!(slice.len(), PUBKEY_LEN);
+        let pubkey = Self::decode(slice)?;
+
+        Ok(pubkey)
+    }
+
+    #[named]
+    pub fn to_DER(&self) -> OurResult<Vec<u8>> {
+        trace!(target: log_target!(), "{}", "Called!");
+
+        Ok(self.encode())
+    }
 }
 
+// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-prefix-domain-separators-an
 const PREFIX: &[u8] = "CompositeAlgorithmSignatures2025".as_bytes();
 // https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-domain-separator-values
 const DOMAIN_SEPARATOR: &[u8] = &[
     0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x09, 0x01, 0x0B,
 ];
+// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-pre-hashing-and-randomizer
+const RANDOMIZER_LEN: usize = 32;
 
 // https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-verify
 // There's no way to pass additional context info (`ctx` in the linked spec) into this Verifier
@@ -128,18 +191,18 @@ impl Verifier<Signature> for PublicKey {
         let sig = sig.to_bytes();
         let sig = sig.as_ref();
         if sig.len() != SIGNATURE_LEN {
-            error!(target: log_target!(), "Signature should be {:?} bytes (got {:?})", SIGNATURE_LEN, sig.len());
+            error!(target: log_target!(), "Signature should be {SIGNATURE_LEN:} bytes (got {})", sig.len());
             return Err(forge::crypto::signature::Error::from_source(
                 VerificationError::GenericVerificationError,
             ));
         }
         // if we get here, we know we have the right number of bytes, so these calls to split_at()
         // and expect() won't panic
-        let (r, tail) = sig.split_at(32);
-        let (pq_sig, trad_sig) = tail.split_at(pq_backend_module::signature_bytes());
-        let trad_sig: &[u8; trad_backend_module::SIGNATURE_LENGTH] = trad_sig
-            .try_into()
-            .expect("Ed25519 signature should be 64 bytes");
+        let (randomizer_bytes, tail_bytes) = sig.split_at(RANDOMIZER_LEN);
+        let (pq_sig, trad_sig) = tail_bytes.split_at(Self::PQ_SIGNATURE_LEN);
+        let pq_sig: &[u8; Self::PQ_SIGNATURE_LEN] = pq_sig.try_into().expect("Unexpected length");
+        let trad_sig: &[u8; Self::T_SIGNATURE_LEN] =
+            trad_sig.try_into().expect("Unexpected length");
 
         // M' :=  Prefix || Domain || len(ctx) || ctx || r || PH( M )
         // (here M is our `msg` argument)
@@ -147,7 +210,7 @@ impl Verifier<Signature> for PublicKey {
         let mut M_prime = PREFIX.to_vec();
         M_prime.extend_from_slice(DOMAIN_SEPARATOR);
         M_prime.push(0); // len(ctx) is 0, since ctx is the empty string (see comment at top of impl)
-        M_prime.extend_from_slice(&r);
+        M_prime.extend_from_slice(&randomizer_bytes);
         M_prime.extend(msg_hash);
 
         // verify with ML-DSA
@@ -202,6 +265,11 @@ fn map_PQError_into_VerificationError(
 }
 
 impl PrivateKey {
+    const PQ_PRIVATE_KEY_LEN: usize = pq_backend_module::secret_key_bytes();
+    const T_PRIVATE_KEY_LEN: usize = trad_backend_module::SECRET_KEY_LENGTH;
+    const PQ_SIGNATURE_LEN: usize = PublicKey::PQ_SIGNATURE_LEN;
+    const T_SIGNATURE_LEN: usize = PublicKey::T_SIGNATURE_LEN;
+
     pub fn encode(&self) -> Vec<u8> {
         let Self {
             pq_private_key,
@@ -238,12 +306,131 @@ impl PrivateKey {
     }
 
     pub const fn byte_len() -> usize {
-        pq_backend_module::secret_key_bytes() + trad_backend_module::SECRET_KEY_LENGTH
+        Self::PQ_PRIVATE_KEY_LEN + Self::T_PRIVATE_KEY_LEN
     }
 
     pub const fn signature_bytes() -> usize {
-        // 32 is for the 32-byte randomizer `r`
-        32 + pq_backend_module::signature_bytes() + trad_backend_module::SIGNATURE_LENGTH
+        RANDOMIZER_LEN + Self::PQ_SIGNATURE_LEN + Self::T_SIGNATURE_LEN
+    }
+
+    #[named]
+    fn derive_PQ_public_key(&self) -> Option<PQPublicKey> {
+        // pqclean does not provide support to derive the public key from an
+        // expanded private key so we resort to a fork of
+        // RustCrypto::sigantures::ml-dsa to work around this
+        use rustcrypto_mldsa_custom as cmldsa;
+
+        use cmldsa::MlDsa65 as P;
+        type SigningKey = cmldsa::SigningKey<P>;
+
+        trace!(target: log_target!(), "Called");
+
+        let k = &self.pq_private_key;
+        let encoded_sk = <PQPrivateKey as pqcrypto_traits::sign::SecretKey>::as_bytes(k).to_vec();
+        let encoded_sk = match encoded_sk.as_slice().try_into() {
+            Ok(p) => p,
+            Err(e) => {
+                error!(target: log_target!(), "Slice should be exactly {SECRETKEY_LEN:} bytes long: {e:?}");
+                return None;
+            }
+        };
+        let csk: SigningKey = SigningKey::decode(encoded_sk);
+        let cpk = csk.verifying_key();
+        let pk_bytes = cpk.encode();
+        let pk_bytes = pk_bytes.as_slice();
+
+        let res =
+            <PQPublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(pk_bytes).map_err(|e| {
+                anyhow!(
+                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
+                    e
+                )
+            });
+        match res {
+            Ok(pk) => Some(pk),
+            Err(e) => {
+                error!(target: log_target!(), "Failed to derive the public key from the inner private key: {e:?}");
+                return None;
+            }
+        }
+    }
+
+    /// Derive a matching public key from this private key
+    #[named]
+    pub fn derive_public_key(&self) -> Option<PublicKey> {
+        trace!(target: log_target!(), "Called");
+
+        let t_sk = &self.trad_private_key;
+        let t_sk = trad_backend_module::SigningKey::from_bytes(t_sk);
+        let t_pk = t_sk.verifying_key();
+
+        let pq_pk = match self.derive_PQ_public_key() {
+            Some(pk) => pk,
+            None => {
+                return None;
+            }
+        };
+
+        let pk = PublicKey {
+            pq_public_key: pq_pk,
+            trad_public_key: t_pk,
+        };
+        Some(pk)
+    }
+
+    #[named]
+    pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, Option<PublicKey>)> {
+        use asn_definitions::PrivateKey as ASNPrivateKey;
+        trace!(target: log_target!(), "Called");
+
+        let decodedprivkey = match rasn::der::decode::<ASNPrivateKey>(sk_der_bytes) {
+            Ok(p) => p,
+            Err(e) => {
+                error!(target: log_target!(), "Failed to decode the inner private key: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+
+        debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
+
+        let (privkey, opt_pubkey) = match decodedprivkey {
+            ASNPrivateKey::seed(_seed) => unimplemented!(),
+            ASNPrivateKey::expandedKey(expandedKey) => {
+                let slice: &[u8] = &expandedKey;
+                let privkey = keymgmt_functions::PrivateKey::decode(slice)?;
+
+                // We need to derive a public key from the private key, without a seed
+                let pubkey = match privkey.derive_public_key() {
+                    Some(k) => k,
+                    None => {
+                        error!(target: log_target!(), "Could not derive the public key from the inner private key");
+                        return Err(anyhow!(
+                            "Could not derive the public key from the inner private key"
+                        ));
+                    }
+                };
+                (privkey, Some(pubkey))
+            }
+            ASNPrivateKey::both(_private_key_both) => unimplemented!(),
+        };
+        Ok((privkey, opt_pubkey))
+    }
+
+    #[named]
+    pub fn to_DER(&self) -> OurResult<Vec<u8>> {
+        trace!(target: log_target!(), "Called");
+        use asn_definitions::PrivateKey as ASNPrivateKey;
+
+        let raw_sk_bytes = self.encode();
+        let asn_sk = ASNPrivateKey::expandedKey(raw_sk_bytes.into());
+        let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(target: log_target!(), "Failed to encode private key: {e:?}");
+                return Err(OurError::from(e));
+            }
+        };
+        Ok(asn_sk_bytes)
     }
 }
 
@@ -252,15 +439,15 @@ impl PrivateKey {
 // linked spec) into this Signer trait's try_sign function, so we take `ctx` to be the empty string.
 impl Signer<Signature> for PrivateKey {
     fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
-        // r = Random(32)
-        let r: [u8; 32] = rand::random();
+        // randomizer = Random(32)
+        let randomizer: [u8; RANDOMIZER_LEN] = rand::random();
         // M' :=  Prefix || Domain || len(ctx) || ctx || r || PH( M )
         // (here M is our `msg` argument)
         let msg_hash = Sha512::digest(msg);
         let mut M_prime = PREFIX.to_vec();
         M_prime.extend_from_slice(DOMAIN_SEPARATOR);
         M_prime.push(0); // len(ctx) is 0, since ctx is the empty string (see comment above)
-        M_prime.extend_from_slice(&r);
+        M_prime.extend_from_slice(&randomizer);
         M_prime.extend(msg_hash);
 
         // get at the private keys
@@ -280,7 +467,7 @@ impl Signer<Signature> for PrivateKey {
             trad_backend_module::SigningKey::from_bytes(trad_private_key).sign(&M_prime);
 
         // build the result
-        let mut signature = r.to_vec();
+        let mut signature = randomizer.to_vec();
         signature.extend_from_slice(pq_signature.as_bytes());
         signature.extend_from_slice(&trad_signature.to_bytes());
 
@@ -905,6 +1092,13 @@ pub(super) unsafe extern "C" fn match_(
     }
 
     return 1;
+}
+
+pub(super) mod asn_definitions {
+    pub use crate::asn_definitions::x509_ml_dsa_2025 as defns;
+
+    pub use defns::MLDSA65PrivateKey as PrivateKey;
+    pub use defns::MLDSA65PublicKey as PublicKey;
 }
 
 #[cfg(test)]

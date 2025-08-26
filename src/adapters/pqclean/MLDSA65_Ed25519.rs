@@ -58,6 +58,9 @@ pub(crate) const NAME: &CStr = c"mldsa65_ed25519";
 
 /// OID should be a substring of NAMES
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 11);
+pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
+    pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.9.1.11");
+pub(crate) const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.114027.80.9.1.11");
 
 /// [RFC 5280 AlgorithmIdentifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.1.1.2)
 /// in DER-encoded format.
@@ -134,7 +137,7 @@ pub(crate) mod capabilities {
             /// # NOTE
             ///
             /// > The OID for mldsa65_ed25519 come from the [IETF LAMPS draft](https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-algorithm-identifiers).
-            const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.114027.80.9.1.11");
+            const SIGALG_OID: Option<&CStr> = super::super::SIGALG_OID;
 
             const SECURITY_BITS: u32 = super::super::SECURITY_BITS;
 

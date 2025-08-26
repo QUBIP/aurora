@@ -1,4 +1,5 @@
 use super::*;
+use asn1::{ParseError, ParseErrorKind};
 use bindings::ffi_c_types::*;
 use bindings::{
     OSSL_CALLBACK, OSSL_CORE_BIO, OSSL_DECODER_PARAM_PROPERTIES,
@@ -10,7 +11,12 @@ use forge::operations::{keymgmt, transcoders};
 use forge::ossl_callback::OSSLCallback;
 use forge::osslparams::*;
 use keymgmt::selection::Selection;
+use pkcs8::der::Decode;
 use transcoders::{Decoder, DoesSelection};
+
+use pkcs8;
+
+use keymgmt_functions::asn_definitions::PrivateKey as ASNPrivateKey;
 
 struct DecoderContext<'a> {
     provctx: &'a OpenSSLProvider<'a>,
@@ -143,6 +149,7 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     debug!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
     if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
+        debug!(target: log_target!(), "Bailing out");
         return ERROR_RET;
     }
 
@@ -156,28 +163,44 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
     // debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
 
-    let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
-        return d.read_element::<asn1::Sequence>()?.parse(|d| {
-            let algorithm_identifier = d.read_element::<asn1::Sequence>()?.parse(|d| {
-                let algorithm_identifier = d.read_element::<asn1::ObjectIdentifier>()?;
-                return Ok(algorithm_identifier);
-            })?;
-            let subject_public_key = d.read_element::<asn1::BitString>()?;
-            return Ok((algorithm_identifier, subject_public_key));
-        });
-    });
+    let spki = pkcs8::spki::SubjectPublicKeyInfoRef::from_der(bytes.as_ref());
 
-    // wrapping the asn1::parse() call itself in handleResult!() leaves the compiler too little
-    // information to be able to infer types, so I left it like this for now
-    let (oid, key) = handleResult!(result);
-
-    if oid != super::OID {
-        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID);
+    let spki = match spki {
+        Ok(spki) => spki,
+        Err(e) => {
+            trace!(target: log_target!(), "Failed to decode SubjectPublicKeyInfo: {e:?}");
+            debug!(target: log_target!(), "Bailing out");
+            return ERROR_RET;
+        }
+    };
+    let oid = spki.algorithm.oid;
+    if oid != super::OID_PKCS8 {
+        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
+        debug!(target: log_target!(), "Bailing out");
         return ERROR_RET;
     }
 
-    let key_bytes = key.as_bytes();
-    let pk = handleResult!(keymgmt_functions::PublicKey::decode(key_bytes));
+    // After this point errors are logged as such, as supposedly this decoder should be authoritative for this algorithm
+
+    if spki.algorithm.parameters.is_some() {
+        error!(target: log_target!(), "Algorithm parameters are not allowed for this decoder");
+        return ERROR_RET;
+    }
+
+    let derpubkey = match spki.subject_public_key.as_bytes() {
+        Some(b) => b,
+        None => {
+            error!(target: log_target!(), "Nested bit-string is not octet aligned, hence it is not DER-encoded");
+            return ERROR_RET;
+        }
+    };
+    let pk = match keymgmt_functions::PublicKey::from_DER(derpubkey) {
+        Ok(pk) => pk,
+        Err(e) => {
+            error!(target: log_target!(), "Failed to decode public key: {e:?}");
+            return ERROR_RET;
+        }
+    };
     let kp: Box<keymgmt_functions::KeyPair<'_>> = Box::new(
         super::keymgmt_functions::KeyPair::from_parts(decoderctx.provctx, None, Some(pk)),
     );
@@ -267,39 +290,58 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
     // debug!(target: log_target!(), "Using properties: {:?}", decoderctx.properties);
 
-    let result: asn1::ParseResult<_> = asn1::parse(&bytes, |d| {
-        return d.read_element::<asn1::Sequence>()?.parse(|d| {
-            let _version = d.read_element::<asn1::BigInt>()?;
-            let algorithm_identifier = d.read_element::<asn1::Sequence>()?.parse(|d| {
-                let algorithm_identifier = d.read_element::<asn1::ObjectIdentifier>()?;
-                return Ok(algorithm_identifier);
-            })?;
-            let keydata = d.read_element::<asn1::OctetStringEncoded<&[u8]>>()?;
-            return Ok((algorithm_identifier, keydata));
-        });
-    });
+    let pki = pkcs8::PrivateKeyInfo::try_from(bytes.as_ref());
 
-    debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
-
-    // wrapping the asn1::parse() call itself in handleResult!() leaves the compiler too little
-    // information to be able to infer types, so I left it like this for now
-    let (oid, keydata) = handleResult!(result);
-
-    if oid != super::OID {
-        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID);
+    let pki = match pki {
+        Ok(pki) => pki,
+        Err(e) => {
+            trace!(target: log_target!(), "Failed to decode PrivateKeyInfo: {e:?}");
+            debug!(target: log_target!(), "Bailing out");
+            return ERROR_RET;
+        }
+    };
+    if pki.version() != pkcs8::Version::V1 {
+        trace!(target: log_target!(), "This decoder only supports RFC5208 (PKCS8 V1)");
+        debug!(target: log_target!(), "Bailing out");
         return ERROR_RET;
     }
 
-    // the raw bytes in the octet string include a prefix indicating their type and length,
-    // which gets interpreted here in the .get() call
-    // see section 5.10 (DER encoding): https://luca.ntop.org/Teaching/Appunti/asn1.html
-    let key_bytes = keydata.get();
+    let oid = pki.algorithm.oid;
+    if oid != super::OID_PKCS8 {
+        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
+        debug!(target: log_target!(), "Bailing out");
+        return ERROR_RET;
+    }
 
-    // I don't know where it's specified that the private key comes first, but it seems to be true,
-    // based on inspecting a private+public key file we've been using for testing.
-    let cutoff = keymgmt_functions::SECRETKEY_LEN;
-    let privkey = handleResult!(keymgmt_functions::PrivateKey::decode(&key_bytes[0..cutoff]));
-    let pubkey = handleResult!(keymgmt_functions::PublicKey::decode(&key_bytes[cutoff..]));
+    // After this point errors are logged as such, as supposedly this decoder should be authoritative for this algorithm
+
+    if pki.algorithm.parameters.is_some() {
+        error!(target: log_target!(), "Algorithm parameters are not allowed for this decoder");
+        return ERROR_RET;
+    }
+
+    let derprivkey = pki.private_key;
+    let pair = match keymgmt_functions::PrivateKey::from_DER(derprivkey) {
+        Ok(pair) => pair,
+        Err(e) => {
+            error!(target: log_target!(), "Failed to decode private key: {e:?}");
+            return ERROR_RET;
+        }
+    };
+    let (privkey, pubkey) = match pair {
+        (sk, None) => {
+            let pk = match sk.derive_public_key() {
+                Some(pk) => pk,
+                None => {
+                    error!(target: log_target!(), "Failed to derive public key from secret key");
+                    return ERROR_RET;
+                }
+            };
+            (sk, pk)
+        }
+        (sk, Some(pk)) => (sk, pk),
+    };
+
     let kp: Box<keymgmt_functions::KeyPair<'_>> =
         Box::new(super::keymgmt_functions::KeyPair::from_parts(
             decoderctx.provctx,
@@ -326,6 +368,7 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     trace!(target: log_target!(), "Ignoring pw_cb and pw_cbarg");
     let ret = cb.call(params.as_ptr() as *const OSSL_PARAM);
 
+    trace!(target: log_target!(), "Returning {ret:?}");
     return ret;
 }
 

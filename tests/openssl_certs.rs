@@ -130,10 +130,10 @@ impl TestParam for MLDSA87Tests {
     const ALG_NAME: &str = "id-ml-dsa-87";
 }
 
-//struct MLDSA65ED25519Tests();
-//impl TestParam for MLDSA65ED25519Tests  {
-//    const ALG_NAME: &str = "mldsa65_ed25519";
-//}
+struct MLDSA65ED25519Tests();
+impl TestParam for MLDSA65ED25519Tests {
+    const ALG_NAME: &str = "mldsa65_ed25519";
+}
 
 use paste::paste;
 macro_rules! generate_tests {
