@@ -1055,8 +1055,8 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "openssl_provider_forge"
-version = "0.8.4-dev"
-source = "git+https://github.com/romen/openssl-provider-forge-rs?rev=4fd10b02085fbacd475d9676af9e1c81cbb757f6#4fd10b02085fbacd475d9676af9e1c81cbb757f6"
+version = "0.8.4"
+source = "git+https://github.com/qubip/openssl-provider-forge-rs?tag=v0.8.4#7febab2bb15816a59af9223e406623c4328b9f68"
 dependencies = [
  "anyhow",
  "bindgen",
