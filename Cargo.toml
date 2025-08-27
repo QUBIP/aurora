@@ -1,6 +1,6 @@
 [package]
 name = "aurora"
-version = "0.8.4"
+version = "0.8.5-dev"
 edition = "2021"
 
 [lib]
