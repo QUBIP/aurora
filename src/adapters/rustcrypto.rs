@@ -19,6 +19,8 @@ const PROPERTY_DEFINITION: &CStr = c"x.author='QUBIP',x.qubip.adapter='rustcrypt
 
 #[allow(non_snake_case)]
 pub(crate) mod SLHDSASHAKE192f;
+#[allow(non_snake_case)]
+pub(crate) mod SLHDSASHAKE256s;
 
 #[derive(Debug)]
 struct RustCryptoAdapter;
@@ -28,27 +30,49 @@ impl AdapterContextTrait for RustCryptoAdapter {
     fn register_algorithms(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let signature_algorithms = Box::new([{
-            use SLHDSASHAKE192f as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: PROPERTY_DEFINITION.as_ptr(),
-                implementation: Alg::SIG_FUNCTIONS.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let signature_algorithms = Box::new([
+            {
+                use SLHDSASHAKE192f as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use SLHDSASHAKE256s as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+        ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_SIGNATURE, signature_algorithms.into_iter())?;
 
-        let keymgmt_algorithms = Box::new([{
-            use SLHDSASHAKE192f as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: PROPERTY_DEFINITION.as_ptr(),
-                implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let keymgmt_algorithms = Box::new([
+            {
+                use SLHDSASHAKE192f as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use SLHDSASHAKE256s as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: PROPERTY_DEFINITION.as_ptr(),
+                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+        ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
 
@@ -69,6 +93,28 @@ impl AdapterContextTrait for RustCryptoAdapter {
                 use forge::operations::transcoders::Decoder;
                 use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
                 use SLHDSASHAKE192f as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
+                use SLHDSASHAKE256s as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Decoder;
+                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
+                use SLHDSASHAKE256s as Alg;
                 OSSL_ALGORITHM {
                     algorithm_names: Alg::NAMES.as_ptr(),
                     property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
@@ -125,6 +171,50 @@ impl AdapterContextTrait for RustCryptoAdapter {
                     algorithm_description: Alg::DESCRIPTION.as_ptr(),
                 }
             },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
+                use SLHDSASHAKE256s as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
+                use SLHDSASHAKE256s as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
+                use SLHDSASHAKE256s as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
+            {
+                use forge::operations::transcoders::Encoder;
+                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
+                use SLHDSASHAKE256s as Alg;
+                OSSL_ALGORITHM {
+                    algorithm_names: Alg::NAMES.as_ptr(),
+                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
+                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
+                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
+                }
+            },
         ]);
 
         handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
@@ -139,7 +229,10 @@ impl AdapterContextTrait for RustCryptoAdapter {
     ) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let tls_sigalgs = [SLHDSASHAKE192f::capabilities::tls_sigalg::OSSL_PARAM_ARRAY];
+        let tls_sigalgs = [
+            SLHDSASHAKE192f::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
+            SLHDSASHAKE256s::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
+        ];
         for a in tls_sigalgs {
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);
             let ptr: *const bindings::OSSL_PARAM = std::ptr::from_ref(first);
@@ -152,7 +245,7 @@ impl AdapterContextTrait for RustCryptoAdapter {
     fn register_obj_sigids(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let obj_sigids = vec![SLHDSASHAKE192f::OBJ_SIGID];
+        let obj_sigids = vec![SLHDSASHAKE192f::OBJ_SIGID, SLHDSASHAKE256s::OBJ_SIGID];
 
         for obj_sigid in obj_sigids {
             handle.register_obj_sigid(obj_sigid)?;

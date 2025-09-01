@@ -225,6 +225,11 @@ impl TestParam for SLHDSASHAKE192fTests {
     const ALG_NAME: &str = "id-slh-dsa-shake-192f";
 }
 
+struct SLHDSASHAKE256sTests();
+impl TestParam for SLHDSASHAKE256sTests {
+    const ALG_NAME: &str = "id-slh-dsa-shake-256s";
+}
+
 use paste::paste;
 macro_rules! generate_tests {
     ( $suffix:ident, $( $type:ty ),* ) => {
@@ -247,7 +252,8 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests
+    SLHDSASHAKE192fTests,
+    SLHDSASHAKE256sTests
 );
 generate_tests!(
     openssl_genprivkey_der,
@@ -255,7 +261,8 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests
+    SLHDSASHAKE192fTests,
+    SLHDSASHAKE256sTests
 );
 
 generate_tests!(
@@ -264,7 +271,8 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests
+    SLHDSASHAKE192fTests,
+    SLHDSASHAKE256sTests
 );
 generate_tests!(
     openssl_genpubkey_der,
@@ -272,7 +280,8 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests
+    SLHDSASHAKE192fTests,
+    SLHDSASHAKE256sTests
 );
 
 generate_tests!(
@@ -281,7 +290,8 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests
+    SLHDSASHAKE192fTests,
+    SLHDSASHAKE256sTests
 );
 generate_tests!(
     openssl_genpkey_der,
@@ -289,5 +299,6 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests
+    SLHDSASHAKE192fTests,
+    SLHDSASHAKE256sTests
 );
