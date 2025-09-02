@@ -51,14 +51,16 @@ pub(crate) use anyhow::anyhow;
 
 // Ensure proper null-terminated C string
 // https://docs.openssl.org/master/man7/provider/#algorithm-naming
-pub(super) const NAMES: &CStr = c"mldsa65_ed25519:2.16.840.1.114027.80.9.1.11";
+pub(super) const NAMES: &CStr =
+    c"id-MLDSA65-Ed25519-SHA512:mldsa65_ed25519:2.16.840.1.114027.80.9.1.11";
 
 /// NAME should be a substring of NAMES
-pub(crate) const NAME: &CStr = c"mldsa65_ed25519";
+pub(crate) const NAME: &CStr = c"id-MLDSA65-Ed25519-SHA512";
 
 /// LONG_NAME should be a substring of NAMES
 pub(crate) const LONG_NAME: &CStr = NAME;
 
+// OID from https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-07#tab-hash-sig-algs
 /// OID should be a substring of NAMES
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 11);
 pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
@@ -120,7 +122,7 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For mldsa65_ed25519 we currently refer to ids reserved by <https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-algorithm-identifiers>
+            /// > For mldsa65_ed25519 we currently refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations>
             /// > as IANA does not list mldsa65_ed25519 in the registry yet.
             const SIGALG_IANA_NAME: &CStr = c"mldsa65_ed25519";
 
@@ -130,7 +132,7 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For mldsa65_ed25519 we currently refer to ids reserved by <https://www.ietf.org/archive/id/draft-reddy-tls-composite-mldsa-04.html#name-iana-considerations>
+            /// > For mldsa65_ed25519 we currently refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations>
             /// > as IANA does not list mldsa65_ed25519 in the registry yet.
             const SIGALG_CODEPOINT: u32 = 0x090B; // 2315 in decimal notation
 
@@ -142,13 +144,13 @@ pub(crate) mod capabilities {
             ///
             /// [SSL_CONF_cmd(3ossl):cli]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-command-line-commands
             /// [SSL_CONF_cmd(3ossl):conf]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-configuration-file-commands
-            const SIGALG_NAME: &CStr = c"mldsa65_ed25519";
+            const SIGALG_NAME: &CStr = super::super::NAME;
 
             /// The OID of the [`Self::SIGALG_SIG_NAME`] algorithm in canonical numeric text form. \[optional\]
             ///
             /// # NOTE
             ///
-            /// > The OID for mldsa65_ed25519 come from the [IETF LAMPS draft](https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-algorithm-identifiers).
+            /// > The OID for mldsa65_ed25519 comes from the [IETF LAMPS draft](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-07#name-algorithm-identifiers).
             const SIGALG_OID: Option<&CStr> = super::super::SIGALG_OID;
 
             const SECURITY_BITS: u32 = super::super::SECURITY_BITS;
