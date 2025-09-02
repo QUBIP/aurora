@@ -3,20 +3,10 @@
 //!
 //! This builds on top of the [RustCrypto `signature` traits](https://docs.rs/signature/latest/signature/).
 //!
-//! The `Signature` type represents a digital signature, which is stored as a heap-allocated
-//! vector of bytes (`Vec<u8>`). This design choice allows for flexibility in handling
-//! signatures of varying lengths, though the expected length is defined by the constant
-//! `SIGNATURE_LEN`.
-//!
 //! ## Types
 //!
-//! - `Signature`: The main type representing a digital signature. It implements the `TryFrom`
-//!   trait for conversion from a byte slice (`&[u8]`) and ensures that the input length matches
-//!   the expected signature length (`SIGNATURE_LEN`).
-//!
-//! - `SignatureBytes`: A wrapper around `Vec<u8>` that provides an abstraction for working
-//!   with the raw bytes of a signature. It implements the `AsRef<[u8]>` trait for convenient
-//!   access to the underlying byte slice.
+//! - `Signature`
+//! - `SignatureBytes`
 //!
 //! ## Traits
 //!
@@ -38,6 +28,14 @@
 use super::*;
 pub use forge::crypto::signature::{Error, SignatureEncoding, Signer, Verifier};
 
+/// The main type representing a digital signature. It implements the `TryFrom`
+/// trait for conversion from a byte slice (`&[u8]`) and ensures that the input length matches
+/// the expected signature length (`SIGNATURE_LEN`).
+///
+/// The `Signature` type represents a digital signature, which is stored as a heap-allocated
+/// vector of bytes (`Vec<u8>`). This design choice allows for flexibility in handling
+/// signatures of varying lengths, though the expected length is defined by the constant
+/// `SIGNATURE_LEN`.
 #[derive(Clone, PartialEq)]
 pub struct Signature {
     bytes: Vec<u8>, // Using Vec<u8> instead of [u8; SIGNATURE_LEN] for heap allocation
@@ -60,6 +58,9 @@ impl<'a> TryFrom<&'a [u8]> for Signature {
     }
 }
 
+/// A wrapper around `Vec<u8>` that provides an abstraction for working
+/// with the raw bytes of a signature. It implements the `AsRef<[u8]>` trait for convenient
+/// access to the underlying byte slice.
 #[derive(Clone)]
 pub struct SignatureBytes(Vec<u8>);
 

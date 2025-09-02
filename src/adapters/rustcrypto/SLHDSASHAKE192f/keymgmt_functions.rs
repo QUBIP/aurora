@@ -37,7 +37,7 @@ pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 
 // The wrapped key from the pqcrypto crate has to be public, or else we can't access it to use it
 // with the pqcrypto sign and verify functions.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub struct PublicKey(InnerPubKey);
 
 #[derive(PartialEq)]
