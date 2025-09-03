@@ -52,6 +52,15 @@ pub struct PrivateKey {
     trad_private_key: TPrivateKey,
 }
 
+impl core::fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PublicKey")
+            .field("pq_public_key", &"<opaque field>")
+            .field("trad_public_key", &self.trad_public_key)
+            .finish()
+    }
+}
+
 impl PublicKey {
     const PQ_PUBLIC_KEY_LEN: usize = pq_backend_module::public_key_bytes();
     const T_PUBLIC_KEY_LEN: usize = trad_backend_module::PUBLIC_KEY_LENGTH;

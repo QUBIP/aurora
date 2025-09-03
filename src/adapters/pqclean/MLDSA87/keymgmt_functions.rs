@@ -37,6 +37,12 @@ pub struct PublicKey(backend_module::PublicKey);
 #[derive(PartialEq)]
 pub struct PrivateKey(backend_module::SecretKey);
 
+impl core::fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PublicKey").field(&"<opaque field>").finish()
+    }
+}
+
 impl PublicKey {
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
         let k = <backend_module::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(bytes)
