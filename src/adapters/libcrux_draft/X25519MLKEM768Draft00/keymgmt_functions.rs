@@ -248,7 +248,7 @@ impl<'a> KeyPair<'a> {
     }
 
     #[named]
-    fn generate(provctx: &'a OpenSSLProvider) -> Self {
+    fn generate(provctx: &'a OpenSSLProvider) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
         let mut rng = {
             #[cfg(not(debug_assertions))] // code compiled only in release builds
@@ -264,35 +264,35 @@ impl<'a> KeyPair<'a> {
             }
         };
 
+        // The libcrux_kem error type doesn't actually implement the std::error::Error trait,
+        // so we have to match manually instead of using "?".
         let (s, p) =
-            libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng).unwrap();
-        #[cfg(not(debug_assertions))] // code compiled only in release builds
-        {
-            // FIXME: unwrap() should go away and errors properly handled
-            todo!("Remove unwrap");
-        }
+            match libcrux_kem::key_gen(libcrux_kem::Algorithm::X25519MlKem768Draft00, &mut rng) {
+                Ok(keys) => keys,
+                Err(e) => return Err(anyhow!("{:?}", e)),
+            };
 
         let (s, p) = (PrivateKey(s), PublicKey(p));
 
-        Self {
+        Ok(Self {
             private: Some(s),
             public: Some(p),
             provctx: provctx,
-        }
+        })
     }
 
     #[cfg(test)]
     #[named]
-    fn generate_new(provctx: &'a OpenSSLProvider) -> Self {
+    fn generate_new(provctx: &'a OpenSSLProvider) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
         let genctx = GenCTX::new(provctx, Selection::KEYPAIR);
-        let r = genctx.generate();
+        let r = genctx.generate()?;
 
-        Self {
+        Ok(Self {
             private: r.private,
             public: r.public,
             provctx,
-        }
+        })
     }
 }
 
@@ -358,7 +358,8 @@ pub(super) unsafe extern "C" fn gen(
     trace!(target: log_target!(), "{}", "Called!");
     let genctx: &mut GenCTX<'_> = handleResult!(vgenctx.try_into());
 
-    let keypair: Box<KeyPair<'_>> = Box::new(genctx.generate());
+    let keypair = handleResult!(genctx.generate());
+    let keypair: Box<KeyPair<'_>> = Box::new(keypair);
 
     let keypair_ptr = Box::into_raw(keypair);
 
@@ -387,11 +388,11 @@ impl<'a> GenCTX<'a> {
     }
 
     #[named]
-    fn generate(&self) -> KeyPair<'_> {
+    fn generate(&self) -> Result<KeyPair<'_>, KMGMTError> {
         trace!(target: log_target!(), "Called");
         if !self.selection.contains(Selection::KEYPAIR) {
             trace!(target: log_target!(), "Returning empty keypair due to selection bits {:?}", self.selection);
-            return KeyPair::new(self.provctx);
+            return Ok(KeyPair::new(self.provctx));
         }
         debug!(target: log_target!(), "Generating a new KeyPair");
 
@@ -727,7 +728,7 @@ mod tests {
 
         let provctx = testctx.provctx;
 
-        let client_kp = KeyPair::generate_new(&provctx);
+        let client_kp = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
 
         let (ct, ss) = client_kp.encapsulate_ex().unwrap();
 
@@ -742,7 +743,7 @@ mod tests {
 
         let provctx = testctx.provctx;
 
-        let client_kp = KeyPair::generate_new(&provctx);
+        let client_kp = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
 
         let client_keyshare = client_kp.public.as_ref().unwrap().encode();
         // client sends its keyshare
