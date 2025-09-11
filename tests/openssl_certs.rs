@@ -159,17 +159,14 @@ macro_rules! generate_tests {
     }
 }
 
-generate_tests!(
-    openssl_gencert_pem,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
-generate_tests!(
-    openssl_gencert_der,
+macro_rules! generate_all_tests {
+    ( $( $alg:ty ),* $(,)? ) => {
+        generate_tests!(openssl_gencert_pem, $( $alg ),*);
+        generate_tests!(openssl_gencert_der, $( $alg ),*);
+    }
+}
+
+generate_all_tests!(
     MLDSA65Tests,
     MLDSA87Tests,
     MLDSA44Tests,

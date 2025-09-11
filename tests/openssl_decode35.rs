@@ -77,37 +77,28 @@ impl TestParam for SLHDSASHAKE256sTests {
 
 use paste::paste;
 macro_rules! generate_tests {
-    ( $suffix:ident, $( $type:ty ),* $(,)?) => {
+    ( $suffix:ident, $( $alg:ty ),* $(,)?) => {
         $(
             paste! {
                 #[test]
                 #[allow(non_snake_case)]
-                fn [<$type:lower _ $suffix>]() {
-                    <$type>::$suffix();
+                fn [<$alg:lower _ $suffix>]() {
+                    <$alg>::$suffix();
                 }
             }
         )*
     }
 }
 
-generate_tests!(
-    openssl_load_pk35,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
-generate_tests!(
-    openssl_load_cert35,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
-generate_tests!(
-    openssl_load_sk35,
+macro_rules! generate_all_tests {
+    ( $( $alg:ty ),* $(,)? ) => {
+        generate_tests!(openssl_load_sk35, $( $alg ),*);
+        generate_tests!(openssl_load_pk35, $( $alg ),*);
+        generate_tests!(openssl_load_cert35, $( $alg ),*);
+    }
+}
+
+generate_all_tests!(
     MLDSA65Tests,
     MLDSA87Tests,
     MLDSA44Tests,

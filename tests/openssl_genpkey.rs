@@ -232,69 +232,32 @@ impl TestParam for SLHDSASHAKE256sTests {
 
 use paste::paste;
 macro_rules! generate_tests {
-    ( $suffix:ident, $( $type:ty ),* $(,)?) => {
+    ( $suffix:ident, $( $alg:ty ),* $(,)?) => {
         $(
             paste! {
                 #[test]
                 //#[ignore]
                 #[allow(non_snake_case)]
-                fn [<$type:lower _ $suffix>]() {
-                    <$type>::$suffix();
+                fn [<$alg:lower _ $suffix>]() {
+                    <$alg>::$suffix();
                 }
             }
         )*
     }
 }
 
-generate_tests!(
-    openssl_genprivkey_pem,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
-generate_tests!(
-    openssl_genprivkey_der,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
+macro_rules! generate_all_tests {
+    ( $( $alg:ty ),* $(,)? ) => {
+        generate_tests!(openssl_genprivkey_pem, $( $alg ),*);
+        generate_tests!(openssl_genprivkey_der, $( $alg ),*);
+        generate_tests!(openssl_genpubkey_pem, $( $alg ),*);
+        generate_tests!(openssl_genpubkey_der, $( $alg ),*);
+        generate_tests!(openssl_genpkey_pem, $( $alg ),*);
+        generate_tests!(openssl_genpkey_der, $( $alg ),*);
+    }
+}
 
-generate_tests!(
-    openssl_genpubkey_pem,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
-generate_tests!(
-    openssl_genpubkey_der,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
-
-generate_tests!(
-    openssl_genpkey_pem,
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
-    MLDSA65ED25519Tests,
-    SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests,
-);
-generate_tests!(
-    openssl_genpkey_der,
+generate_all_tests!(
     MLDSA65Tests,
     MLDSA87Tests,
     MLDSA44Tests,
