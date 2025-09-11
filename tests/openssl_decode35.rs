@@ -65,6 +65,11 @@ impl TestParam for MLDSA87Tests {
     const ALG_DIR: &str = "mldsa87";
 }
 
+struct SLHDSASHAKE128fTests();
+impl TestParam for SLHDSASHAKE128fTests {
+    const ALG_DIR: &str = "slhdsa_shake_128f";
+}
+
 struct SLHDSASHAKE192fTests();
 impl TestParam for SLHDSASHAKE192fTests {
     const ALG_DIR: &str = "slhdsa_shake_192f";
@@ -102,6 +107,7 @@ generate_all_tests!(
     MLDSA65Tests,
     MLDSA87Tests,
     MLDSA44Tests,
+    SLHDSASHAKE128fTests,
     SLHDSASHAKE192fTests,
     SLHDSASHAKE256sTests,
 );

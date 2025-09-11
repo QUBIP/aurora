@@ -113,6 +113,7 @@ The current supported algorithms are summarized in the following tables.
 | _ML-DSA-44_          | pqclean |
 | _ML-DSA-65_          | pqclean |
 | _ML-DSA-87_          | pqclean |
+| _SLH-DSA-SHAKE-128f_ | rustcrypto |
 | _SLH-DSA-SHAKE-192f_ | slhdsa_c |
 | _SLH-DSA-SHAKE-256s_ | slhdsa_c |
 
