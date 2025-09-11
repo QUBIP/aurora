@@ -232,7 +232,7 @@ impl TestParam for SLHDSASHAKE256sTests {
 
 use paste::paste;
 macro_rules! generate_tests {
-    ( $suffix:ident, $( $type:ty ),* ) => {
+    ( $suffix:ident, $( $type:ty ),* $(,)?) => {
         $(
             paste! {
                 #[test]
@@ -253,7 +253,7 @@ generate_tests!(
     MLDSA44Tests,
     MLDSA65ED25519Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
 generate_tests!(
     openssl_genprivkey_der,
@@ -262,7 +262,7 @@ generate_tests!(
     MLDSA44Tests,
     MLDSA65ED25519Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
 
 generate_tests!(
@@ -272,7 +272,7 @@ generate_tests!(
     MLDSA44Tests,
     MLDSA65ED25519Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
 generate_tests!(
     openssl_genpubkey_der,
@@ -281,7 +281,7 @@ generate_tests!(
     MLDSA44Tests,
     MLDSA65ED25519Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
 
 generate_tests!(
@@ -291,7 +291,7 @@ generate_tests!(
     MLDSA44Tests,
     MLDSA65ED25519Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
 generate_tests!(
     openssl_genpkey_der,
@@ -300,5 +300,5 @@ generate_tests!(
     MLDSA44Tests,
     MLDSA65ED25519Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );

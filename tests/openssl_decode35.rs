@@ -77,7 +77,7 @@ impl TestParam for SLHDSASHAKE256sTests {
 
 use paste::paste;
 macro_rules! generate_tests {
-    ( $suffix:ident, $( $type:ty ),* ) => {
+    ( $suffix:ident, $( $type:ty ),* $(,)?) => {
         $(
             paste! {
                 #[test]
@@ -96,7 +96,7 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
 generate_tests!(
     openssl_load_cert35,
@@ -104,7 +104,7 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
 generate_tests!(
     openssl_load_sk35,
@@ -112,5 +112,5 @@ generate_tests!(
     MLDSA87Tests,
     MLDSA44Tests,
     SLHDSASHAKE192fTests,
-    SLHDSASHAKE256sTests
+    SLHDSASHAKE256sTests,
 );
