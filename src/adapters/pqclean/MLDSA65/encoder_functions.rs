@@ -184,6 +184,7 @@ impl KeyPair<'_> {
             return Err(anyhow!("Keypair does not contain a public key"));
         }
 
+        // unwrap() is safe here because we've already ensured self.private is not None
         let der_sk_bytes = match self.private.as_ref().unwrap().to_DER() {
             Ok(v) => v,
             Err(e) => {
@@ -215,6 +216,7 @@ impl KeyPair<'_> {
             return Err(anyhow!("Keypair does not contain a public key"));
         }
 
+        // unwrap() is safe here because we've already ensured self.public is not None
         let der_pk_bytes = match self.public.as_ref().unwrap().to_DER() {
             Ok(v) => v,
             Err(e) => {
