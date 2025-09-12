@@ -523,7 +523,7 @@ mod tests {
         let provctx = testctx.provctx;
 
         // generate a keypair
-        let keypair = KeyPair::generate_new(&provctx);
+        let keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
@@ -539,7 +539,7 @@ mod tests {
         let provctx = testctx.provctx;
 
         // generate keypair
-        let keypair = KeyPair::generate_new(&provctx);
+        let keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
@@ -560,7 +560,7 @@ mod tests {
         let provctx = testctx.provctx;
 
         // generate keypair
-        let keypair = KeyPair::generate_new(&provctx);
+        let keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
@@ -570,7 +570,7 @@ mod tests {
         let sig = sig.as_ref();
         let sig = Signature::try_from(sig).unwrap();
         // generate another keypair
-        let other_keypair = KeyPair::generate_new(&provctx);
+        let other_keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
         // confirm that verification with the new key fails
         sigctx.verify_init(&other_keypair).unwrap();
         let ret = sigctx.verify(&msg, &sig);
@@ -583,7 +583,7 @@ mod tests {
         let provctx = testctx.provctx;
 
         // generate keypair
-        let keypair = KeyPair::generate_new(&provctx);
+        let keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];
@@ -606,7 +606,7 @@ mod tests {
         let provctx = testctx.provctx;
 
         // generate keypair
-        let keypair = KeyPair::generate_new(&provctx);
+        let keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
         let mut sigctx = SignatureContext::new(&provctx);
         // sign a message with it
         let msg: [u8; 5] = [1, 2, 3, 4, 5];

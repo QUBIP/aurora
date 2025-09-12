@@ -534,7 +534,7 @@ impl<'a> KeyPair<'a> {
     }
 
     #[named]
-    fn generate(provctx: &'a OpenSSLProvider) -> Self {
+    fn generate(provctx: &'a OpenSSLProvider) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
 
         // Isn't it weird that this operation can't fail? What does the pqclean implementation do if
@@ -547,7 +547,7 @@ impl<'a> KeyPair<'a> {
         let trad_private_key = trad_keypair.to_bytes();
         let trad_public_key = trad_keypair.verifying_key();
 
-        KeyPair {
+        Ok(KeyPair {
             private: Some(PrivateKey {
                 pq_private_key,
                 trad_private_key,
@@ -557,21 +557,21 @@ impl<'a> KeyPair<'a> {
                 trad_public_key,
             }),
             provctx,
-        }
+        })
     }
 
     #[cfg(test)]
     #[named]
-    pub(crate) fn generate_new(provctx: &'a OpenSSLProvider) -> Self {
+    pub(crate) fn generate_new(provctx: &'a OpenSSLProvider) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
         let genctx = GenCTX::new(provctx, Selection::KEYPAIR);
-        let r = genctx.generate();
+        let r = genctx.generate()?;
 
-        Self {
+        Ok(Self {
             private: r.private,
             public: r.public,
             provctx,
-        }
+        })
     }
 }
 
@@ -712,7 +712,8 @@ pub(super) unsafe extern "C" fn gen(
     trace!(target: log_target!(), "{}", "Called!");
     let genctx: &mut GenCTX<'_> = handleResult!(vgenctx.try_into());
 
-    let keypair: Box<KeyPair<'_>> = Box::new(genctx.generate());
+    let keypair = handleResult!(genctx.generate());
+    let keypair: Box<KeyPair<'_>> = Box::new(keypair);
 
     let keypair_ptr = Box::into_raw(keypair);
 
@@ -741,11 +742,11 @@ impl<'a> GenCTX<'a> {
     }
 
     #[named]
-    fn generate(&self) -> KeyPair<'_> {
+    fn generate(&self) -> Result<KeyPair<'_>, KMGMTError> {
         trace!(target: log_target!(), "Called");
         if !self.selection.contains(Selection::KEYPAIR) {
             trace!(target: log_target!(), "Returning empty keypair due to selection bits {:?}", self.selection);
-            return KeyPair::new(self.provctx);
+            return Ok(KeyPair::new(self.provctx));
         }
         trace!(target: log_target!(), "Generating a new KeyPair");
 
@@ -1127,7 +1128,7 @@ mod tests {
 
         let provctx = testctx.provctx;
 
-        let keypair = KeyPair::generate_new(&provctx);
+        let keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
 
         match (keypair.public, keypair.private) {
             (None, None) => panic!("No public or private key generated"),
