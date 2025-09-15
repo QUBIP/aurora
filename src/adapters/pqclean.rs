@@ -1,15 +1,15 @@
 use crate as aurora;
 use crate::adapters::ObjSigId;
 
+use super::common::macros;
 use aurora::adapters::AdapterContextTrait;
 use aurora::bindings;
 use aurora::forge;
 use aurora::traits::*;
 use aurora::OpenSSLProvider;
 use aurora::{handleResult, named};
-use bindings::{
-    CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_DECODER, OSSL_OP_ENCODER, OSSL_OP_KEYMGMT,
-};
+use bindings::{CONST_OSSL_PARAM, OSSL_OP_DECODER, OSSL_OP_ENCODER, OSSL_OP_KEYMGMT};
+use macros::{algorithm_to_register, decoder_to_register, encoder_to_register};
 use openssl_provider_forge::bindings::OSSL_OP_SIGNATURE;
 use std::ffi::CStr;
 
@@ -35,358 +35,62 @@ impl AdapterContextTrait for PQCleanAdapter {
         trace!(target: log_target!(), "{}", "Called!");
 
         let signature_algorithms = Box::new([
-            {
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::SIG_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
+            algorithm_to_register!(MLDSA44, SIG_FUNCTIONS),
+            algorithm_to_register!(MLDSA65, SIG_FUNCTIONS),
+            algorithm_to_register!(MLDSA87, SIG_FUNCTIONS),
+            algorithm_to_register!(MLDSA65_Ed25519, SIG_FUNCTIONS),
         ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_SIGNATURE, signature_algorithms.into_iter())?;
 
         let keymgmt_algorithms = Box::new([
-            {
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: PROPERTY_DEFINITION.as_ptr(),
-                    implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
+            algorithm_to_register!(MLDSA44, KMGMT_FUNCTIONS),
+            algorithm_to_register!(MLDSA65, KMGMT_FUNCTIONS),
+            algorithm_to_register!(MLDSA87, KMGMT_FUNCTIONS),
+            algorithm_to_register!(MLDSA65_Ed25519, KMGMT_FUNCTIONS),
         ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
 
         // FIXME: probably this should be a const/static
         let decoder_algorithms = Box::new([
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2SubjectPublicKeyInfo as AlgDecoder;
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Decoder;
-                use Alg::DECODER_DER2PrivateKeyInfo as AlgDecoder;
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgDecoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgDecoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
+            // MLDSA44
+            decoder_to_register!(MLDSA44, DECODER_DER2SubjectPublicKeyInfo),
+            decoder_to_register!(MLDSA44, DECODER_DER2PrivateKeyInfo),
+            // MLDSA65
+            decoder_to_register!(MLDSA65, DECODER_DER2SubjectPublicKeyInfo),
+            decoder_to_register!(MLDSA65, DECODER_DER2PrivateKeyInfo),
+            // MLDSA87
+            decoder_to_register!(MLDSA87, DECODER_DER2SubjectPublicKeyInfo),
+            decoder_to_register!(MLDSA87, DECODER_DER2PrivateKeyInfo),
+            // MLDSA65_Ed25519
+            decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2SubjectPublicKeyInfo),
+            decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2PrivateKeyInfo),
         ]);
 
         handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
 
         let encoder_algorithms = Box::new([
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
-                use MLDSA44 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
-                use MLDSA65 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
-                use MLDSA87 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2DER as AlgEncoder;
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_PrivateKeyInfo2PEM as AlgEncoder;
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2DER as AlgEncoder;
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
-            {
-                use forge::operations::transcoders::Encoder;
-                use Alg::ENCODER_SubjectPublicKeyInfo2PEM as AlgEncoder;
-                use MLDSA65_Ed25519 as Alg;
-                OSSL_ALGORITHM {
-                    algorithm_names: Alg::NAMES.as_ptr(),
-                    property_definition: AlgEncoder::PROPERTY_DEFINITION.as_ptr(),
-                    implementation: AlgEncoder::DISPATCH_TABLE.as_ptr(),
-                    algorithm_description: Alg::DESCRIPTION.as_ptr(),
-                }
-            },
+            // MLDSA44
+            encoder_to_register!(MLDSA44, ENCODER_PrivateKeyInfo2DER),
+            encoder_to_register!(MLDSA44, ENCODER_PrivateKeyInfo2PEM),
+            encoder_to_register!(MLDSA44, ENCODER_SubjectPublicKeyInfo2DER),
+            encoder_to_register!(MLDSA44, ENCODER_SubjectPublicKeyInfo2PEM),
+            // MLDSA65
+            encoder_to_register!(MLDSA65, ENCODER_PrivateKeyInfo2DER),
+            encoder_to_register!(MLDSA65, ENCODER_PrivateKeyInfo2PEM),
+            encoder_to_register!(MLDSA65, ENCODER_SubjectPublicKeyInfo2DER),
+            encoder_to_register!(MLDSA65, ENCODER_SubjectPublicKeyInfo2PEM),
+            // MLDSA87
+            encoder_to_register!(MLDSA87, ENCODER_PrivateKeyInfo2DER),
+            encoder_to_register!(MLDSA87, ENCODER_PrivateKeyInfo2PEM),
+            encoder_to_register!(MLDSA87, ENCODER_SubjectPublicKeyInfo2DER),
+            encoder_to_register!(MLDSA87, ENCODER_SubjectPublicKeyInfo2PEM),
+            // MLDSA65_Ed25519
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2DER),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2PEM),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2DER),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
         ]);
 
         handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
