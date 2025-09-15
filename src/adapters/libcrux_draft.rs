@@ -1,11 +1,13 @@
 use crate as aurora;
 
+use super::common::macros;
 use aurora::adapters::AdapterContextTrait;
 use aurora::bindings;
 use aurora::forge;
 use aurora::OpenSSLProvider;
 use aurora::{handleResult, named};
-use bindings::{CONST_OSSL_PARAM, OSSL_ALGORITHM, OSSL_OP_KEM, OSSL_OP_KEYMGMT};
+use bindings::{CONST_OSSL_PARAM, OSSL_OP_KEM, OSSL_OP_KEYMGMT};
+use macros::algorithm_to_register;
 use std::ffi::CStr;
 
 pub(crate) type OurError = aurora::Error;
@@ -23,26 +25,16 @@ impl AdapterContextTrait for LibcruxDraftAdapter {
     fn register_algorithms(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let kem_algorithms = Box::new([{
-            use X25519MLKEM768Draft00 as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: PROPERTY_DEFINITION.as_ptr(),
-                implementation: Alg::KEM_FUNCTIONS.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let kem_algorithms = Box::new([
+            algorithm_to_register!(X25519MLKEM768Draft00, KEM_FUNCTIONS),
+        ]);
         handle.register_algorithms(OSSL_OP_KEM, kem_algorithms.into_iter())?;
 
-        let keymgmt_algorithms = Box::new([{
-            use X25519MLKEM768Draft00 as Alg;
-            OSSL_ALGORITHM {
-                algorithm_names: Alg::NAMES.as_ptr(),
-                property_definition: PROPERTY_DEFINITION.as_ptr(),
-                implementation: Alg::KMGMT_FUNCTIONS.as_ptr(),
-                algorithm_description: Alg::DESCRIPTION.as_ptr(),
-            }
-        }]);
+        let keymgmt_algorithms = Box::new([
+            algorithm_to_register!(X25519MLKEM768Draft00, KMGMT_FUNCTIONS),
+
+        ]);
+        // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
 
         Ok(())
