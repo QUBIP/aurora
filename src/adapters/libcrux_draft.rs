@@ -25,15 +25,14 @@ impl AdapterContextTrait for LibcruxDraftAdapter {
     fn register_algorithms(&self, handle: &mut super::AdaptersHandle) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "{}", "Called!");
 
-        let kem_algorithms = Box::new([
-            algorithm_to_register!(X25519MLKEM768Draft00, KEM_FUNCTIONS),
-        ]);
+        let kem_algorithms =
+            Box::new([algorithm_to_register!(X25519MLKEM768Draft00, KEM_FUNCTIONS)]);
         handle.register_algorithms(OSSL_OP_KEM, kem_algorithms.into_iter())?;
 
-        let keymgmt_algorithms = Box::new([
-            algorithm_to_register!(X25519MLKEM768Draft00, KMGMT_FUNCTIONS),
-
-        ]);
+        let keymgmt_algorithms = Box::new([algorithm_to_register!(
+            X25519MLKEM768Draft00,
+            KMGMT_FUNCTIONS
+        )]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
 

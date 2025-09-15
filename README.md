@@ -121,10 +121,11 @@ The current supported algorithms are summarized in the following tables.
 
 | Algorithm             | Adapter   |
 | --------------------- | --------- |
+| _ML-DSA-44_ED25519_ | pqclean |
 | _ML-DSA-65_ED25519_ | pqclean |
 
 > [!Note]
-> `ML-DSA-65_ED25519` algorithm also uses `ed25519-dalek`
+> The `ML-DSA-{44,65}_ED25519` algorithms also uses `ed25519-dalek`
 > for the traditional part of the signature.
 
 <!--
