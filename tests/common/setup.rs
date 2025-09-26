@@ -45,32 +45,35 @@ fn try_init_logging() -> Result<(), OurError> {
 
 mod build {
     use std::process::Command;
+    use std::sync::Once;
+
+    static BUILD_ONCE: Once = Once::new();
 
     pub(super) fn build_cdylib_before_tests(profile: &str) {
-        let profile_arg = match profile {
-            "debug" => None,
-            "release" => {
-                log::error!("{profile:?} is intentionally not supported at the moment");
-                unimplemented!();
-                //Some(format!("--{profile:}"))
+        BUILD_ONCE.call_once(|| {
+            let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+
+            let mut cmd = Command::new(cargo);
+            cmd.arg("build").arg("--quiet");
+
+            match profile {
+                "debug" => (),
+                "release" => {
+                    log::error!("{profile:?} is intentionally not supported at the moment");
+                    unimplemented!();
+                    //let flag = format!("--{profile:}");
+                    //cmd.arg(flag);
+                }
+                _ => {
+                    log::error!("Unknown profile: {profile:?}");
+                    panic!("Unknown profile: {profile:?}")
+                }
             }
-            _ => {
-                log::error!("Unknown profile: {profile:?}");
-                panic!("Unknown profile: {profile:?}")
-            }
-        };
 
-        let mut args = vec!["build".to_string()];
-        if let Some(arg) = profile_arg {
-            args.push(arg);
-        }
+            let status = cmd.status().expect("Failed to build cdylib");
 
-        let status = Command::new("cargo")
-            .args(&args)
-            .status()
-            .expect("Failed to build cdylib");
-
-        assert!(status.success());
+            assert!(status.success());
+        });
     }
 }
 
