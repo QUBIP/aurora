@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - *(tests)* Simplify macro usage for test generation
 - *(pqclean)* Replace algorithms registrations with new macros
 - *(libcrux_draft)* Use the new macros for alghoritm registration
+- *(libcrux)* Use new macros for algorithms registration
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -45,10 +46,6 @@ All notable changes to this project will be documented in this file.
 ### Cleanup
 
 - *(encoder)* Add explanatory comments for unwrap()
-
-### Refctor
-
-- *(libcrux)* Use new macros for algorithms registration
 
 ## [0.8.4] - 2025-08-27
 
