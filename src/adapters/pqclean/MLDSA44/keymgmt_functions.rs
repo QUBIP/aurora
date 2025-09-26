@@ -177,37 +177,9 @@ impl PrivateKey {
     }
 
     /// Derive a matching public key from this private key
-    #[named]
     pub fn derive_public_key(&self) -> Option<PublicKey> {
-        // pqclean does not provide support to derive the public key from an
-        // expanded private key so we resort to a fork of
-        // RustCrypto::sigantures::ml-dsa to work around this
-        use rustcrypto_mldsa_custom as cmldsa;
-
-        use cmldsa::MlDsa44 as P;
-        type SigningKey = cmldsa::SigningKey<P>;
-
-        let encoded_sk = self.encode();
-        let encoded_sk = match encoded_sk.as_slice().try_into() {
-            Ok(p) => p,
-            Err(e) => {
-                error!(target: log_target!(), "Slice should be exactly {SECRETKEY_LEN:} bytes long: {e:?}");
-                return None;
-            }
-        };
-        let csk: SigningKey = SigningKey::decode(encoded_sk);
-        let cpk = csk.verifying_key();
-        let pk_bytes = cpk.encode();
-        let pk_bytes = pk_bytes.as_slice();
-
-        let res = keymgmt_functions::PublicKey::decode(pk_bytes);
-        match res {
-            Ok(pk) => Some(pk),
-            Err(e) => {
-                error!(target: log_target!(), "Failed to derive the public key from the inner private key: {e:?}");
-                return None;
-            }
-        }
+        let pk = super::helpers::derive_public_key(&self.0);
+        pk.map(|inner| PublicKey(inner))
     }
 
     #[named]
@@ -942,7 +914,6 @@ pub(super) unsafe extern "C" fn load(reference: *const c_void, reference_sz: usi
     }
 
     let keypair = handleResult!(<&KeyPair>::try_from(reference as *mut c_void));
-    debug!(target: log_target!(), "keypair: {keypair:#?}");
 
     return std::ptr::from_ref(keypair).cast_mut() as *mut c_void;
 }

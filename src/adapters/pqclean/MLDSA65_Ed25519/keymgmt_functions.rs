@@ -322,46 +322,8 @@ impl PrivateKey {
         RANDOMIZER_LEN + Self::PQ_SIGNATURE_LEN + Self::T_SIGNATURE_LEN
     }
 
-    #[named]
     fn derive_PQ_public_key(&self) -> Option<PQPublicKey> {
-        // pqclean does not provide support to derive the public key from an
-        // expanded private key so we resort to a fork of
-        // RustCrypto::sigantures::ml-dsa to work around this
-        use rustcrypto_mldsa_custom as cmldsa;
-
-        use cmldsa::MlDsa65 as P;
-        type SigningKey = cmldsa::SigningKey<P>;
-
-        trace!(target: log_target!(), "Called");
-
-        let k = &self.pq_private_key;
-        let encoded_sk = <PQPrivateKey as pqcrypto_traits::sign::SecretKey>::as_bytes(k).to_vec();
-        let encoded_sk = match encoded_sk.as_slice().try_into() {
-            Ok(p) => p,
-            Err(e) => {
-                error!(target: log_target!(), "Slice should be exactly {SECRETKEY_LEN:} bytes long: {e:?}");
-                return None;
-            }
-        };
-        let csk: SigningKey = SigningKey::decode(encoded_sk);
-        let cpk = csk.verifying_key();
-        let pk_bytes = cpk.encode();
-        let pk_bytes = pk_bytes.as_slice();
-
-        let res =
-            <PQPublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(pk_bytes).map_err(|e| {
-                anyhow!(
-                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
-                    e
-                )
-            });
-        match res {
-            Ok(pk) => Some(pk),
-            Err(e) => {
-                error!(target: log_target!(), "Failed to derive the public key from the inner private key: {e:?}");
-                return None;
-            }
-        }
+        super::helpers::derive_public_key(&self.pq_private_key)
     }
 
     /// Derive a matching public key from this private key

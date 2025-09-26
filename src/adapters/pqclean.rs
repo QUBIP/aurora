@@ -28,6 +28,8 @@ pub(crate) mod MLDSA65_Ed25519;
 #[allow(non_snake_case)]
 pub(crate) mod MLDSA87;
 
+pub(super) mod helpers;
+
 #[derive(Debug)]
 struct PQCleanAdapter;
 

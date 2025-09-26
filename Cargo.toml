@@ -39,7 +39,7 @@ sha2 = "0.10.9"
 rasn = "=0.27.0"
 lazy_static = "1.5.0"
 pkcs8 = { version = "0.10.2" }
-rustcrypto_mldsa_custom = { git = "https://github.com/romen/rustcrypto-signatures.git", rev = "ml-dsa/v0.0.4.derive_public", package = "ml-dsa" }
+ml-dsa = "=0.1.0-rc.0"
 slh-dsa = "0.0.3"
 der = "0.7.10"
 slhdsa-c-rs = "0.0.3"
