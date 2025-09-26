@@ -174,26 +174,6 @@ checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
 
 [[package]]
 name = "bindgen"
-version = "0.70.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f49d8fed880d473ea71efb9bf597651e77201bdd4893efe54c9e5d65ae04ce6f"
-dependencies = [
- "bitflags",
- "cexpr",
- "clang-sys",
- "itertools",
- "log",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash 1.1.0",
- "shlex",
- "syn 2.0.100",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.72.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
@@ -207,7 +187,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "rustc-hash 2.1.1",
+ "rustc-hash",
  "shlex",
  "syn 2.0.100",
 ]
@@ -1092,11 +1072,12 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "openssl_provider_forge"
-version = "0.8.4"
-source = "git+https://github.com/qubip/openssl-provider-forge-rs?tag=v0.8.4#7febab2bb15816a59af9223e406623c4328b9f68"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0289df882b1260f82173a17935698f178f966a0058ab356d5e05f20c5172d2c5"
 dependencies = [
  "anyhow",
- "bindgen 0.70.1",
+ "bindgen",
  "bitflags",
  "crypto",
  "function_name",
@@ -1433,12 +1414,6 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "rustc-hash"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
-
-[[package]]
-name = "rustc-hash"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
@@ -1590,7 +1565,7 @@ version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae8a6f21029a09f21fcda2fdb1ed7435e49af657845beb57a08164ecd9d495e1"
 dependencies = [
- "bindgen 0.72.1",
+ "bindgen",
  "cc",
  "generic-array 1.2.0",
  "glob",
