@@ -1281,7 +1281,7 @@ dependencies = [
 
 [[package]]
 name = "qubip_aurora"
-version = "0.8.5"
+version = "0.8.6-dev"
 dependencies = [
  "anyhow",
  "asn1",
