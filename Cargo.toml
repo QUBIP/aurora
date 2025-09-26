@@ -6,6 +6,7 @@ description = "A framework to build OpenSSL Providers tailored for the transitio
 license = "Apache-2.0"
 repository = "https://github.com/QUBIP/aurora"
 homepage = "https://qubip.eu"
+exclude = ["tests/data"]
 
 [lib]
 crate-type = ["cdylib"]
