@@ -84,6 +84,18 @@ of PQC algorithms and implementations:
   the desired functionality as needed, and seamlessly for OpenSSL
   and applications running on top of it.
 
+> [!NOTE]
+> **Note on naming**
+>
+> The name of the project is Aurora.
+> The name of the repository follows `Github` conventions,
+> while the corresponding crate name on `crates.io` was not available.
+> So the formers is `aurora`, while the latter is `qubip_aurora`.
+>
+> This crate builds `cdylib` named `aurora`.
+> On Linux this usually means that the build output is called
+> `libaurora.so`.
+
 ### Supported algorithms
 
 While we do not tightly couple with specific implementation choices,

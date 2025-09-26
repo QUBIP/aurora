@@ -114,41 +114,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aurora"
-version = "0.8.5-dev"
-dependencies = [
- "anyhow",
- "asn1",
- "der",
- "ed25519-dalek",
- "env_logger",
- "function_name",
- "kem",
- "lazy_static",
- "libc",
- "libcrux-kem",
- "log",
- "ml-dsa",
- "openssl_provider_forge",
- "paste",
- "pem",
- "pkcs8",
- "pqcrypto-mldsa",
- "pqcrypto-traits",
- "rand 0.8.5",
- "rand_core 0.6.4",
- "rasn",
- "rasn-compiler",
- "regex",
- "serde_json",
- "sha2",
- "slh-dsa",
- "slhdsa-c-rs",
- "tempfile",
- "zeroize",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1238,6 +1203,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "qubip_aurora"
+version = "0.8.5-dev"
+dependencies = [
+ "anyhow",
+ "asn1",
+ "der",
+ "ed25519-dalek",
+ "env_logger",
+ "function_name",
+ "kem",
+ "lazy_static",
+ "libc",
+ "libcrux-kem",
+ "log",
+ "ml-dsa",
+ "openssl_provider_forge",
+ "paste",
+ "pem",
+ "pkcs8",
+ "pqcrypto-mldsa",
+ "pqcrypto-traits",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "rasn",
+ "rasn-compiler",
+ "regex",
+ "serde_json",
+ "sha2",
+ "slh-dsa",
+ "slhdsa-c-rs",
+ "tempfile",
+ "zeroize",
 ]
 
 [[package]]
