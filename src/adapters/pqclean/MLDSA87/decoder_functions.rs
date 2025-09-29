@@ -143,20 +143,24 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     _pw_cb: OSSL_PASSPHRASE_CALLBACK,
     _pw_cbarg: *mut c_void,
 ) -> c_int {
-    const ERROR_RET: c_int = 0;
+    // See https://docs.openssl.org/3.2/man7/provider-decoder/#decoding-functions for an explanation of the meaning of these return values
+    const CONTINUE_DECODING_PROCESS: c_int = 1;
+    const STOP_DECODING_PROCESS: c_int = 0;
+    const ERROR_RET: c_int = STOP_DECODING_PROCESS;
+
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
+    trace!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
     if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
-        return ERROR_RET;
+        return STOP_DECODING_PROCESS;
     }
 
     let decoderctx: &DecoderContext = handleResult!(vdecoderctx.try_into());
     let cb = handleResult!(OSSLCallback::try_new(data_cb, data_cbarg));
 
     let bytes = handleResult!(decoderctx.provctx.BIO_read_ex(in_));
-    debug!(target: log_target!(), "Read {} bytes in decode()", bytes.len());
+    trace!(target: log_target!(), "Read {} bytes in decode()", bytes.len());
 
     // I don't think these are used, since set_ctx_params is never called to set them....
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
@@ -167,35 +171,35 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     let spki = match spki {
         Ok(spki) => spki,
         Err(e) => {
-            trace!(target: log_target!(), "Failed to decode SubjectPublicKeyInfo: {e:?}");
-            return ERROR_RET;
+            debug!(target: log_target!(), "Bailing out: Failed to decode SubjectPublicKeyInfo: {e:?}");
+            return CONTINUE_DECODING_PROCESS;
         }
     };
     let oid = spki.algorithm.oid;
     if oid != super::OID_PKCS8 {
-        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
-        return ERROR_RET;
+        debug!(target: log_target!(), "Bailing out: OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
+        return CONTINUE_DECODING_PROCESS;
     }
 
     // After this point errors are logged as such, as supposedly this decoder should be authoritative for this algorithm
 
     if spki.algorithm.parameters.is_some() {
         error!(target: log_target!(), "Algorithm parameters are not allowed for this decoder");
-        return ERROR_RET;
+        return STOP_DECODING_PROCESS;
     }
 
     let derpubkey = match spki.subject_public_key.as_bytes() {
         Some(b) => b,
         None => {
             error!(target: log_target!(), "Nested bit-string is not octet aligned, hence it is not DER-encoded");
-            return ERROR_RET;
+            return STOP_DECODING_PROCESS;
         }
     };
     let pk = match keymgmt_functions::PublicKey::from_DER(derpubkey) {
         Ok(pk) => pk,
         Err(e) => {
             error!(target: log_target!(), "Failed to decode public key: {e:?}");
-            return ERROR_RET;
+            return STOP_DECODING_PROCESS;
         }
     };
     let kp: Box<keymgmt_functions::KeyPair<'_>> = Box::new(
@@ -267,21 +271,25 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     _pw_cb: OSSL_PASSPHRASE_CALLBACK,
     _pw_cbarg: *mut c_void,
 ) -> c_int {
-    const ERROR_RET: c_int = 0;
+    // See https://docs.openssl.org/3.2/man7/provider-decoder/#decoding-functions for an explanation of the meaning of these return values
+    const CONTINUE_DECODING_PROCESS: c_int = 1;
+    const STOP_DECODING_PROCESS: c_int = 0;
+    const ERROR_RET: c_int = STOP_DECODING_PROCESS;
+
     trace!(target: log_target!(), "{}", "Called!");
 
-    debug!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
+    trace!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
     // TODO is this the right check to be making?
     if (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
-        return ERROR_RET;
+        return STOP_DECODING_PROCESS;
     }
 
     let decoderctx: &DecoderContext = handleResult!(vdecoderctx.try_into());
     let cb = handleResult!(OSSLCallback::try_new(data_cb, data_cbarg));
 
     let bytes = handleResult!(decoderctx.provctx.BIO_read_ex(in_));
-    debug!(target: log_target!(), "Read {} bytes in decode()", bytes.len());
+    trace!(target: log_target!(), "Read {} bytes in decode()", bytes.len());
 
     // I don't think these are used, since set_ctx_params is never called to set them....
     // https://docs.openssl.org/3.2/man7/property/#global-and-local
@@ -292,26 +300,26 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     let pki = match pki {
         Ok(pki) => pki,
         Err(e) => {
-            trace!(target: log_target!(), "Failed to decode PrivateKeyInfo: {e:?}");
-            return ERROR_RET;
+            error!(target: log_target!(), "Failed to decode PrivateKeyInfo: {e:?}");
+            return STOP_DECODING_PROCESS;
         }
     };
     if pki.version() != pkcs8::Version::V1 {
-        trace!(target: log_target!(), "This decoder only supports RFC5208 (PKCS8 V1)");
-        return ERROR_RET;
+        debug!(target: log_target!(), "Bailing out: This decoder only supports RFC5208 (PKCS8 V1)");
+        return CONTINUE_DECODING_PROCESS;
     }
 
     let oid = pki.algorithm.oid;
     if oid != super::OID_PKCS8 {
-        trace!(target: log_target!(), "OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
-        return ERROR_RET;
+        debug!(target: log_target!(), "Bailing out: OID mismatch: found {oid:}, expected {}", super::OID_PKCS8);
+        return CONTINUE_DECODING_PROCESS;
     }
 
     // After this point errors are logged as such, as supposedly this decoder should be authoritative for this algorithm
 
     if pki.algorithm.parameters.is_some() {
         error!(target: log_target!(), "Algorithm parameters are not allowed for this decoder");
-        return ERROR_RET;
+        return STOP_DECODING_PROCESS;
     }
 
     let derprivkey = pki.private_key;
@@ -319,7 +327,7 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
         Ok(pair) => pair,
         Err(e) => {
             error!(target: log_target!(), "Failed to decode private key: {e:?}");
-            return ERROR_RET;
+            return STOP_DECODING_PROCESS;
         }
     };
     let (privkey, pubkey) = match pair {
@@ -328,7 +336,7 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
                 Some(pk) => pk,
                 None => {
                     error!(target: log_target!(), "Failed to derive public key from secret key");
-                    return ERROR_RET;
+                    return STOP_DECODING_PROCESS;
                 }
             };
             (sk, pk)
