@@ -55,10 +55,10 @@ pub(super) const NAMES: &CStr =
     c"id-MLDSA65-Ed25519-SHA512:mldsa65_ed25519:2.16.840.1.114027.80.9.1.11";
 
 /// NAME should be a substring of NAMES
-pub(crate) const NAME: &CStr = c"id-MLDSA65-Ed25519-SHA512";
+pub(crate) const NAME: &CStr = c"mldsa65_ed25519";
 
 /// LONG_NAME should be a substring of NAMES
-pub(crate) const LONG_NAME: &CStr = NAME;
+pub(crate) const LONG_NAME: &CStr = c"id-MLDSA65-Ed25519-SHA512";
 
 // OID from https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-07#tab-hash-sig-algs
 /// OID should be a substring of NAMES
