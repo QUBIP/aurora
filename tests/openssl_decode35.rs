@@ -50,41 +50,53 @@ pub trait TestParam {
     }
 }
 
+#[cfg(feature = "mldsa")]
 struct MLDSA44Tests();
+#[cfg(feature = "mldsa")]
 impl TestParam for MLDSA44Tests {
     const ALG_DIR: &str = "mldsa44";
 }
 
+#[cfg(feature = "mldsa")]
 struct MLDSA65Tests();
+#[cfg(feature = "mldsa")]
 impl TestParam for MLDSA65Tests {
     const ALG_DIR: &str = "mldsa65";
 }
 
+#[cfg(feature = "mldsa")]
 struct MLDSA87Tests();
+#[cfg(feature = "mldsa")]
 impl TestParam for MLDSA87Tests {
     const ALG_DIR: &str = "mldsa87";
 }
 
+#[cfg(feature = "slhdsa")]
 struct SLHDSASHAKE128fTests();
+#[cfg(feature = "slhdsa")]
 impl TestParam for SLHDSASHAKE128fTests {
     const ALG_DIR: &str = "slhdsa_shake_128f";
 }
 
+#[cfg(feature = "slhdsa")]
 struct SLHDSASHAKE192fTests();
+#[cfg(feature = "slhdsa")]
 impl TestParam for SLHDSASHAKE192fTests {
     const ALG_DIR: &str = "slhdsa_shake_192f";
 }
 
+#[cfg(feature = "slhdsa")]
 struct SLHDSASHAKE256sTests();
+#[cfg(feature = "slhdsa")]
 impl TestParam for SLHDSASHAKE256sTests {
     const ALG_DIR: &str = "slhdsa_shake_256s";
 }
 
-use paste::paste;
+#[allow(unused_macros)]
 macro_rules! generate_tests {
     ( $suffix:ident, $( $alg:ty ),* $(,)?) => {
         $(
-            paste! {
+            ::paste::paste! {
                 #[test]
                 #[allow(non_snake_case)]
                 fn [<$alg:lower _ $suffix>]() {
@@ -95,6 +107,7 @@ macro_rules! generate_tests {
     }
 }
 
+#[allow(unused_macros)]
 macro_rules! generate_all_tests {
     ( $( $alg:ty ),* $(,)? ) => {
         generate_tests!(openssl_load_sk35, $( $alg ),*);
@@ -103,10 +116,10 @@ macro_rules! generate_all_tests {
     }
 }
 
+#[cfg(feature = "mldsa")]
+generate_all_tests!(MLDSA44Tests, MLDSA65Tests, MLDSA87Tests,);
+#[cfg(feature = "slhdsa")]
 generate_all_tests!(
-    MLDSA65Tests,
-    MLDSA87Tests,
-    MLDSA44Tests,
     SLHDSASHAKE128fTests,
     SLHDSASHAKE192fTests,
     SLHDSASHAKE256sTests,

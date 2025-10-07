@@ -1,4 +1,3 @@
-use std::env;
 use std::error::Error;
 use std::process::Command;
 
@@ -20,8 +19,10 @@ fn get_git_describe() -> Result<String, Box<dyn Error>> {
     Ok(git_describe)
 }
 
+#[cfg(feature = "_transcoders_deps")]
 fn compile_with_rasn() -> Result<(), Box<dyn Error>> {
     use rasn_compiler::prelude::*;
+    use std::env;
     use std::path::PathBuf;
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -71,6 +72,9 @@ fn main() {
         eprintln!("Error was {e:?}");
         "FAILED_TO_GATHER_GIT_DESCRIBE".to_string()
     });
+
+    #[cfg(feature = "_transcoders_deps")]
     compile_with_rasn().expect("rasn-compiler failed");
+
     println!("cargo:rustc-env=CARGO_GIT_DESCRIBE={}", git_describe);
 }

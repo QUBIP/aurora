@@ -19,6 +19,7 @@ pub(crate) unsafe extern "C" fn export_forbidden(
 }
 
 #[named]
+#[allow(dead_code)]
 pub(crate) unsafe extern "C" fn export_types_ex_forbidden(
     vprovctx: *mut c_void,
     selection: c_int,

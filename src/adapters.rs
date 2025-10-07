@@ -11,10 +11,15 @@ use std::ffi::CStr;
 
 use anyhow::anyhow;
 
+#[cfg(feature = "libcrux_adapter")]
 mod libcrux;
+#[cfg(feature = "libcrux_draft_adapter")]
 mod libcrux_draft;
+#[cfg(feature = "pqclean_adapter")]
 mod pqclean;
+#[cfg(feature = "rustcrypto_adapter")]
 mod rustcrypto;
+#[cfg(feature = "slhdsa_c_adapter")]
 mod slhdsa_c;
 
 pub(crate) mod common;
@@ -22,6 +27,7 @@ pub(crate) mod common;
 mod traits;
 pub use traits::AdapterContextTrait;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) struct ObjSigId {
     pub oid: &'static CStr,
@@ -68,6 +74,7 @@ pub struct FinalizedAdaptersHandle {
 }
 
 impl<'a> AdaptersHandle<'a> {
+    #[allow(dead_code)]
     #[named]
     pub fn register_adapter<T: AdapterContextTrait + std::fmt::Debug + 'static>(&mut self, ctx: T) {
         trace!(target: log_target!(), "{}", "Called!");
@@ -100,6 +107,7 @@ impl<'a> AdaptersHandle<'a> {
     }
 
     #[named]
+    #[allow(dead_code)]
     pub fn register_algorithms(
         &mut self,
         op_id: u32,
@@ -133,6 +141,7 @@ impl<'a> AdaptersHandle<'a> {
     }
 
     #[named]
+    #[allow(dead_code)]
     pub fn register_capability(
         &mut self,
         capability: &'static CStr,
@@ -168,6 +177,7 @@ impl<'a> AdaptersHandle<'a> {
     }
 
     #[named]
+    #[allow(dead_code)]
     pub fn register_obj_sigid(&self, obj_sigid: ObjSigId) -> Result<(), aurora::Error> {
         trace!(target: log_target!(), "Registering obj_sigid {obj_sigid:?}:");
 
@@ -266,10 +276,15 @@ impl<'a> FinalizedAdaptersHandle {
         };
 
         // initialize and register each adapter
+        #[cfg(feature = "libcrux_adapter")]
         libcrux::init(&mut handle).expect("Failure initializing adapter `libcrux`");
+        #[cfg(feature = "libcrux_draft_adapter")]
         libcrux_draft::init(&mut handle).expect("Failure initializing adapter `libcrux_draft`");
+        #[cfg(feature = "pqclean_adapter")]
         pqclean::init(&mut handle).expect("Failure initializing adapter `pqclean`");
+        #[cfg(feature = "rustcrypto_adapter")]
         rustcrypto::init(&mut handle).expect("Failure initializing adapter `rustcrypto`");
+        #[cfg(feature = "slhdsa_c_adapter")]
         slhdsa_c::init(&mut handle).expect("Failure initializing adapter `slhdsa_c`");
 
         let mut contexts = std::mem::take(&mut handle.contexts); // Temporarily move out

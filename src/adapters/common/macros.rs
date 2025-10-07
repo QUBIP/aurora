@@ -1,3 +1,6 @@
+#![allow(unused_imports)]
+#![allow(unused_macros)]
+
 macro_rules! algorithm_to_register {
     ($names:expr, $prop:expr, $impl:expr, $description:expr) => {
         $crate::bindings::OSSL_ALGORITHM {

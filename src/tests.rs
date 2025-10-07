@@ -1,5 +1,6 @@
 use super::*;
 
+#[allow(dead_code)]
 pub fn new_provctx_for_testing<'a>() -> ProviderInstance<'a> {
     let handle = std::ptr::null();
     let core_dispatch = CoreDispatch::new_mock_for_testing();
