@@ -419,7 +419,11 @@ impl DoesSelection for DER2SubjectPublicKeyInfo {
     const SELECTION_MASK: Selection = Selection::PUBLIC_KEY;
 }
 
-transcoders::make_does_selection_fn!(does_selection_SPKI, DER2SubjectPublicKeyInfo);
+transcoders::make_does_selection_fn!(
+    does_selection_SPKI,
+    DER2SubjectPublicKeyInfo,
+    OpenSSLProvider
+);
 
 /// A _DER_ [Decoder][provider-decoder(7ossl)] for _PrivateKeyInfo_
 ///
@@ -472,4 +476,8 @@ impl Decoder for DER2PrivateKeyInfo {
 impl DoesSelection for DER2PrivateKeyInfo {
     const SELECTION_MASK: Selection = Selection::KEYPAIR;
 }
-transcoders::make_does_selection_fn!(does_selection_PrivateKeyInfo, DER2PrivateKeyInfo);
+transcoders::make_does_selection_fn!(
+    does_selection_PrivateKeyInfo,
+    DER2PrivateKeyInfo,
+    OpenSSLProvider
+);

@@ -326,7 +326,11 @@ impl DoesSelection for PrivateKeyInfo2DER {
     const SELECTION_MASK: Selection = Selection::KEYPAIR;
 }
 
-transcoders::make_does_selection_fn!(does_selection_PrivateKeyInfo, PrivateKeyInfo2DER);
+transcoders::make_does_selection_fn!(
+    does_selection_PrivateKeyInfo,
+    PrivateKeyInfo2DER,
+    OpenSSLProvider
+);
 
 pub(crate) struct PrivateKeyInfo2PEM();
 
@@ -583,7 +587,11 @@ impl DoesSelection for SubjectPublicKeyInfo2DER {
     const SELECTION_MASK: Selection = Selection::PUBLIC_KEY;
 }
 
-transcoders::make_does_selection_fn!(does_selection_SPKI, SubjectPublicKeyInfo2DER);
+transcoders::make_does_selection_fn!(
+    does_selection_SPKI,
+    SubjectPublicKeyInfo2DER,
+    OpenSSLProvider
+);
 
 pub(crate) struct SubjectPublicKeyInfo2PEM();
 impl Encoder for SubjectPublicKeyInfo2PEM {

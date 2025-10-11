@@ -159,9 +159,9 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "2.6.0"
+version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
+checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
 
 [[package]]
 name = "bitvec"
@@ -1101,12 +1101,9 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "openssl_provider_forge"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0289df882b1260f82173a17935698f178f966a0058ab356d5e05f20c5172d2c5"
+version = "0.9.0+dev"
 dependencies = [
  "anyhow",
- "bindgen",
  "bitflags",
  "crypto",
  "function_name",
@@ -1114,7 +1111,6 @@ dependencies = [
  "log",
  "num-traits",
  "num_enum",
- "pkg-config",
  "zeroize",
 ]
 
@@ -1164,12 +1160,6 @@ dependencies = [
  "der 0.8.0-rc.9",
  "spki 0.8.0-rc.4",
 ]
-
-[[package]]
-name = "pkg-config"
-version = "0.3.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2"
 
 [[package]]
 name = "portable-atomic"
@@ -1281,7 +1271,7 @@ dependencies = [
 
 [[package]]
 name = "qubip_aurora"
-version = "0.8.6+dev"
+version = "0.9.0+dev"
 dependencies = [
  "anyhow",
  "asn1",
