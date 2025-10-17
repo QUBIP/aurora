@@ -16,7 +16,7 @@ pub(crate) const SIGNATURE_LEN: usize = super::keymgmt_functions::SIGNATURE_LEN;
 #[expect(dead_code)]
 struct SignatureContext<'a> {
     keypair: Option<&'a KeyPair<'a>>,
-    provctx: &'a OpenSSLProvider<'a>,
+    provctx: &'a ProviderInstance<'a>,
 }
 
 impl<'a> TryFrom<*mut core::ffi::c_void> for &mut SignatureContext<'a> {
@@ -46,7 +46,7 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &SignatureContext<'a> {
 
 impl<'a> SignatureContext<'a> {
     #[cfg(test)]
-    pub fn new(provctx: &'a OpenSSLProvider) -> Self {
+    pub fn new(provctx: &'a ProviderInstance) -> Self {
         SignatureContext {
             keypair: None,
             provctx,
@@ -68,7 +68,7 @@ impl<'a> SignatureContext<'a> {
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void, _propq: *const c_uchar) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);

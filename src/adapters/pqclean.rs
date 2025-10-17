@@ -6,7 +6,7 @@ use aurora::adapters::AdapterContextTrait;
 use aurora::bindings;
 use aurora::forge;
 use aurora::traits::*;
-use aurora::OpenSSLProvider;
+use aurora::ProviderInstance;
 use aurora::{handleResult, named};
 use bindings::{CONST_OSSL_PARAM, OSSL_OP_DECODER, OSSL_OP_ENCODER, OSSL_OP_KEYMGMT};
 use macros::{algorithm_to_register, decoder_to_register, encoder_to_register};

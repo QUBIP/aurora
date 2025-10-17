@@ -43,7 +43,7 @@ pub(crate) mod bindings {
         use crate::tests::common::OurError;
 
         struct TestCTX<'a> {
-            //provctx: OpenSSLProvider<'a>,
+            //provctx: ProviderInstance<'a>,
             phantom: std::marker::PhantomData<&'a ()>,
         }
 

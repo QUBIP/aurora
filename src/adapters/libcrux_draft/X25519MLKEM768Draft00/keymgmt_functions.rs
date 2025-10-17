@@ -64,7 +64,7 @@ impl PrivateKey {
 pub struct KeyPair<'a> {
     pub private: Option<PrivateKey>,
     pub public: Option<PublicKey>,
-    provctx: &'a OpenSSLProvider<'a>,
+    provctx: &'a ProviderInstance<'a>,
 }
 
 impl<'a> Debug for KeyPair<'a> {
@@ -238,7 +238,7 @@ impl KeyPair<'_> {
 
 impl<'a> KeyPair<'a> {
     #[named]
-    fn new(provctx: &'a OpenSSLProvider) -> Self {
+    fn new(provctx: &'a ProviderInstance) -> Self {
         trace!(target: log_target!(), "Called");
         KeyPair {
             private: None,
@@ -248,7 +248,7 @@ impl<'a> KeyPair<'a> {
     }
 
     #[named]
-    fn generate(provctx: &'a OpenSSLProvider) -> Result<Self, KMGMTError> {
+    fn generate(provctx: &'a ProviderInstance) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
         let mut rng = {
             #[cfg(not(debug_assertions))] // code compiled only in release builds
@@ -283,7 +283,7 @@ impl<'a> KeyPair<'a> {
 
     #[cfg(test)]
     #[named]
-    fn generate_new(provctx: &'a OpenSSLProvider) -> Result<Self, KMGMTError> {
+    fn generate_new(provctx: &'a ProviderInstance) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
         let genctx = GenCTX::new(provctx, Selection::KEYPAIR);
         let r = genctx.generate()?;
@@ -327,7 +327,7 @@ impl TryFrom<*mut core::ffi::c_void> for &KeyPair<'_> {
 pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
     trace!(target: log_target!(), "{}", "Called!");
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
-    let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let provctx: &ProviderInstance<'_> = handleResult!(vprovctx.try_into());
 
     let keypair: Box<KeyPair<'_>> = Box::new(KeyPair::new(provctx));
     return Box::into_raw(keypair).cast();
@@ -375,12 +375,12 @@ pub(super) unsafe extern "C" fn gen_cleanup(vgenctx: *mut c_void) {
 }
 
 struct GenCTX<'a> {
-    provctx: &'a OpenSSLProvider<'a>,
+    provctx: &'a ProviderInstance<'a>,
     selection: Selection,
 }
 
 impl<'a> GenCTX<'a> {
-    fn new(provctx: &'a OpenSSLProvider, selection: Selection) -> Self {
+    fn new(provctx: &'a ProviderInstance, selection: Selection) -> Self {
         Self {
             provctx: provctx,
             selection: selection,
@@ -424,7 +424,7 @@ pub(super) unsafe extern "C" fn gen_init(
 ) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let provctx: &ProviderInstance<'_> = handleResult!(vprovctx.try_into());
     let selection: Selection = handleResult!((selection as u32).try_into());
     let newctx = Box::new(GenCTX::new(provctx, selection));
 
@@ -489,7 +489,7 @@ pub(super) unsafe extern "C" fn import_types_ex(
 ) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let _provctx: &ProviderInstance<'_> = handleResult!(vprovctx.try_into());
     let selection: Selection = handleResult!((selection as u32).try_into());
 
     if selection.intersects(Selection::KEYPAIR) {
@@ -506,7 +506,7 @@ pub(super) unsafe extern "C" fn export_types_ex(
 ) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let _provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -544,7 +544,7 @@ pub(super) unsafe extern "C" fn gen_settable_params(
 ) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let _provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -617,7 +617,7 @@ pub(super) unsafe extern "C" fn get_params(
 pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     trace!(target: log_target!(), "{}", "Called!");
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let _provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -683,7 +683,7 @@ pub(super) unsafe extern "C" fn set_params(
 pub(super) unsafe extern "C" fn settable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let _provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -707,7 +707,7 @@ mod tests {
     use super::*;
 
     struct TestCTX<'a> {
-        provctx: OpenSSLProvider<'a>,
+        provctx: ProviderInstance<'a>,
     }
 
     fn setup<'a>() -> Result<TestCTX<'a>, OurError> {

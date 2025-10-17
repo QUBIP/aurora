@@ -1,7 +1,7 @@
-use super::{named, OpenSSLProvider};
+use super::{named, ProviderInstance};
 use rand_core::CryptoRngCore;
 
-impl<'a> OpenSSLProvider<'a> {
+impl<'a> ProviderInstance<'a> {
     #[named]
     pub fn get_rng(&self) -> &'a mut dyn CryptoRngCore {
         trace!(target: log_target!(), "Called ");

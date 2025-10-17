@@ -2,7 +2,7 @@ use std::ffi::CStr;
 
 use crate::forge;
 use crate::named;
-use crate::OpenSSLProvider;
+use crate::ProviderInstance;
 use forge::bindings;
 use forge::ossl_callback::OSSLCallback;
 use libc::{c_char, c_int, c_void};
@@ -17,7 +17,7 @@ pub(crate) extern "C" fn query_operation(
 ) -> *const OSSL_ALGORITHM {
     trace!(target: log_target!(), "{}", "Called!");
 
-    let provctx: &mut OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let provctx: &mut ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -54,7 +54,7 @@ pub(crate) extern "C" fn get_capabilities(
 
     trace!(target: log_target!(), "{}", "Called!");
 
-    let provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);

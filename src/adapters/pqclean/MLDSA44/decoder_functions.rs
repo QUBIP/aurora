@@ -19,11 +19,11 @@ use pkcs8;
 use keymgmt_functions::asn_definitions::PrivateKey as ASNPrivateKey;
 
 struct DecoderContext<'a> {
-    provctx: &'a OpenSSLProvider<'a>,
+    provctx: &'a ProviderInstance<'a>,
 }
 
 impl<'a> DecoderContext<'a> {
-    pub(super) fn new(provctx: &'a OpenSSLProvider<'a>) -> Self {
+    pub(super) fn new(provctx: &'a ProviderInstance<'a>) -> Self {
         Self { provctx }
     }
 }
@@ -64,7 +64,7 @@ impl<'a> TryFrom<*mut c_void> for &DecoderContext<'a> {
 pub(super) unsafe extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let provctx: &ProviderInstance<'_> = handleResult!(vprovctx.try_into());
 
     let decoder_ctx = Box::new(DecoderContext::new(provctx));
 
@@ -85,7 +85,7 @@ pub(super) unsafe extern "C" fn get_params(params: *mut OSSL_PARAM) -> c_int {
 pub(super) unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = handleResult!(vprovctx.try_into());
+    let _provctx: &ProviderInstance<'_> = handleResult!(vprovctx.try_into());
 
     std::ptr::from_ref(&CONST_OSSL_PARAM::END)
 }
@@ -429,7 +429,7 @@ impl DoesSelection for DER2SubjectPublicKeyInfo {
 transcoders::make_does_selection_fn!(
     does_selection_SPKI,
     DER2SubjectPublicKeyInfo,
-    OpenSSLProvider
+    ProviderInstance
 );
 
 /// A _DER_ [Decoder][provider-decoder(7ossl)] for _PrivateKeyInfo_
@@ -486,5 +486,5 @@ impl DoesSelection for DER2PrivateKeyInfo {
 transcoders::make_does_selection_fn!(
     does_selection_PrivateKeyInfo,
     DER2PrivateKeyInfo,
-    OpenSSLProvider
+    ProviderInstance
 );

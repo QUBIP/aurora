@@ -1,6 +1,6 @@
 use super::named;
 use crate::forge::{self, bindings::*, keymgmt::selection::Selection};
-use crate::OpenSSLProvider;
+use crate::ProviderInstance;
 
 #[allow(dead_code)]
 #[named]
@@ -25,7 +25,7 @@ pub(crate) unsafe extern "C" fn export_types_ex_forbidden(
 ) -> *const OSSL_PARAM {
     const ERROR_RET: *const OSSL_PARAM = std::ptr::null();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let _provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);

@@ -56,7 +56,7 @@ pub use upcalls::{CoreDispatch, CoreDispatchWithCoreHandle};
 /// be encapsulated within it, so that different instances could have
 /// different configurations, and their own separate state.
 #[derive(Debug)]
-pub struct OpenSSLProvider<'a> {
+pub struct ProviderInstance<'a> {
     pub data: [u8; 10],
     core_handle: *const OSSL_CORE_HANDLE,
     core_dispatch: CoreDispatch<'a>,
@@ -70,7 +70,7 @@ pub struct OpenSSLProvider<'a> {
 /// We implement the Drop trait to make it explicit when a provider
 /// instance is dropped: this should only happen after `teardown()` has
 /// been called.
-impl<'a> Drop for OpenSSLProvider<'a> {
+impl<'a> Drop for ProviderInstance<'a> {
     #[named]
     fn drop(&mut self) {
         let tname = std::any::type_name_of_val(self);
@@ -86,7 +86,7 @@ pub static PROV_NAME: &str = env!("CARGO_PKG_NAME");
 pub static PROV_VER: &str = env!("CARGO_PKG_VERSION");
 pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
-impl<'a> OpenSSLProvider<'a> {
+impl<'a> ProviderInstance<'a> {
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: CoreDispatch<'a>) -> Self {
         let upcaller: CoreDispatchWithCoreHandle<'a> = (core_dispatch, handle).into();
 
@@ -191,15 +191,15 @@ impl<'a> OpenSSLProvider<'a> {
     }
 }
 
-impl<'a> TryFrom<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a> {
+impl<'a> TryFrom<*mut core::ffi::c_void> for &mut ProviderInstance<'a> {
     type Error = Error;
 
     #[named]
     fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
         trace!(target: log_target!(), "Called for {}",
-        "impl<'a> TryFrom<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a>"
+        "impl<'a> TryFrom<*mut core::ffi::c_void> for &mut ProviderInstance<'a>"
         );
-        let provp = vctx as *mut OpenSSLProvider;
+        let provp = vctx as *mut ProviderInstance;
         if provp.is_null() {
             return Err(anyhow::anyhow!("vctx was null"));
         }
@@ -207,13 +207,13 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &mut OpenSSLProvider<'a> {
     }
 }
 
-impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a> {
+impl<'a> TryFrom<*mut core::ffi::c_void> for &ProviderInstance<'a> {
     type Error = Error;
 
     #[named]
     fn try_from(vctx: *mut core::ffi::c_void) -> Result<Self, Self::Error> {
-        trace!(target: log_target!(), "Called for {}", "impl<'a> TryFrom<*mut core::ffi::c_void> for &OpenSSLProvider<'a>");
-        let r: &mut OpenSSLProvider<'a> = vctx.try_into()?;
+        trace!(target: log_target!(), "Called for {}", "impl<'a> TryFrom<*mut core::ffi::c_void> for &ProviderInstance<'a>");
+        let r: &mut ProviderInstance<'a> = vctx.try_into()?;
         Ok(r)
     }
 }
@@ -252,13 +252,13 @@ macro_rules! handleResult {
     //};
 }
 
-impl CoreUpcaller for OpenSSLProvider<'_> {
+impl CoreUpcaller for ProviderInstance<'_> {
     fn fn_from_core_dispatch(&self, id: u32) -> Option<unsafe extern "C" fn()> {
         self.core_dispatch.fn_from_core_dispatch(id)
     }
 }
 
-impl CoreUpcallerWithCoreHandle for OpenSSLProvider<'_> {
+impl CoreUpcallerWithCoreHandle for ProviderInstance<'_> {
     fn get_core_handle(&self) -> *const OSSL_CORE_HANDLE {
         self.core_handle
     }

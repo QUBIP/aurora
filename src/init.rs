@@ -1,6 +1,6 @@
 use crate::forge::{bindings, osslparams, upcalls};
 use crate::Error as OurError;
-use crate::OpenSSLProvider;
+use crate::ProviderInstance;
 use crate::{named, CoreDispatch};
 use bindings::OSSL_DISPATCH;
 use bindings::OSSL_PARAM;
@@ -64,7 +64,7 @@ pub extern "C" fn OSSL_provider_init(
             return RET_FAILURE;
         }
     };
-    let mut prov = Box::new(OpenSSLProvider::new(handle, core_dispatch));
+    let mut prov = Box::new(ProviderInstance::new(handle, core_dispatch));
 
     let ourdispatch = prov.get_provider_dispatch();
     unsafe {
@@ -80,7 +80,7 @@ pub extern "C" fn OSSL_provider_init(
 #[named]
 pub unsafe extern "C" fn provider_teardown(vprovctx: *mut c_void) {
     trace!(target: log_target!(), "{}", "Called!");
-    let /* mut */ prov: Box<OpenSSLProvider> = unsafe { Box::from_raw(vprovctx.cast()) };
+    let /* mut */ prov: Box<ProviderInstance> = unsafe { Box::from_raw(vprovctx.cast()) };
     let name = prov.name;
     trace!(target: log_target!(), "Teardown of \"{name}\"");
     trace!(target: log_target!(), "🦀 Goodbye!");
@@ -92,7 +92,7 @@ pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_P
 
     trace!(target: log_target!(), "{}", "Called!");
 
-    let prov: &mut OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let prov: &mut ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PAR
     /* It's important to only cast the pointer, not Box it back up, because otherwise the provctx
      * object would get dropped at the end of this function (and the compiler wouldn't even warn
      * us about it, because this code is marked unsafe!). */
-    let prov: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let prov: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);

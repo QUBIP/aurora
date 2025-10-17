@@ -42,7 +42,7 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &KemContext<'a> {
 pub(super) extern "C" fn newctx(vprovctx: *mut c_void) -> *mut c_void {
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     trace!(target: log_target!(), "{}", "Called!");
-    let _provctx: &OpenSSLProvider<'_> = match vprovctx.try_into() {
+    let _provctx: &ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
         Err(e) => {
             error!(target: log_target!(), "{}", e);

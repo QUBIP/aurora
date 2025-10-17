@@ -1,7 +1,7 @@
 use super::*;
 
 struct TestCTX<'a> {
-    provctx: OpenSSLProvider<'a>,
+    provctx: ProviderInstance<'a>,
 }
 
 mod helpers {
@@ -21,7 +21,7 @@ mod helpers {
 
     #[named]
     pub(super) fn generate_keypair<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
     ) -> KeyPair<'provctx> {
         log::info!(target: log_target!(), "Generating keypair");
         let keypair = KeyPair::generate_new(&provctx).expect("Failed to generate keypair");
@@ -30,7 +30,7 @@ mod helpers {
 
     #[named]
     pub(super) fn create_sigctx<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
     ) -> SignatureContext<'provctx> {
         log::info!(target: log_target!(), "Creating new SignatureContext");
         let sigctx = SignatureContext::new(&provctx);
@@ -40,7 +40,7 @@ mod helpers {
 
     #[named]
     pub(super) fn sign_msg<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
         keypair: &'provctx KeyPair<'provctx>,
         msg: &[u8],
     ) -> SignatureBytes {
@@ -62,7 +62,7 @@ mod helpers {
 
     #[named]
     pub(super) fn verify_msg<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
         keypair: &'provctx KeyPair<'provctx>,
         msg_to_verify: &[u8],
         signature: &[u8],
@@ -87,7 +87,7 @@ mod helpers {
 
     #[named]
     pub(super) fn verify_happy_path<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
         original_keypair: &'provctx KeyPair<'provctx>,
         original_msg: &[u8],
         original_sig: &[u8],
@@ -101,7 +101,7 @@ mod helpers {
 
     #[named]
     pub(super) fn verify_wrong_key_failure<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
         original_keypair: &'provctx KeyPair<'provctx>,
         original_msg: &[u8],
         original_sig: &[u8],
@@ -126,7 +126,7 @@ mod helpers {
 
     #[named]
     pub(super) fn verify_tampered_sig_failure<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
         original_keypair: &'provctx KeyPair<'provctx>,
         original_msg: &[u8],
         original_sig: &[u8],
@@ -148,7 +148,7 @@ mod helpers {
 
     #[named]
     pub(super) fn verify_tampered_msg_failure<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
         original_keypair: &'provctx KeyPair<'provctx>,
         original_msg: &[u8],
         original_sig: &[u8],
@@ -169,7 +169,7 @@ mod helpers {
 
     #[named]
     pub(super) fn verify_longer_msg_failure<'provctx>(
-        provctx: &'provctx OpenSSLProvider<'provctx>,
+        provctx: &'provctx ProviderInstance<'provctx>,
         original_keypair: &'provctx KeyPair<'provctx>,
         original_msg: &[u8],
         original_sig: &[u8],

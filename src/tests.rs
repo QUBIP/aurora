@@ -1,10 +1,10 @@
 use super::*;
 
-pub fn new_provctx_for_testing<'a>() -> OpenSSLProvider<'a> {
+pub fn new_provctx_for_testing<'a>() -> ProviderInstance<'a> {
     let handle = std::ptr::null();
     let core_dispatch = CoreDispatch::new_mock_for_testing();
 
-    return OpenSSLProvider::new(handle, core_dispatch);
+    return ProviderInstance::new(handle, core_dispatch);
 }
 
 pub(crate) mod common {

@@ -4,7 +4,7 @@ use super::common::macros;
 use aurora::adapters::AdapterContextTrait;
 use aurora::bindings;
 use aurora::forge;
-use aurora::OpenSSLProvider;
+use aurora::ProviderInstance;
 use aurora::{handleResult, named};
 use bindings::{CONST_OSSL_PARAM, OSSL_OP_KEM, OSSL_OP_KEYMGMT};
 use macros::algorithm_to_register;
