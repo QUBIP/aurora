@@ -90,7 +90,7 @@ pub unsafe extern "C" fn provider_teardown(vprovctx: *mut c_void) {
 pub unsafe extern "C" fn gettable_params(vprovctx: *mut c_void) -> *const OSSL_PARAM {
     const FAILURE: *const OSSL_PARAM = std::ptr::null();
 
-    trace!(target: log_target!(), "{}", "Called!");
+    trace!(target: log_target!(), "Called!");
 
     let prov: &mut ProviderInstance<'_> = match vprovctx.try_into() {
         Ok(p) => p,
@@ -107,7 +107,7 @@ pub unsafe extern "C" fn get_params(vprovctx: *mut c_void, params: *mut OSSL_PAR
     const FAILURE: c_int = 0;
     const SUCCESS: c_int = 1;
 
-    trace!(target: log_target!(), "{}", "Called!");
+    trace!(target: log_target!(), "Called!");
 
     /* It's important to only cast the pointer, not Box it back up, because otherwise the provctx
      * object would get dropped at the end of this function (and the compiler wouldn't even warn
