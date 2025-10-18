@@ -81,7 +81,7 @@ pub(crate) extern "C" fn get_capabilities(
         Some(params_lists) => {
             for params_list in params_lists {
                 trace!(target: log_target!(), "Calling cb({params_list:0x?})");
-                let ret = cb.call(params_list);
+                let ret = unsafe { cb.call_raw(params_list) };
                 trace!(target: log_target!(), "cb({params_list:0x?}) returned {ret:?}");
                 if ret == 0 {
                     trace!(target: log_target!(), "Callback returned 0");

@@ -223,7 +223,7 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     ];
 
     trace!(target: log_target!(), "Ignoring pw_cb and pw_cbarg");
-    let ret = cb.call(params.as_ptr() as *const OSSL_PARAM);
+    let ret = cb.call(params);
 
     return ret;
 }
@@ -368,7 +368,7 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     ];
 
     trace!(target: log_target!(), "Ignoring pw_cb and pw_cbarg");
-    let ret = cb.call(params.as_ptr() as *const OSSL_PARAM);
+    let ret = cb.call(params);
 
     trace!(target: log_target!(), "Returning {ret:?}");
     return ret;
