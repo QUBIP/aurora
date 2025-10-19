@@ -65,6 +65,8 @@ pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
     pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.3.17");
 pub(crate) const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.101.3.4.3.17");
 
+crate::adapters::common::keymgmt_functions::oid_consistency_tests!();
+
 /// [RFC 5280 AlgorithmIdentifier](https://www.rfc-editor.org/rfc/rfc5280.html#section-4.1.1.2)
 /// in DER-encoded format.
 use std::sync::LazyLock;

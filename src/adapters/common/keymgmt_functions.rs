@@ -51,6 +51,27 @@ pub(crate) unsafe extern "C" fn export_types_forbidden(selection: c_int) -> *con
     return ret;
 }
 
+macro_rules! oid_consistency_tests {
+    () => {
+        #[cfg(test)]
+        mod oid_consistency_tests {
+            use super::{OID, OID_PKCS8, SIGALG_OID};
+            use std::ffi::CString;
+
+            #[test]
+            fn oids_consistent() {
+                let expected_c_string = SIGALG_OID.unwrap();
+                let expected = expected_c_string.to_str().unwrap();
+
+                assert_eq!(OID.to_string(), expected);
+                assert_eq!(OID_PKCS8, pkcs8::ObjectIdentifier::new_unwrap(expected));
+                assert_eq!(SIGALG_OID, Some(expected_c_string)); // redundant but harmless
+            }
+        }
+    };
+}
+pub(crate) use oid_consistency_tests;
+
 #[cfg(test)]
 mod tests {
     use crate::tests::common::setup;
