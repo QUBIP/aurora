@@ -43,7 +43,11 @@ use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_IN
 mod decoder_functions;
 mod encoder_functions;
 pub(super) mod keymgmt_functions;
+
+#[path = "../common/signature.rs"]
 mod signature;
+
+#[path = "../common/signature_functions.rs"]
 mod signature_functions;
 
 pub(crate) type OurError = anyhow::Error;

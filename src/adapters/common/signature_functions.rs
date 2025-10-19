@@ -498,4 +498,46 @@ fn u8_mut_slice_try_from_raw_parts<'a>(
 }
 
 #[cfg(test)]
+// This path is weird and potentially fragile, as it is resolved
+// relative to the "including file".
+//
+// ## Example
+//
+// For example `$CRATE_ROOT/src/adapters/pqclean/MLDSA65.rs` might
+// declare:
+//
+// ```rust
+// // src/adapters/pqclean/MLDSA65.rs
+// // [...]
+//
+// #[path = "../common/signature_functions.rs"]
+// mod signature_functions;
+//
+// // [...]
+// ```
+//
+// Upon inclusion of this file, the attribute `path` below would then be
+// resolved relative to the dirname of the "including" file, i.e.,
+// `$CRATE_ROOT/src/adapters/pqclean/`,
+// resulting into
+// `$CRATE_ROOT/src/adapters/pqclean/../common/signature_functions/tests.rs`
+// which correctly resolves to
+// `$CRATE_ROOT/src/adapters/common/signature_functions/tests.rs`.
+//
+// But if an imaginary `$CRATE_ROOT/src/adapters/break/everything/FOO.rs`
+// file had the same annotated module declaration, the line below would result into
+// `$CRATE_ROOT/src/adapters/break/everything/../common/signature_functions/tests.rs`
+// which would resolve to
+// `$CRATE_ROOT/src/adapters/break/common/signature_functions/tests.rs`
+// which is not the file we intend to include.
+//
+// This seems to be a limitation of Rust in terms of `path` attributes.
+//
+// The more robust alternative would be not to split the test module to
+// its own file, and avoid nested "path" attributes.
+// But it comes at the cost of maintainability and readability.
+//
+// For now we trust aurora developers to keep the same kind of hierarchy
+// across different adapters.
+#[path = "../common/signature_functions/tests.rs"]
 mod tests;
