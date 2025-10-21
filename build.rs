@@ -67,6 +67,9 @@ fn compile_with_rasn() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
+    // Always rerun if the variable FORCE_REBUILD changes
+    println!("cargo:rerun-if-env-changed=FORCE_REBUILD");
+
     let git_describe = get_git_describe().unwrap_or_else(|e| {
         println!("cargo:warning=Failed to get git describe");
         eprintln!("Error was {e:?}");
