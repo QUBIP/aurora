@@ -42,6 +42,7 @@ use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_IN
 
 mod decoder_functions;
 mod encoder_functions;
+
 #[cfg(feature = "_composite_sigs_draft_07")]
 #[path = "./MLDSA44_Ed25519/keymgmt_functions_draft07.rs"]
 mod keymgmt_functions;
@@ -61,52 +62,67 @@ mod signature_functions;
 pub(crate) type OurError = anyhow::Error;
 pub(crate) use anyhow::anyhow;
 
-// Ensure proper null-terminated C string
-// https://docs.openssl.org/master/man7/provider/#algorithm-naming
 #[cfg(feature = "_composite_sigs_draft_07")]
-pub(super) const NAMES: &CStr =
-    c"id-MLDSA44-Ed25519-SHA512:mldsa44_ed25519:2.16.840.1.114027.80.9.1.2";
+mod consts_composite_sigs_draft_07 {
+    use super::CStr;
+
+    // Ensure proper null-terminated C string
+    // https://docs.openssl.org/master/man7/provider/#algorithm-naming
+    pub const NAMES: &CStr =
+        c"id-MLDSA44-Ed25519-SHA512:mldsa44_ed25519:2.16.840.1.114027.80.9.1.2";
+
+    // OID from <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-07#tab-hash-sig-algs>
+    // OID should be a substring of NAMES
+    pub const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 2);
+    pub const OID_PKCS8: pkcs8::ObjectIdentifier =
+        pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.9.1.2");
+    pub const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.114027.80.9.1.2");
+}
+#[cfg(feature = "_composite_sigs_draft_07")]
+pub use consts_composite_sigs_draft_07::{NAMES, OID, OID_PKCS8, SIGALG_OID};
+
 #[cfg(feature = "_composite_sigs_draft_12")]
-pub(super) const NAMES: &CStr =
-    c"id-MLDSA44-Ed25519-SHA512:mldsa44_ed25519:2.16.840.1.114027.80.9.1.22";
+mod consts_composite_sigs_draft_12 {
+    use super::CStr;
+
+    // Ensure proper null-terminated C string
+    // https://docs.openssl.org/master/man7/provider/#algorithm-naming
+    pub const NAMES: &CStr =
+        c"id-MLDSA44-Ed25519-SHA512:mldsa44_ed25519:2.16.840.1.114027.80.9.1.22";
+
+    // OID from <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-algorithm-identifiers-and-p>
+    // OID should be a substring of NAMES
+    pub const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 22);
+    pub const OID_PKCS8: pkcs8::ObjectIdentifier =
+        pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.9.1.22");
+    pub const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.114027.80.9.1.22");
+}
+#[cfg(feature = "_composite_sigs_draft_12")]
+pub use consts_composite_sigs_draft_12::{NAMES, OID, OID_PKCS8, SIGALG_OID};
+
 #[cfg(feature = "_composite_sigs_draft_12_postWGLC")]
-pub(super) const NAMES: &CStr = c"id-MLDSA44-Ed25519-SHA512:mldsa44_ed25519:1.3.6.1.5.5.7.6.39";
+mod consts_composite_sigs_draft_12_postWGLC {
+    use super::CStr;
+
+    // Ensure proper null-terminated C string
+    // https://docs.openssl.org/master/man7/provider/#algorithm-naming
+    pub const NAMES: &CStr = c"id-MLDSA44-Ed25519-SHA512:mldsa44_ed25519:1.3.6.1.5.5.7.6.39";
+
+    // OID from <https://github.com/lamps-wg/draft-composite-sigs/blob/5ba4655fa1ae3b3b4c112c6cd8c97a93e6d900c3/src/algParams.md>
+    // OID should be a substring of NAMES
+    pub const OID: asn1::ObjectIdentifier = asn1::oid!(1, 3, 6, 1, 5, 5, 7, 6, 39);
+    pub const OID_PKCS8: pkcs8::ObjectIdentifier =
+        pkcs8::ObjectIdentifier::new_unwrap("1.3.6.1.5.5.7.6.39");
+    pub const SIGALG_OID: Option<&CStr> = Some(c"1.3.6.1.5.5.7.6.39");
+}
+#[cfg(feature = "_composite_sigs_draft_12_postWGLC")]
+pub use consts_composite_sigs_draft_12_postWGLC::{NAMES, OID, OID_PKCS8, SIGALG_OID};
 
 /// NAME should be a substring of NAMES
 pub(crate) const NAME: &CStr = c"mldsa44_ed25519";
 
 /// LONG_NAME should be a substring of NAMES
 pub(crate) const LONG_NAME: &CStr = c"id-MLDSA44-Ed25519-SHA512";
-
-// OID from https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-07#tab-hash-sig-algs
-/// OID should be a substring of NAMES
-#[cfg(feature = "_composite_sigs_draft_07")]
-pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 2);
-#[cfg(feature = "_composite_sigs_draft_07")]
-pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
-    pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.9.1.2");
-#[cfg(feature = "_composite_sigs_draft_07")]
-pub(crate) const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.114027.80.9.1.2");
-
-// OID from https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-12.html#name-algorithm-identifiers-and-p
-/// OID should be a substring of NAMES
-#[cfg(feature = "_composite_sigs_draft_12")]
-pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 22);
-#[cfg(feature = "_composite_sigs_draft_12")]
-pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
-    pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.9.1.22");
-#[cfg(feature = "_composite_sigs_draft_12")]
-pub(crate) const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.114027.80.9.1.22");
-
-// OID from https://github.com/lamps-wg/draft-composite-sigs/blob/a0b0c6b7f10bbb99d3e945ae8cb34035cc5be591/src/algParams.md
-/// OID should be a substring of NAMES
-#[cfg(feature = "_composite_sigs_draft_12_postWGLC")]
-pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(1, 3, 6, 1, 5, 5, 7, 6, 39);
-#[cfg(feature = "_composite_sigs_draft_12_postWGLC")]
-pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
-    pkcs8::ObjectIdentifier::new_unwrap("1.3.6.1.5.5.7.6.39");
-#[cfg(feature = "_composite_sigs_draft_12_postWGLC")]
-pub(crate) const SIGALG_OID: Option<&CStr> = Some(c"1.3.6.1.5.5.7.6.39");
 
 crate::adapters::common::keymgmt_functions::oid_consistency_tests!();
 
