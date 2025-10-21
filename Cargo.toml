@@ -14,12 +14,15 @@ name = "aurora"
 
 [features]
 # default = ["env_logger", "export"]
-default = ["env_logger", "default_adapters"]
+default = ["env_logger", "default_adapters", "_composite_sigs_draft_12"]
 env_logger = ["dep:env_logger"]
 export = []
 
 mldsa = []
 slhdsa = []
+_composite_sigs_draft_07 = []
+_composite_sigs_draft_12 = []
+# mldsa_eddsa requires one or the other (but not both!) of the _draft_N features to be enabled!
 mldsa_eddsa = []
 mlkem_hybrids = []
 

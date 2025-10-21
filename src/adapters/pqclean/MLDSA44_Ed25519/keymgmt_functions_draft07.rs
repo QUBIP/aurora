@@ -22,7 +22,7 @@ use std::{
 };
 
 use ed25519_dalek as trad_backend_module;
-use pqcrypto_mldsa::mldsa65 as pq_backend_module;
+use pqcrypto_mldsa::mldsa44 as pq_backend_module;
 
 type PQPublicKey = pq_backend_module::PublicKey;
 type PQPrivateKey = pq_backend_module::SecretKey;
@@ -89,7 +89,7 @@ impl PublicKey {
             )
             .map_err(|e| {
                 anyhow!(
-                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
+                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA44) returned {:?}",
                     e
                 )
             })?;
@@ -301,7 +301,7 @@ impl PrivateKey {
             )
             .map_err(|e| {
                 anyhow!(
-                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA65) returned {:?}",
+                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA44) returned {:?}",
                     e
                 )
             })?;
@@ -1069,8 +1069,8 @@ pub(super) unsafe extern "C" fn match_(
 pub(super) mod asn_definitions {
     pub use crate::asn_definitions::x509_ml_dsa_2025 as defns;
 
-    pub use defns::MLDSA65PrivateKey as PrivateKey;
-    pub use defns::MLDSA65PublicKey as PublicKey;
+    pub use defns::MLDSA44PrivateKey as PrivateKey;
+    pub use defns::MLDSA44PublicKey as PublicKey;
 }
 
 #[cfg(test)]
@@ -1124,11 +1124,11 @@ mod tests {
 
         // Compare against https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-approximate-key-and-signatu
         // except the SECRETKEY_LEN, which is 64 in that table because that document uses the
-        // old-fashioned idea that only the seed of the ML-DSA key should be stored
-        assert_eq!(PUBKEY_LEN, 1984);
-        assert_eq!(SECRETKEY_LEN, 4064);
-        assert_eq!(SIGNATURE_LEN, 3405);
+        // assumption that only the seed of the ML-DSA secret key should be stored
+        assert_eq!(PUBKEY_LEN, 1344);
+        assert_eq!(SECRETKEY_LEN, 2592);
+        assert_eq!(SIGNATURE_LEN, 2516);
 
-        assert_eq!(SECURITY_BITS, 192);
+        assert_eq!(SECURITY_BITS, 128);
     }
 }

@@ -22,7 +22,7 @@ use std::{
 };
 
 use ed25519_dalek as trad_backend_module;
-use pqcrypto_mldsa::mldsa44 as pq_backend_module;
+use pqcrypto_mldsa::mldsa65 as pq_backend_module;
 
 type PQPublicKey = pq_backend_module::PublicKey;
 type PQPrivateKey = pq_backend_module::SecretKey;
@@ -89,7 +89,7 @@ impl PublicKey {
             )
             .map_err(|e| {
                 anyhow!(
-                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA44) returned {:?}",
+                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
                     e
                 )
             })?;
@@ -175,16 +175,11 @@ impl PublicKey {
     }
 }
 
-// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-prefix-domain-separators-an
+// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-12.html#name-prefix-label-and-ctx
 const PREFIX: &[u8] = "CompositeAlgorithmSignatures2025".as_bytes();
-// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-domain-separator-values
-const DOMAIN_SEPARATOR: &[u8] = &[
-    0x06, 0x0B, 0x60, 0x86, 0x48, 0x01, 0x86, 0xFA, 0x6B, 0x50, 0x09, 0x01, 0x0B,
-];
-// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-pre-hashing-and-randomizer
-const RANDOMIZER_LEN: usize = 32;
+const LABEL: &[u8] = "COMPSIG-MLDSA65-Ed25519-SHA512".as_bytes();
 
-// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-verify
+// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-12.html#name-verify
 // There's no way to pass additional context info (`ctx` in the linked spec) into this Verifier
 // trait's verify function, so we take `ctx` to be the empty string.
 impl Verifier<Signature> for PublicKey {
@@ -207,8 +202,7 @@ impl Verifier<Signature> for PublicKey {
         }
         // if we get here, we know we have the right number of bytes, so these calls to split_at()
         // and expect() won't panic
-        let (randomizer_bytes, tail_bytes) = sig.split_at(RANDOMIZER_LEN);
-        let (pq_sig, trad_sig) = tail_bytes.split_at(Self::PQ_SIGNATURE_LEN);
+        let (pq_sig, trad_sig) = sig.split_at(Self::PQ_SIGNATURE_LEN);
         let pq_sig: &[u8; Self::PQ_SIGNATURE_LEN] = pq_sig.try_into().expect("Unexpected length");
         let trad_sig: &[u8; Self::T_SIGNATURE_LEN] =
             trad_sig.try_into().expect("Unexpected length");
@@ -217,9 +211,8 @@ impl Verifier<Signature> for PublicKey {
         // (here M is our `msg` argument)
         let msg_hash = Sha512::digest(msg);
         let mut M_prime = PREFIX.to_vec();
-        M_prime.extend_from_slice(DOMAIN_SEPARATOR);
+        M_prime.extend_from_slice(LABEL);
         M_prime.push(0); // len(ctx) is 0, since ctx is the empty string (see comment at top of impl)
-        M_prime.extend_from_slice(&randomizer_bytes);
         M_prime.extend(msg_hash);
 
         // verify with ML-DSA
@@ -233,7 +226,7 @@ impl Verifier<Signature> for PublicKey {
         pq_backend_module::verify_detached_signature_ctx(
             &pq_sig,
             M_prime.as_slice(),
-            DOMAIN_SEPARATOR,
+            LABEL,
             pq_public_key,
         )
         .map_err(map_PQError_into_VerificationError)
@@ -301,7 +294,7 @@ impl PrivateKey {
             )
             .map_err(|e| {
                 anyhow!(
-                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA44) returned {:?}",
+                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA65) returned {:?}",
                     e
                 )
             })?;
@@ -319,7 +312,7 @@ impl PrivateKey {
     }
 
     pub const fn signature_bytes() -> usize {
-        RANDOMIZER_LEN + Self::PQ_SIGNATURE_LEN + Self::T_SIGNATURE_LEN
+        Self::PQ_SIGNATURE_LEN + Self::T_SIGNATURE_LEN
     }
 
     fn derive_PQ_public_key(&self) -> Option<PQPublicKey> {
@@ -410,15 +403,12 @@ impl PrivateKey {
 // linked spec) into this Signer trait's try_sign function, so we take `ctx` to be the empty string.
 impl Signer<Signature> for PrivateKey {
     fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
-        // randomizer = Random(32)
-        let randomizer: [u8; RANDOMIZER_LEN] = rand::random();
-        // M' :=  Prefix || Domain || len(ctx) || ctx || r || PH( M )
+        // M' :=  Prefix || Label || len(ctx) || ctx || PH( M )
         // (here M is our `msg` argument)
         let msg_hash = Sha512::digest(msg);
         let mut M_prime = PREFIX.to_vec();
-        M_prime.extend_from_slice(DOMAIN_SEPARATOR);
+        M_prime.extend_from_slice(LABEL);
         M_prime.push(0); // len(ctx) is 0, since ctx is the empty string (see comment above)
-        M_prime.extend_from_slice(&randomizer);
         M_prime.extend(msg_hash);
 
         // get at the private keys
@@ -428,18 +418,16 @@ impl Signer<Signature> for PrivateKey {
         } = self;
 
         // sign with ML-DSA
-        // (the domain separator being used as the `ctx` here refers to the underlying ML-DSA
+        // (the Label being used as the `ctx` here refers to the underlying ML-DSA
         // signature operation, and has nothing to do with the empty `ctx` string from the spec)
-        let pq_signature =
-            pq_backend_module::detached_sign_ctx(&M_prime, DOMAIN_SEPARATOR, pq_private_key);
+        let pq_signature = pq_backend_module::detached_sign_ctx(&M_prime, LABEL, pq_private_key);
 
         // sign with Ed25519
         let trad_signature =
             trad_backend_module::SigningKey::from_bytes(trad_private_key).sign(&M_prime);
 
         // build the result
-        let mut signature = randomizer.to_vec();
-        signature.extend_from_slice(pq_signature.as_bytes());
+        let mut signature = pq_signature.as_bytes().to_vec();
         signature.extend_from_slice(&trad_signature.to_bytes());
 
         Signature::try_from(signature.as_slice())
@@ -1069,8 +1057,8 @@ pub(super) unsafe extern "C" fn match_(
 pub(super) mod asn_definitions {
     pub use crate::asn_definitions::x509_ml_dsa_2025 as defns;
 
-    pub use defns::MLDSA44PrivateKey as PrivateKey;
-    pub use defns::MLDSA44PublicKey as PublicKey;
+    pub use defns::MLDSA65PrivateKey as PrivateKey;
+    pub use defns::MLDSA65PublicKey as PublicKey;
 }
 
 #[cfg(test)]
@@ -1122,13 +1110,13 @@ mod tests {
     fn const_sanity_assertions() {
         crate::tests::common::setup().expect("Failed to initialize test setup");
 
-        // Compare against https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-approximate-key-and-signatu
+        // Compare against https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-12.html#name-maximum-key-and-signature-s
         // except the SECRETKEY_LEN, which is 64 in that table because that document uses the
-        // old-fashioned idea that only the seed of the ML-DSA key should be stored
-        assert_eq!(PUBKEY_LEN, 1344);
-        assert_eq!(SECRETKEY_LEN, 2592);
-        assert_eq!(SIGNATURE_LEN, 2516);
+        // assumption that only the seed of the ML-DSA secret key should be stored
+        assert_eq!(PUBKEY_LEN, 1984);
+        assert_eq!(SECRETKEY_LEN, 4064);
+        assert_eq!(SIGNATURE_LEN, 3373);
 
-        assert_eq!(SECURITY_BITS, 128);
+        assert_eq!(SECURITY_BITS, 192);
     }
 }
