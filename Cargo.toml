@@ -14,7 +14,7 @@ name = "aurora"
 
 [features]
 # default = ["env_logger", "export"]
-default = ["env_logger", "default_adapters", "_composite_sigs_draft_12"]
+default = ["env_logger", "default_adapters", "_composite_sigs_draft_12_postWGLC"]
 env_logger = ["dep:env_logger"]
 export = []
 
