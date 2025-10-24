@@ -54,10 +54,16 @@ pub(crate) mod capabilities {
         impl TLSGroup for TLSGroupCap {
             /// The name of the group as given in the
             /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+            ///
+            /// **NOTE**: This TLS group used a pre-standards version of Kyber768.
+            /// It was **OBSOLETED** by [`draft-kwiatkowski-tls-ecdhe-mlkem-03`](https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem-03)
             const IANA_GROUP_NAME: &CStr = c"X25519Kyber768Draft00";
 
             /// The TLS group id value as given in the
             /// [IANA TLS Supported Groups registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8).
+            ///
+            /// **NOTE**: This TLS group used a pre-standards version of Kyber768.
+            /// It was **OBSOLETED** by [`draft-kwiatkowski-tls-ecdhe-mlkem-03`](https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-mlkem-03)
             const IANA_GROUP_ID: u32 = 25497;
 
             /// group name according to this provider
