@@ -1,6 +1,6 @@
 [package]
 name = "qubip_aurora"
-version = "0.9.0"
+version = "0.9.1+dev"
 edition = "2021"
 description = "A framework to build OpenSSL Providers tailored for the transition to post-quantum cryptography"
 license = "Apache-2.0"
@@ -55,7 +55,12 @@ pqclean_adapter = [
   "_composite_mldsa_eddsa",
 ]
 rustcrypto_adapter = ["dep:slh-dsa", "dep:der", "_transcoders_deps", "_slhdsa"]
-slhdsa_c_adapter = ["dep:slhdsa-c-rs", "dep:der", "_transcoders_deps", "_slhdsa"]
+slhdsa_c_adapter = [
+  "dep:slhdsa-c-rs",
+  "dep:der",
+  "_transcoders_deps",
+  "_slhdsa",
+]
 
 # This feature is _private_: it collects all the dependecies for transcoders
 _transcoders_deps = ["dep:pem", "dep:pkcs8", "dep:rasn"]
