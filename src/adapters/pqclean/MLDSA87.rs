@@ -118,9 +118,7 @@ pub(crate) mod capabilities {
         ///
         /// # NOTE
         ///
-        /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
-        /// > as IANA does not list ML-DSA in the registry yet.
-        /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+        /// > For ML-DSA we refer to ids reserved by <https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu>.
         ///
         /// We use default values for MAX_TLS (none), MIN_DTLS (disabled), MAX_DTLS (disabled)
         impl TLSSigAlg for TLSSigAlgCap {
@@ -130,9 +128,7 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
-            /// > as IANA does not list ML-DSA in the registry yet.
-            /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+            /// > For ML-DSA we refer to ids reserved by <https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu>.
             const SIGALG_IANA_NAME: &CStr = c"mldsa87";
 
             /// The TLS algorithm ID value as given in the [IANA TLS SignatureScheme registry][IANA:tls-signaturescheme].
@@ -141,9 +137,7 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For ML-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-tls-westerbaan-mldsa/>
-            /// > as IANA does not list ML-DSA in the registry yet.
-            /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+            /// > For ML-DSA we refer to ids reserved by <https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu>.
             const SIGALG_CODEPOINT: u32 = 0x0906; // 2310 in decimal notation
 
             /// A name for the signature algorithm as known by the provider.
