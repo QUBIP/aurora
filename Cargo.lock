@@ -1101,7 +1101,9 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "openssl_provider_forge"
-version = "0.9.0+dev"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5db736915b5b0f41330fd883be6222f8de18fcf946fda1a014185afedc41b82f"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -1271,7 +1273,7 @@ dependencies = [
 
 [[package]]
 name = "qubip_aurora"
-version = "0.9.0+dev"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "asn1",
@@ -1301,7 +1303,6 @@ dependencies = [
  "slh-dsa",
  "slhdsa-c-rs",
  "tempfile",
- "zeroize",
 ]
 
 [[package]]
