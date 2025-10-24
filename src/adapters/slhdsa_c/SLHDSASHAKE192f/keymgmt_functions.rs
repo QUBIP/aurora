@@ -1003,13 +1003,13 @@ mod tests {
     fn const_sanity_assertions() {
         crate::tests::common::setup().expect("Failed to initialize test setup");
 
-        // Compare against https://www.ietf.org/archive/id/draft-ietf-lamps-x509-slhdsa-09.html#appendix-B-2
+        // Compare against https://datatracker.ietf.org/doc/html/draft-ietf-lamps-x509-slhdsa-09#appendix-B-2
         assert_eq!(PUBKEY_LEN, 48);
         assert_eq!(SECRETKEY_LEN, 96);
         assert_eq!(SIGNATURE_LEN, 35664);
 
         // NIST Seucurity levels: https://csrc.nist.gov/glossary/term/fips_140_security_level
-        // Compare against https://www.ietf.org/archive/id/draft-prabel-pquip-pqc-guidance-00.html#name-conventions-and-definitions
+        // Compare against https://datatracker.ietf.org/doc/html/draft-prabel-pquip-pqc-guidance-00#name-conventions-and-definitions
         assert_eq!(SECURITY_BITS, 192);
     }
 }

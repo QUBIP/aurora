@@ -175,11 +175,11 @@ impl PublicKey {
     }
 }
 
-// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-12.html#name-prefix-label-and-ctx
+// https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-prefix-label-and-ctx
 const PREFIX: &[u8] = "CompositeAlgorithmSignatures2025".as_bytes();
 const LABEL: &[u8] = "COMPSIG-MLDSA44-Ed25519-SHA512".as_bytes();
 
-// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-12.html#name-verify
+// https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-verify
 // There's no way to pass additional context info (`ctx` in the linked spec) into this Verifier
 // trait's verify function, so we take `ctx` to be the empty string.
 impl Verifier<Signature> for PublicKey {
@@ -398,7 +398,7 @@ impl PrivateKey {
     }
 }
 
-// https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html#name-sign
+// https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-06#name-sign
 // Just like with the Verifier above, there's no way to pass additional context info (`ctx` in the
 // linked spec) into this Signer trait's try_sign function, so we take `ctx` to be the empty string.
 impl Signer<Signature> for PrivateKey {
@@ -1110,7 +1110,7 @@ mod tests {
     fn const_sanity_assertions() {
         crate::tests::common::setup().expect("Failed to initialize test setup");
 
-        // Compare against https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-12.html#name-maximum-key-and-signature-s
+        // Compare against https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-maximum-key-and-signature-s
         // except the SECRETKEY_LEN, which is 64 in that table because that document uses the
         // assumption that only the seed of the ML-DSA secret key should be stored
         assert_eq!(PUBKEY_LEN, 1344);

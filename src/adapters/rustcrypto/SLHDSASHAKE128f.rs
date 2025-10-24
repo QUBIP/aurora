@@ -65,7 +65,7 @@ pub(crate) const NAME: &CStr = c"SLH-DSA-SHAKE-128f";
 pub(crate) const LONG_NAME: &CStr = c"id-slh-dsa-shake-128f";
 
 /// OID should be a substring of NAMES
-/// From https://www.ietf.org/archive/id/draft-ietf-lamps-x509-slhdsa-09.html#section-3-7
+/// From https://datatracker.ietf.org/doc/html/draft-ietf-lamps-x509-slhdsa-09#section-3-7
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 27);
 pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
     pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.3.27");

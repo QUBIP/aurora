@@ -121,7 +121,7 @@ pub(crate) mod capabilities {
         ///
         /// # NOTE
         ///
-        /// > For ML-DSA we refer to ids reserved by <https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu>.
+        /// > For ML-DSA we refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu>.
         ///
         /// We use default values for MAX_TLS (none), MIN_DTLS (disabled), MAX_DTLS (disabled)
         impl TLSSigAlg for TLSSigAlgCap {
@@ -131,7 +131,7 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For ML-DSA we refer to ids reserved by <https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu>.
+            /// > For ML-DSA we refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu>.
             const SIGALG_IANA_NAME: &CStr = c"mldsa44";
 
             /// The TLS algorithm ID value as given in the [IANA TLS SignatureScheme registry][IANA:tls-signaturescheme].
@@ -140,7 +140,7 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For ML-DSA we refer to ids reserved by <https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu>.
+            /// > For ML-DSA we refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu>.
             const SIGALG_CODEPOINT: u32 = 0x0904; // 2308 in decimal notation
 
             /// A name for the signature algorithm as known by the provider.
