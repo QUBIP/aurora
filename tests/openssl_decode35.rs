@@ -1,3 +1,5 @@
+#![deny(unexpected_cfgs)]
+
 mod common;
 
 use common::openssl;
@@ -50,47 +52,42 @@ pub trait TestParam {
     }
 }
 
-#[cfg(feature = "mldsa")]
-struct MLDSA44Tests();
-#[cfg(feature = "mldsa")]
-impl TestParam for MLDSA44Tests {
-    const ALG_DIR: &str = "mldsa44";
-}
+mod test_structs {
+    #![allow(dead_code)]
 
-#[cfg(feature = "mldsa")]
-struct MLDSA65Tests();
-#[cfg(feature = "mldsa")]
-impl TestParam for MLDSA65Tests {
-    const ALG_DIR: &str = "mldsa65";
-}
+    use super::*;
 
-#[cfg(feature = "mldsa")]
-struct MLDSA87Tests();
-#[cfg(feature = "mldsa")]
-impl TestParam for MLDSA87Tests {
-    const ALG_DIR: &str = "mldsa87";
-}
+    pub struct MLDSA44Tests();
+    impl TestParam for MLDSA44Tests {
+        const ALG_DIR: &str = "mldsa44";
+    }
 
-#[cfg(feature = "slhdsa")]
-struct SLHDSASHAKE128fTests();
-#[cfg(feature = "slhdsa")]
-impl TestParam for SLHDSASHAKE128fTests {
-    const ALG_DIR: &str = "slhdsa_shake_128f";
-}
+    pub struct MLDSA65Tests();
+    impl TestParam for MLDSA65Tests {
+        const ALG_DIR: &str = "mldsa65";
+    }
 
-#[cfg(feature = "slhdsa")]
-struct SLHDSASHAKE192fTests();
-#[cfg(feature = "slhdsa")]
-impl TestParam for SLHDSASHAKE192fTests {
-    const ALG_DIR: &str = "slhdsa_shake_192f";
-}
+    pub struct MLDSA87Tests();
+    impl TestParam for MLDSA87Tests {
+        const ALG_DIR: &str = "mldsa87";
+    }
 
-#[cfg(feature = "slhdsa")]
-struct SLHDSASHAKE256sTests();
-#[cfg(feature = "slhdsa")]
-impl TestParam for SLHDSASHAKE256sTests {
-    const ALG_DIR: &str = "slhdsa_shake_256s";
+    pub struct SLHDSASHAKE128fTests();
+    impl TestParam for SLHDSASHAKE128fTests {
+        const ALG_DIR: &str = "slhdsa_shake_128f";
+    }
+
+    pub struct SLHDSASHAKE192fTests();
+    impl TestParam for SLHDSASHAKE192fTests {
+        const ALG_DIR: &str = "slhdsa_shake_192f";
+    }
+
+    pub struct SLHDSASHAKE256sTests();
+    impl TestParam for SLHDSASHAKE256sTests {
+        const ALG_DIR: &str = "slhdsa_shake_256s";
+    }
 }
+use test_structs::*;
 
 #[allow(unused_macros)]
 macro_rules! generate_tests {
@@ -116,9 +113,9 @@ macro_rules! generate_all_tests {
     }
 }
 
-#[cfg(feature = "mldsa")]
+#[cfg(feature = "_mldsa")]
 generate_all_tests!(MLDSA44Tests, MLDSA65Tests, MLDSA87Tests,);
-#[cfg(feature = "slhdsa")]
+#[cfg(feature = "_slhdsa")]
 generate_all_tests!(
     SLHDSASHAKE128fTests,
     SLHDSASHAKE192fTests,

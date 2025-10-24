@@ -1,6 +1,6 @@
 [package]
 name = "qubip_aurora"
-version = "0.9.0+dev"
+version = "0.9.0-rc1"
 edition = "2021"
 description = "A framework to build OpenSSL Providers tailored for the transition to post-quantum cryptography"
 license = "Apache-2.0"
@@ -14,38 +14,51 @@ name = "aurora"
 
 [features]
 # default = ["env_logger", "export"]
-default = ["env_logger", "default_adapters", "_composite_sigs_draft_12_postWGLC"]
+default = [
+  "env_logger",
+  "default_adapters",
+  "_composite_sigs_draft_12_postWGLC",
+]
+default_adapters = [
+  "libcrux_adapter",
+  "pqclean_adapter",
+  "rustcrypto_adapter",
+  "slhdsa_c_adapter",
+]
 env_logger = ["dep:env_logger"]
 export = []
 
-mldsa = []
-slhdsa = []
+# One (and not more than one!) of the _draft_N features must be enabled to support `_composite_mldsa_eddsa`!
+# These features are _experimental_: they will be removed in an upcoming release once the composite_sigs draft graduates to RFC.
+# You have been warned: DO NOT DEPEND ON THEM!
 _composite_sigs_draft_07 = []
 _composite_sigs_draft_12 = []
 _composite_sigs_draft_12_postWGLC = []
-# mldsa_eddsa requires one (and not more than one!) of the _draft_N features to be enabled!
-mldsa_eddsa = []
-mlkem_hybrids = []
 
-default_adapters = ["libcrux_adapter", "pqclean_adapter", "rustcrypto_adapter", "slhdsa_c_adapter"]
+# These features are _private_: they are automatically enabled by the selection of adapters.
+# DO NOT MANUALLY ENABLE THEM IN CARGO.TOML
+_mldsa = []
+_slhdsa = []
+_mlkem_hybrids = []
+_composite_mldsa_eddsa = []
 
-libcrux_adapter = ["dep:libcrux-kem", "dep:kem", "mlkem_hybrids"]
-libcrux_draft_adapter = ["dep:libcrux-kem", "dep:kem", "mlkem_hybrids"]
+libcrux_adapter = ["dep:libcrux-kem", "dep:kem", "_mlkem_hybrids"]
+libcrux_draft_adapter = ["dep:libcrux-kem", "dep:kem", "_mlkem_hybrids"]
 pqclean_adapter = [
-    "dep:pqcrypto-mldsa",
-    "dep:pqcrypto-traits",
-    "dep:ml-dsa",
-    "dep:ed25519-dalek",
-    "dep:sha2",
-    "_transcoders_deps",
-    "mldsa",
-    "mldsa_eddsa",
+  "dep:pqcrypto-mldsa",
+  "dep:pqcrypto-traits",
+  "dep:ml-dsa",
+  "dep:ed25519-dalek",
+  "dep:sha2",
+  "_transcoders_deps",
+  "_mldsa",
+  "_composite_mldsa_eddsa",
 ]
-rustcrypto_adapter = ["dep:slh-dsa", "dep:der", "_transcoders_deps", "slhdsa"]
-slhdsa_c_adapter = ["dep:slhdsa-c-rs", "dep:der", "_transcoders_deps", "slhdsa"]
+rustcrypto_adapter = ["dep:slh-dsa", "dep:der", "_transcoders_deps", "_slhdsa"]
+slhdsa_c_adapter = ["dep:slhdsa-c-rs", "dep:der", "_transcoders_deps", "_slhdsa"]
 
+# This feature is _private_: it collects all the dependecies for transcoders
 _transcoders_deps = ["dep:pem", "dep:pkcs8", "dep:rasn"]
-
 
 [dependencies]
 function_name = "0.3"

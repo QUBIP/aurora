@@ -1,3 +1,5 @@
+#![deny(unexpected_cfgs)]
+
 #[macro_use]
 extern crate log;
 

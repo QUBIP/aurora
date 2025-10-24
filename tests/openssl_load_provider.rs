@@ -1,3 +1,5 @@
+#![deny(unexpected_cfgs)]
+
 mod common;
 
 use common::run_openssl_with_aurora;
