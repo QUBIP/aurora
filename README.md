@@ -115,16 +115,16 @@ The current supported algorithms are summarized in the following tables.
 
 #### Digital Signatures
 
-| Algorithm            | Adapter   | PQ/T Hybrid | [_IANA TLS SignatureScheme_](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme) id |
-| -------------------- | --------- | ----------- | ---------------- |
-| _ML-DSA-44_          | pqclean | ❌ Pure-PQC | [`0x0904` (`2308`)](https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu) |
-| _ML-DSA-65_          | pqclean | ❌ Pure-PQC | [`0x0905` (`2309`)](https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu) |
-| _ML-DSA-87_          | pqclean | ❌ Pure-PQC | [`0x0906` (`2310`)](https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu) |
-| _SLH-DSA-SHAKE-128f_ | rustcrypto | ❎ Exempt | [`0x0918` (`2328`)](https://www.ietf.org/archive/id/draft-reddy-tls-slhdsa-01.html#name-iana-considerations) |
-| _SLH-DSA-SHAKE-192f_ | slhdsa_c | ❎ Exempt | [`0x091A` (`2330`)](https://www.ietf.org/archive/id/draft-reddy-tls-slhdsa-01.html#name-iana-considerations) |
-| _SLH-DSA-SHAKE-256s_ | slhdsa_c | ❎ Exempt | [`0x091B` (`2331`)](https://www.ietf.org/archive/id/draft-reddy-tls-slhdsa-01.html#name-iana-considerations) |
-| _ML-DSA-44_ED25519_ | pqclean | ✅ Composite [`draft-ietf-lamps-pq-composite-sigs@12`](https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/12/) | [`0x090A` (`2314`)](https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations) |
-| _ML-DSA-65_ED25519_ | pqclean | ✅ Composite [`draft-ietf-lamps-pq-composite-sigs@12`](https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/12/) | [`0x090B` (`2315`)](https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations) |
+| Algorithm            | Adapter   | PQ/T Hybrid | [_IANA TLS SignatureScheme_](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme) id | OID |
+| -------------------- | --------- | ----------- | ---------------- | --- |
+| _ML-DSA-44_          | pqclean | ❌ Pure-PQC | [`0x0904` (`2308`)](https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu) | [`2.16.840.1.101.3.4.3.17`](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration) |
+| _ML-DSA-65_          | pqclean | ❌ Pure-PQC | [`0x0905` (`2309`)](https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu) | [`2.16.840.1.101.3.4.3.18`](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration) |
+| _ML-DSA-87_          | pqclean | ❌ Pure-PQC | [`0x0906` (`2310`)](https://www.ietf.org/archive/id/draft-ietf-tls-mldsa-01.html#name-ml-dsa-signaturescheme-valu) | [`2.16.840.1.101.3.4.3.19`](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration) |
+| _SLH-DSA-SHAKE-128f_ | rustcrypto | ❎ Exempt | [`0x0918` (`2328`)](https://www.ietf.org/archive/id/draft-reddy-tls-slhdsa-01.html#name-iana-considerations) | [`2.16.840.1.101.3.4.3.27`](https://www.ietf.org/archive/id/draft-ietf-lamps-x509-slhdsa-09.html#section-3-7) |
+| _SLH-DSA-SHAKE-192f_ | slhdsa_c | ❎ Exempt | [`0x091A` (`2330`)](https://www.ietf.org/archive/id/draft-reddy-tls-slhdsa-01.html#name-iana-considerations) | [`2.16.840.1.101.3.4.3.29`](https://www.ietf.org/archive/id/draft-ietf-lamps-x509-slhdsa-09.html#section-3-7) |
+| _SLH-DSA-SHAKE-256s_ | slhdsa_c | ❎ Exempt | [`0x091B` (`2331`)](https://www.ietf.org/archive/id/draft-reddy-tls-slhdsa-01.html#name-iana-considerations) | [`2.16.840.1.101.3.4.3.30`](https://www.ietf.org/archive/id/draft-ietf-lamps-x509-slhdsa-09.html#section-3-7) |
+| _ML-DSA-44_ED25519_ | pqclean | ✅ Composite [`draft-ietf-lamps-pq-composite-sigs@12`](https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/12/) | [`0x090A` (`2314`)](https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations) | [`1.3.6.1.5.5.7.6.39`](https://github.com/lamps-wg/draft-composite-sigs/blob/5ba4655fa1ae3b3b4c112c6cd8c97a93e6d900c3/src/algParams.md) |
+| _ML-DSA-65_ED25519_ | pqclean | ✅ Composite [`draft-ietf-lamps-pq-composite-sigs@12`](https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/12/) | [`0x090B` (`2315`)](https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations) | [`1.3.6.1.5.5.7.6.48`](https://github.com/lamps-wg/draft-composite-sigs/blob/5ba4655fa1ae3b3b4c112c6cd8c97a93e6d900c3/src/algParams.md) |
 
 > [!Note]
 > The `ML-DSA-{44,65}_ED25519` algorithms also uses `ed25519-dalek`
