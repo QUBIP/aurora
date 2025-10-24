@@ -143,7 +143,7 @@ pub(crate) mod capabilities {
             ///
             /// > For SLH-DSA we currently refer to ids reserved by <https://datatracker.ietf.org/doc/draft-reddy-tls-slhdsa/01/>
             /// > as IANA does not list SLH-DSA in the registry yet.
-            const SIGALG_CODEPOINT: u32 = 0x091A; // 2330 in decimal notation
+            const SIGALG_CODEPOINT: u32 = 0x0918; // 2328 in decimal notation
 
             /// A name for the signature algorithm as known by the provider.
             ///
