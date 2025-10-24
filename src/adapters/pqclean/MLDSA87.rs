@@ -64,6 +64,9 @@ pub(crate) const NAME: &CStr = c"ML-DSA-87";
 pub(crate) const LONG_NAME: &CStr = c"id-ml-dsa-87";
 
 /// OID should be a substring of NAMES
+///
+/// This OID is defined in
+/// <https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration>.
 pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 19);
 pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
     pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.3.19");
