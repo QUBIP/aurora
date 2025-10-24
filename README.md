@@ -107,11 +107,10 @@ The current supported algorithms are summarized in the following tables.
 
 #### Key Encapsulation Methods
 
-| Algorithm                               | Adapter       | PQ/T Hybrid |
-| --------------------------------------- | ------------- | ----------- |
-| X25519MLKEM768                          | libcrux       | ✅           |
-| SecP256r1MLKEM768                       | libcrux       | ✅           |
-| X25519MLKEM768Draft00 (⚠️  experimental) | libcrux_draft | ✅           |
+| Algorithm                               | Adapter       | PQ/T Hybrid | [_IANA TLS Supported Groups_](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8) id |
+| --------------------------------------- | ------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------- |
+| X25519MLKEM768                          | libcrux       | ✅           | [`0x11EC` (`4588`)](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8) |
+| SecP256r1MLKEM768                       | libcrux       | ✅           | [`0x11EB` (`4587`)](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8) |
 
 #### Digital Signatures
 
