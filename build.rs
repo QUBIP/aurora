@@ -1,3 +1,4 @@
+use std::env;
 use std::error::Error;
 use std::process::Command;
 
@@ -67,6 +68,13 @@ fn compile_with_rasn() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
+    if env::var("PROFILE").unwrap_or_default() != "debug" {
+        panic!(
+            "This project is NOT production-ready. Thus, \
+            the only compilation profile available is `debug`."
+        );
+    }
+
     // Always rerun if the variable FORCE_REBUILD changes
     println!("cargo:rerun-if-env-changed=FORCE_REBUILD");
 
