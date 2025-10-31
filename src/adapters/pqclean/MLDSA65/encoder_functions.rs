@@ -722,3 +722,110 @@ impl DoesSelection for SubjectPublicKeyInfo2PEM {
 
 // We can use the same does_selection function as SubjectPublicKeyInfo2DER, so there's no need to
 // call the make_does_selection_fn macro again.
+
+pub(crate) struct Structureless2Text();
+impl Encoder for Structureless2Text {
+    const PROPERTY_DEFINITION: &'static CStr =
+        c"x.author='QUBIP',x.qubip.adapter='pqclean',output='text'";
+
+    const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
+        mod dispatch_table_module {
+            use super::*;
+            use bindings::{OSSL_FUNC_encoder_does_selection_fn, OSSL_FUNC_ENCODER_DOES_SELECTION};
+            use bindings::{OSSL_FUNC_encoder_encode_fn, OSSL_FUNC_ENCODER_ENCODE};
+            use bindings::{OSSL_FUNC_encoder_freectx_fn, OSSL_FUNC_ENCODER_FREECTX};
+            use bindings::{OSSL_FUNC_encoder_newctx_fn, OSSL_FUNC_ENCODER_NEWCTX};
+
+            // TODO reenable typechecking in dispatch_table_entry macro and make sure these still compile!
+            // https://docs.openssl.org/3.2/man7/provider-decoder/
+            pub(super) const TEXT_ENCODER_FUNCTIONS: &[OSSL_DISPATCH] = &[
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_NEWCTX,
+                    OSSL_FUNC_encoder_newctx_fn,
+                    encoder_functions::newctx
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_FREECTX,
+                    OSSL_FUNC_encoder_freectx_fn,
+                    encoder_functions::freectx
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_DOES_SELECTION,
+                    OSSL_FUNC_encoder_does_selection_fn,
+                    encoder_functions::does_selection_SPKI
+                ),
+                dispatch_table_entry!(
+                    OSSL_FUNC_ENCODER_ENCODE,
+                    OSSL_FUNC_encoder_encode_fn,
+                    encoder_functions::encodeStructurelessToText
+                ),
+                OSSL_DISPATCH::END,
+            ];
+        }
+
+        dispatch_table_module::TEXT_ENCODER_FUNCTIONS
+    };
+}
+
+#[named]
+pub(super) unsafe extern "C" fn encodeStructurelessToText(
+    vencoderctx: *mut c_void,
+    out: *mut OSSL_CORE_BIO,
+    obj_raw: *const c_void,
+    _obj_abstract: *const OSSL_PARAM,
+    selection: c_int,
+    _cb: OSSL_PASSPHRASE_CALLBACK,
+    _cbarg: *mut c_void,
+) -> c_int {
+    const SUCCESS: c_int = 1;
+    const ERROR_RET: c_int = 0;
+    trace!(target: log_target!(), "{}", "Called!");
+
+    debug!(target: log_target!(), "Got selection: {selection:#b}");
+    if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
+        error!(target: log_target!(), "Invalid selection: {selection:#?}");
+        return ERROR_RET;
+    }
+
+    let encoderctx: &EncoderContext = handleResult!(vencoderctx.try_into());
+
+    if obj_raw.is_null() {
+        error!(target: log_target!(), "No provider-native object passed to encoder");
+        return ERROR_RET;
+    }
+
+    let keypair: &KeyPair = handleResult!(obj_raw.try_into());
+    match &keypair.public {
+        Some(key) => {
+            let key_bytes = key.encode();
+            use itertools::Itertools;
+            let formatted_key_bytes: String = key_bytes
+                .iter()
+                .map(|b| format!("{:02x}", b))
+                .chunks(15)
+                .into_iter()
+                .map(|mut row| "    ".to_owned() + &row.join(":"))
+                .join(":\n");
+            let output = "Public key bytes:\n".to_owned() + &formatted_key_bytes + "\n";
+            match encoderctx.provctx.BIO_write_ex(out, &output.into_bytes()) {
+                Ok(_bytes_written) => {}
+                Err(e) => {
+                    error!(target: log_target!(), "Failure using BIO_write_ex() upcall pointer: {e:?}");
+                    return ERROR_RET;
+                }
+            };
+            return SUCCESS;
+        }
+        None => {
+            error!(target: log_target!(), "No public key");
+            return ERROR_RET;
+        }
+    }
+}
+
+impl DoesSelection for Structureless2Text {
+    const SELECTION_MASK: Selection = Selection::PUBLIC_KEY;
+}
+
+// We can use the same does_selection function as SubjectPublicKeyInfo2DER, so there's no need to
+// call the make_does_selection_fn macro again.

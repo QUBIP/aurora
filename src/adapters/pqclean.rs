@@ -90,6 +90,7 @@ impl AdapterContextTrait for PQCleanAdapter {
             encoder_to_register!(MLDSA65, ENCODER_PrivateKeyInfo2PEM),
             encoder_to_register!(MLDSA65, ENCODER_SubjectPublicKeyInfo2DER),
             encoder_to_register!(MLDSA65, ENCODER_SubjectPublicKeyInfo2PEM),
+            encoder_to_register!(MLDSA65, ENCODER_Structureless2Text),
             // MLDSA87
             encoder_to_register!(MLDSA87, ENCODER_PrivateKeyInfo2DER),
             encoder_to_register!(MLDSA87, ENCODER_PrivateKeyInfo2PEM),
