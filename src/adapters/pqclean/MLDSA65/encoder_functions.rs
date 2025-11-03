@@ -798,15 +798,9 @@ pub(super) unsafe extern "C" fn encodeStructurelessToText(
     match &keypair.public {
         Some(key) => {
             let key_bytes = key.encode();
-            use itertools::Itertools;
-            let formatted_key_bytes: String = key_bytes
-                .iter()
-                .map(|b| format!("{:02x}", b))
-                .chunks(15)
-                .into_iter()
-                .map(|mut row| "    ".to_owned() + &row.join(":"))
-                .join(":\n");
-            let output = "Public key bytes:\n".to_owned() + &formatted_key_bytes + "\n";
+            use crate::adapters::common::helpers::format_hex_bytes;
+            let formatted_key_bytes = format_hex_bytes(15, 4, &key_bytes);
+            let output = format!("Public key bytes:\n{}\n", formatted_key_bytes);
             match encoderctx.provctx.BIO_write_ex(out, &output.into_bytes()) {
                 Ok(_bytes_written) => {}
                 Err(e) => {
