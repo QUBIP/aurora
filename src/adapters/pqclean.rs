@@ -103,11 +103,13 @@ impl AdapterContextTrait for PQCleanAdapter {
             encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2PEM),
             encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2DER),
             encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_Structureless2Text),
             // MLDSA44_Ed25519
             encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2DER),
             encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2PEM),
             encoder_to_register!(MLDSA44_Ed25519, ENCODER_SubjectPublicKeyInfo2DER),
             encoder_to_register!(MLDSA44_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
+            encoder_to_register!(MLDSA44_Ed25519, ENCODER_Structureless2Text),
         ]);
 
         handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
