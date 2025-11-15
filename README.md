@@ -119,9 +119,9 @@ The current supported algorithms are summarized in the following tables.
 | _ML-DSA-44_          | pqclean    | ❌ Pure-PQC                                                                   | [`0x0904` (`2308`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.17`][nist:csor:algs]                            |
 | _ML-DSA-65_          | pqclean    | ❌ Pure-PQC                                                                   | [`0x0905` (`2309`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.18`][nist:csor:algs]                            |
 | _ML-DSA-87_          | pqclean    | ❌ Pure-PQC                                                                   | [`0x0906` (`2310`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.19`][nist:csor:algs]                            |
-| _SLH-DSA-SHAKE-128f_ | rustcrypto | ❎ Exempt                                                                     | [`0x0918` (`2328`)][ID-reddy-tls-slhdsa-01:sigscheme]          | [`2.16.840.1.101.3.4.3.27`][ID-lamps-x509-slhdsa-09:s3.7]              |
-| _SLH-DSA-SHAKE-192f_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091A` (`2330`)][ID-reddy-tls-slhdsa-01:sigscheme]          | [`2.16.840.1.101.3.4.3.29`][ID-lamps-x509-slhdsa-09:s3.7]              |
-| _SLH-DSA-SHAKE-256s_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091B` (`2331`)][ID-reddy-tls-slhdsa-01:sigscheme]          | [`2.16.840.1.101.3.4.3.30`][ID-lamps-x509-slhdsa-09:s3.7]              |
+| _SLH-DSA-SHAKE-128f_ | rustcrypto | ❎ Exempt                                                                     | [`0x0918` (`2328`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.27`][ID-lamps-x509-slhdsa-09:s3.7]              |
+| _SLH-DSA-SHAKE-192f_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091A` (`2330`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.29`][ID-lamps-x509-slhdsa-09:s3.7]              |
+| _SLH-DSA-SHAKE-256s_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091B` (`2331`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.30`][ID-lamps-x509-slhdsa-09:s3.7]              |
 | _ML-DSA-44_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@12`][ID-lamps-pq-composite-sigs-12] | [`0x090A` (`2314`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.39`][ID-lamps-pq-composite-sigs:GH:post-WGLC:params] |
 | _ML-DSA-65_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@12`][ID-lamps-pq-composite-sigs-12] | [`0x090B` (`2315`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.48`][ID-lamps-pq-composite-sigs:GH:post-WGLC:params] |
 
@@ -134,9 +134,28 @@ The current supported algorithms are summarized in the following tables.
 [ID-lamps-x509-slhdsa-09:s3.7]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-x509-slhdsa-09#section-3-7
 [ID-lamps-pq-composite-sigs:GH:post-WGLC:params]: https://github.com/lamps-wg/draft-composite-sigs/blob/5ba4655fa1ae3b3b4c112c6cd8c97a93e6d900c3/src/algParams.md
 
-> [!Note]
-> The `ML-DSA-{44,65}_ED25519` algorithms also uses `ed25519-dalek`
-> for the traditional part of the signature.
+> [!NOTE]
+> - The `ML-DSA-{44,65}_ED25519` algorithms also uses `ed25519-dalek`
+>   for the traditional part of the signature.
+> - Relevant EU transition recommendations mandate hybrids for the PQC
+>   transition: in QUBIP we provide pure `ML-DSA` options for
+>   experimentation only.
+>   In QUBIP's Internet Browsing Pilot we avoid pure `ML-DSA`
+>   deployments in favor of
+>   ["Composite `ML-DSA`"][ID-lamps-pq-composite-sigs-12]
+>   and consistently recommend this approach.
+> - Transition recommendations that mandate hybrids for the PQC
+>   transition usually mark `SLH-DSA` as explicitly exempt from the
+>   PQ/T Hybrid requirement.
+> - In the general TLS use-cases, adopting `SLH-DSA` for signing the
+>   handshake is not recommended.
+>   `aurora` supports the registered
+>   [IANA TLS SignatureScheme][iana:tls:sigscheme] codepoints
+>   for experimentation only,
+>   and in QUBIP's Internet Browsing Pilot we do not use `SLH-DSA` for
+>   End-Entity certificates.
+>   More details about related discussion are available on the
+>   [IETF mailing list](https://mailarchive.ietf.org/arch/search/?q=%22draft-reddy-tls-slhdsa%22).
 
 <!--
 ## Getting Started
