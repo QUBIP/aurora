@@ -29,7 +29,6 @@
 <details open="open">
 <summary>Table of Contents</summary>
 
-- [About](#about)
 <!--
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
@@ -84,7 +83,7 @@ of PQC algorithms and implementations:
 > The name of the project is Aurora.
 > The name of the repository follows `Github` conventions,
 > while the corresponding crate name on `crates.io` was not available.
-> So the formers is `aurora`, while the latter is `qubip_aurora`.
+> So the former is `aurora`, while the latter is `qubip_aurora`.
 >
 > This crate builds `cdylib` named `aurora`.
 > On Linux this usually means that the build output is called
@@ -135,7 +134,7 @@ The current supported algorithms are summarized in the following tables.
 [ID-lamps-pq-composite-sigs:GH:post-WGLC:params]: https://github.com/lamps-wg/draft-composite-sigs/blob/5ba4655fa1ae3b3b4c112c6cd8c97a93e6d900c3/src/algParams.md
 
 > [!NOTE]
-> - The `ML-DSA-{44,65}_ED25519` algorithms also uses `ed25519-dalek`
+> - The `ML-DSA-{44,65}_ED25519` algorithms also use `ed25519-dalek`
 >   for the traditional part of the signature.
 > - Relevant EU transition recommendations mandate hybrids for the PQC
 >   transition: in QUBIP we provide pure `ML-DSA` options for
@@ -147,7 +146,7 @@ The current supported algorithms are summarized in the following tables.
 > - Transition recommendations that mandate hybrids for the PQC
 >   transition usually mark `SLH-DSA` as explicitly exempt from the
 >   PQ/T Hybrid requirement.
-> - In the general TLS use-cases, adopting `SLH-DSA` for signing the
+> - In the general TLS use cases, adopting `SLH-DSA` for signing the
 >   handshake is not recommended.
 >   `aurora` supports the registered
 >   [IANA TLS SignatureScheme][iana:tls:sigscheme] codepoints
@@ -256,7 +255,7 @@ See [LICENSE][LICENSE] for more information.
 
 ## Acknowledgements
 
-This work has been developed within the QUBIP project (<https://www.qubip.eu>),
+This work has been developed as part of the QUBIP project (<https://www.qubip.eu>),
 funded by the European Union under the Horizon Europe framework programme
 [grant agreement no. 101119746](https://doi.org/10.3030/101119746).
 
