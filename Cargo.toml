@@ -92,6 +92,7 @@ pqcrypto-traits = { version = "0.3.5", optional = true }
 sha2 = { version = "0.10.9", optional = true }
 itertools = "0.14.0"
 base64 = "0.22.1"
+wycheproof = { git = "https://github.com/eferollo/wycheproof-rs", branch = "composite-mldsa-draft" }
 
 [build-dependencies]
 rasn-compiler = "0.11.0"

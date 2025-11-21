@@ -1256,4 +1256,27 @@ mod tests {
 
         pk.verify(&msg, &sig).expect("Verify failed");
     }
+
+    use wycheproof::composite_mldsa_verify;
+
+    #[test]
+    fn test_import_pubkey_verify_signature_wycheproof() {
+        let test_set =
+            composite_mldsa_verify::TestSet::load(composite_mldsa_verify::TestName::MlDsa65Ed25519)
+                .unwrap_or_else(|e| panic!("Failed to load verify test set: {e}"));
+
+        // right now the only composite verification test in wycheproof is one that should pass; if
+        // others are added later that should fail, this code will need more conditionals
+        for group in test_set.test_groups {
+            let input_pk = group.pubkey;
+            let pk = PublicKey::decode(&input_pk).expect("Failure while decoding Public Key");
+            eprintln!("\n\nPublic Key: {pk:?}\n");
+            for test in &group.tests {
+                let sig =
+                    Signature::try_from(test.sig.as_ref()).expect("Signature decoding failed");
+
+                pk.verify(&test.msg, &sig).expect("Verify failed");
+            }
+        }
+    }
 }
