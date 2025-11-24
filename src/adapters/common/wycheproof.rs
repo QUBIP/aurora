@@ -1,5 +1,6 @@
 use crate::forge::crypto::signature;
-use wycheproof::mldsa_verify::{self, *};
+use wycheproof::composite_mldsa_verify;
+use wycheproof::mldsa_verify;
 use wycheproof::TestResult;
 
 pub trait SigAlgVerifyVariant {
@@ -68,7 +69,9 @@ macro_rules! impl_sigalg_verify_variant {
 ///
 /// Tests are designed to continue running after a failure rather than panicking, so that all
 /// failures can be reported together.
-pub fn run_mldsa_wycheproof_verify_tests<MlDsaParamSet: SigAlgVerifyVariant>(test_name: TestName) {
+pub fn run_mldsa_wycheproof_verify_tests<MlDsaParamSet: SigAlgVerifyVariant>(
+    test_name: mldsa_verify::TestName,
+) {
     let test_set = mldsa_verify::TestSet::load(test_name)
         .unwrap_or_else(|e| panic!("Failed to load sign test set: {e}"));
     let mut passed = 0;
@@ -144,6 +147,107 @@ pub fn run_mldsa_wycheproof_verify_tests<MlDsaParamSet: SigAlgVerifyVariant>(tes
             } else {
                 MlDsaParamSet::verify(&pubkey, &msg, &sig)
             };
+
+            let expected = &test.result;
+            let passed_case = match (expected, result.is_ok()) {
+                (TestResult::Valid, true) => true,
+                (TestResult::Invalid, false) => true,
+                _ => false,
+            };
+            if passed_case {
+                println!("✅ tcId {}: {}", test.tc_id, test.comment);
+                passed += 1;
+            } else {
+                println!(
+                    "❌ tcId {}: {} — expected {:?}, got {:?}",
+                    test.tc_id, test.comment, expected, result
+                );
+                failed += 1;
+            }
+            continue;
+        }
+    }
+
+    println!(
+        "\n✔️ Passed: {passed} | ❌ Failed: {failed} | Total: {}",
+        passed + failed
+    );
+    assert_eq!(failed, 0, "Some Wycheproof test cases failed");
+}
+
+pub fn run_composite_mldsa_wycheproof_verify_tests<CompositeMlDsaParamSet: SigAlgVerifyVariant>(
+    test_name: composite_mldsa_verify::TestName,
+) {
+    let test_set = composite_mldsa_verify::TestSet::load(test_name)
+        .unwrap_or_else(|e| panic!("Failed to load sign test set: {e}"));
+    let mut passed = 0;
+    let mut failed = 0;
+
+    for group in test_set.test_groups {
+        /*
+         * In Wycheproof, each entry in "testGroups" defines a public key that
+         * is used for all tests in the associated "tests" array. If the public
+         * key is invalid, the "tests" array usually contains only one test
+         * case explaining the reason for the invalid key.
+         *
+         * Therefore, when public key decoding fails, we immediately validate
+         * that this failure matches the expected outcome for all tests in the
+         * group, then skip to the next "testGroup". If the public key is
+         * valid, we continue and execute all tests within that group.
+         */
+        let pubkey_bytes = group.pubkey.as_ref();
+        let pubkey = match CompositeMlDsaParamSet::decode_pubkey(&pubkey_bytes) {
+            Ok(pk) => pk,
+            Err(e) => {
+                for test in &group.tests {
+                    if test.result == TestResult::Invalid {
+                        println!(
+                            "✅ tcId {}: {} — pubkey decode failed as expected",
+                            test.tc_id, test.comment,
+                        );
+                        passed += 1;
+                    } else {
+                        println!(
+                            "❌ tcId {}: {} — expected Valid, but pubkey \
+                                decode failed: {:?}",
+                            test.tc_id, test.comment, e
+                        );
+                        failed += 1;
+                    }
+                }
+                /* Jump to next group */
+                continue;
+            }
+        };
+
+        for test in &group.tests {
+            let msg = test.msg.as_ref();
+            let input_sig = test.sig.as_ref();
+            let sig = match CompositeMlDsaParamSet::decode_signature(&input_sig) {
+                Ok(sig) => sig,
+                Err(e) => {
+                    let invalid = TestResult::Invalid == test.result;
+                    if invalid {
+                        println!(
+                            "✅ tcId {}: {} — signature decode failed as \
+                                expected",
+                            test.tc_id, test.comment
+                        );
+                        passed += 1;
+                    } else {
+                        println!(
+                            "❌ tcId {}: {} — Expected Valid, but signature \
+                                decode failed: {}",
+                            test.tc_id, test.comment, e
+                        );
+                        failed += 1;
+                    }
+                    continue;
+                }
+            };
+
+            // the composite tests don't have a `ctx` field, so we always use the "plain" `verify`
+            let result = CompositeMlDsaParamSet::verify(&pubkey, &msg, &sig);
 
             let expected = &test.result;
             let passed_case = match (expected, result.is_ok()) {

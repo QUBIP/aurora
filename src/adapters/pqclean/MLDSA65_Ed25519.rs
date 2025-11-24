@@ -410,3 +410,51 @@ pub(super) use encoder_functions::PrivateKeyInfo2Text as ENCODER_PrivateKeyInfo2
 pub(super) use encoder_functions::PubKeyStructureless2Text as ENCODER_PubKeyStructureless2Text;
 pub(super) use encoder_functions::SubjectPublicKeyInfo2DER as ENCODER_SubjectPublicKeyInfo2DER;
 pub(super) use encoder_functions::SubjectPublicKeyInfo2PEM as ENCODER_SubjectPublicKeyInfo2PEM;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::common::wycheproof::*;
+    use signature::Verifier;
+    use wycheproof::composite_mldsa_verify::TestName;
+
+    #[allow(non_camel_case_types)]
+    struct Mldsa65_Ed25519;
+
+    impl SigAlgVerifyVariant for Mldsa65_Ed25519 {
+        type PublicKey = keymgmt_functions::PublicKey;
+
+        type Signature = signature::Signature;
+
+        fn decode_pubkey(bytes: &[u8]) -> anyhow::Result<Self::PublicKey> {
+            Self::PublicKey::decode(bytes)
+        }
+
+        fn decode_signature(bytes: &[u8]) -> anyhow::Result<Self::Signature> {
+            Self::Signature::try_from(bytes)
+        }
+
+        fn verify(
+            pubkey: &Self::PublicKey,
+            msg: &[u8],
+            sig: &Self::Signature,
+        ) -> Result<(), signature::Error> {
+            pubkey.verify(msg, sig)
+        }
+
+        // This adapter does not support signatures with a non-empty ctx.
+        fn verify_with_ctx(
+            _pubkey: &Self::PublicKey,
+            _msg: &[u8],
+            _sig: &Self::Signature,
+            _ctx: &[u8],
+        ) -> Result<(), signature::Error> {
+            Err(signature::Error::new())
+        }
+    }
+
+    #[test]
+    fn test_mldsa_65_ed_25519_verify_from_wycheproof() {
+        run_composite_mldsa_wycheproof_verify_tests::<Mldsa65_Ed25519>(TestName::MlDsa65Ed25519);
+    }
+}
