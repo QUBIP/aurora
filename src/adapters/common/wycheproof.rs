@@ -73,7 +73,7 @@ pub fn run_mldsa_wycheproof_verify_tests<MlDsaParamSet: SigAlgVerifyVariant>(
     test_name: mldsa_verify::TestName,
 ) {
     let test_set = mldsa_verify::TestSet::load(test_name)
-        .unwrap_or_else(|e| panic!("Failed to load sign test set: {e}"));
+        .unwrap_or_else(|e| panic!("Failed to load verify test set: {e}"));
     let mut passed = 0;
     let mut failed = 0;
 
@@ -179,7 +179,7 @@ pub fn run_composite_mldsa_wycheproof_verify_tests<CompositeMlDsaParamSet: SigAl
     test_name: composite_mldsa_verify::TestName,
 ) {
     let test_set = composite_mldsa_verify::TestSet::load(test_name)
-        .unwrap_or_else(|e| panic!("Failed to load sign test set: {e}"));
+        .unwrap_or_else(|e| panic!("Failed to load verify test set: {e}"));
     let mut passed = 0;
     let mut failed = 0;
 
