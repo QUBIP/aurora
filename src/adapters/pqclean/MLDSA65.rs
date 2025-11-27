@@ -486,7 +486,16 @@ mod tests {
     }
 
     #[test]
-    fn test_mldsa_65_sign_from_wycheproof() {
+    fn test_mldsa_65_sign_seed_from_wycheproof() {
+        run_mldsa_wycheproof_sign_tests::<Mldsa65>(
+            mldsa_sign::TestName::MlDsa65SignSeed,
+            // pqclean doesn't support deterministic ML-DSA
+            false,
+        );
+    }
+
+    #[test]
+    fn test_mldsa_65_sign_noseed_from_wycheproof() {
         run_mldsa_wycheproof_sign_tests::<Mldsa65>(
             mldsa_sign::TestName::MlDsa65SignNoSeed,
             // pqclean doesn't support deterministic ML-DSA
