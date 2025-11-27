@@ -449,4 +449,48 @@ mod tests {
     fn test_mldsa_87_verify_from_wycheproof() {
         run_mldsa_wycheproof_verify_tests::<Mldsa87>(TestName::MlDsa87Verify);
     }
+
+    use signature::{SignatureBytes, SignatureEncoding, Signer};
+    use wycheproof::mldsa_sign;
+
+    impl SigAlgSignVariant for Mldsa87 {
+        type PrivateKey = keymgmt_functions::PrivateKey;
+
+        type Signature = signature::Signature;
+
+        fn decode_privkey(bytes: &[u8]) -> anyhow::Result<Self::PrivateKey> {
+            Self::PrivateKey::decode(bytes)
+        }
+
+        fn try_sign(
+            privkey: &Self::PrivateKey,
+            msg: &[u8],
+            //deterministic: bool,
+        ) -> Result<Self::Signature, signature::Error> {
+            Self::PrivateKey::try_sign(privkey, msg)
+        }
+
+        fn try_sign_with_ctx(
+            _privkey: &Self::PrivateKey,
+            _msg: &[u8],
+            _ctx: &[u8],
+            //deterministic: bool,
+        ) -> Result<Self::Signature, signature::Error> {
+            // this adapter doesn't implement signing with ctx yet
+            Err(signature::Error::new())
+        }
+
+        fn encode_signature(sig: &Self::Signature) -> Vec<u8> {
+            Vec::from(sig.to_bytes().as_ref())
+        }
+    }
+
+    #[test]
+    fn test_mldsa_87_sign_from_wycheproof() {
+        run_mldsa_wycheproof_sign_tests::<Mldsa87>(
+            mldsa_sign::TestName::MlDsa87SignNoSeed,
+            // pqclean doesn't support deterministic ML-DSA
+            false,
+        );
+    }
 }
