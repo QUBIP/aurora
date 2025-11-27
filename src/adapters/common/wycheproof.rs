@@ -72,8 +72,10 @@ macro_rules! impl_sigalg_verify_variant {
 pub fn run_mldsa_wycheproof_verify_tests<MlDsaParamSet: SigAlgVerifyVariant>(
     test_name: mldsa_verify::TestName,
 ) {
-    let test_set = mldsa_verify::TestSet::load(test_name)
-        .unwrap_or_else(|e| panic!("Failed to load verify test set: {e}"));
+    use mldsa_verify::{TestFlag, TestSet};
+
+    let test_set =
+        TestSet::load(test_name).unwrap_or_else(|e| panic!("Failed to load verify test set: {e}"));
     let mut passed = 0;
     let mut failed = 0;
 
@@ -94,7 +96,9 @@ pub fn run_mldsa_wycheproof_verify_tests<MlDsaParamSet: SigAlgVerifyVariant>(
             Ok(pk) => pk,
             Err(e) => {
                 for test in &group.tests {
-                    if test.result == TestResult::Invalid {
+                    if test.result == TestResult::Invalid
+                        && test.flags.contains(&TestFlag::IncorrectPublicKeyLength)
+                    {
                         println!(
                             "✅ tcId {}: {} — pubkey decode failed as expected",
                             test.tc_id, test.comment,
@@ -312,8 +316,10 @@ pub fn run_mldsa_wycheproof_sign_tests<MlDsaParamSet: SigAlgSignVariant>(
     test_name: mldsa_sign::TestName,
     deterministic: bool,
 ) {
-    let test_set = mldsa_sign::TestSet::load(test_name)
-        .unwrap_or_else(|e| panic!("Failed to load sign test set: {e}"));
+    use mldsa_sign::{TestFlag, TestSet};
+
+    let test_set =
+        TestSet::load(test_name).unwrap_or_else(|e| panic!("Failed to load sign test set: {e}"));
     let mut passed = 0;
     let mut failed = 0;
 
@@ -344,12 +350,24 @@ pub fn run_mldsa_wycheproof_sign_tests<MlDsaParamSet: SigAlgSignVariant>(
             Err(e) => {
                 for test in &group.tests {
                     if test.result == TestResult::Invalid {
-                        println!(
-                            "✅ tcId {}: {} — privkey decode failed \
-                                    as expected",
-                            test.tc_id, test.comment
-                        );
-                        passed += 1;
+                        if test.flags.iter().any(|&flag| {
+                            flag == TestFlag::IncorrectPrivateKeyLength
+                                || flag == TestFlag::InvalidPrivateKey
+                        }) {
+                            println!(
+                                "✅ tcId {}: {} — privkey decode failed \
+                                        as expected",
+                                test.tc_id, test.comment
+                            );
+                            passed += 1;
+                        } else {
+                            println!(
+                                "❌ tcId {}: {} — expected Invalid (with acceptable privkey), \
+                                        but privkey decode failed: {:?}",
+                                test.tc_id, test.comment, e
+                            );
+                            failed += 1;
+                        }
                     } else {
                         println!(
                             "❌ tcId {}: {} — expected Valid, but privkey \
