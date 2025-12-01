@@ -32,7 +32,9 @@ type TPrivateKey = trad_backend_module::SecretKey;
 use super::OurError as KMGMTError;
 type OurResult<T> = anyhow::Result<T, KMGMTError>;
 
-use super::signature::{Signature, SignatureBytes, SignatureEncoding};
+use super::signature::{
+    Signature, SignatureBytes, SignatureEncoding, SignerWithCtx, VerifierWithCtx,
+};
 
 pub(crate) const PUBKEY_LEN: usize = PublicKey::byte_len();
 pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len();
@@ -183,8 +185,25 @@ const LABEL: &[u8] = "COMPSIG-MLDSA44-Ed25519-SHA512".as_bytes();
 // There's no way to pass additional context info (`ctx` in the linked spec) into this Verifier
 // trait's verify function, so we take `ctx` to be the empty string.
 impl Verifier<Signature> for PublicKey {
+    fn verify(&self, msg: &[u8], signature: &Signature) -> Result<(), signature::Error> {
+        self.verify_with_ctx(msg, signature, &[])
+    }
+}
+
+impl VerifierWithCtx<Signature> for PublicKey {
     #[named]
-    fn verify(&self, msg: &[u8], sig: &Signature) -> Result<(), forge::crypto::signature::Error> {
+    fn verify_with_ctx(
+        &self,
+        msg: &[u8],
+        sig: &Signature,
+        ctx: &[u8],
+    ) -> Result<(), forge::crypto::signature::Error> {
+        // validate ctx length
+        let ctx_len: u8 = ctx
+            .len()
+            .try_into()
+            .map_err(forge::crypto::signature::Error::from_source)?;
+
         // get at the public keys
         let Self {
             pq_public_key,
@@ -207,12 +226,13 @@ impl Verifier<Signature> for PublicKey {
         let trad_sig: &[u8; Self::T_SIGNATURE_LEN] =
             trad_sig.try_into().expect("Unexpected length");
 
-        // M' :=  Prefix || Domain || len(ctx) || ctx || r || PH( M )
+        // M' :=  Prefix || Label || len(ctx) || ctx || r || PH( M )
         // (here M is our `msg` argument)
         let msg_hash = Sha512::digest(msg);
         let mut M_prime = PREFIX.to_vec();
         M_prime.extend_from_slice(LABEL);
-        M_prime.push(0); // len(ctx) is 0, since ctx is the empty string (see comment at top of impl)
+        M_prime.push(ctx_len);
+        M_prime.extend_from_slice(ctx);
         M_prime.extend(msg_hash);
 
         // verify with ML-DSA
@@ -223,6 +243,8 @@ impl Verifier<Signature> for PublicKey {
                 VerificationError::GenericVerificationError,
             )
         })?;
+        // the so-called `ctx` that gets passed to the ML-DSA verifier here is actually the Label,
+        // not the ctx that was prepended to the message hash
         pq_backend_module::verify_detached_signature_ctx(
             &pq_sig,
             M_prime.as_slice(),
@@ -405,12 +427,29 @@ impl PrivateKey {
 // linked spec) into this Signer trait's try_sign function, so we take `ctx` to be the empty string.
 impl Signer<Signature> for PrivateKey {
     fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
+        self.try_sign_with_ctx(msg, &[])
+    }
+}
+
+impl SignerWithCtx<Signature> for PrivateKey {
+    fn try_sign_with_ctx(
+        &self,
+        msg: &[u8],
+        ctx: &[u8],
+    ) -> Result<Signature, forge::crypto::signature::Error> {
+        // validate ctx length
+        let ctx_len: u8 = ctx
+            .len()
+            .try_into()
+            .map_err(forge::crypto::signature::Error::from_source)?;
+
         // M' :=  Prefix || Label || len(ctx) || ctx || PH( M )
         // (here M is our `msg` argument)
         let msg_hash = Sha512::digest(msg);
         let mut M_prime = PREFIX.to_vec();
         M_prime.extend_from_slice(LABEL);
-        M_prime.push(0); // len(ctx) is 0, since ctx is the empty string (see comment above)
+        M_prime.push(ctx_len);
+        M_prime.extend_from_slice(ctx);
         M_prime.extend(msg_hash);
 
         // get at the private keys
@@ -420,8 +459,8 @@ impl Signer<Signature> for PrivateKey {
         } = self;
 
         // sign with ML-DSA
-        // (the Label being used as the `ctx` here refers to the underlying ML-DSA
-        // signature operation, and has nothing to do with the empty `ctx` string from the spec)
+        // the so-called `ctx` that gets passed to the ML-DSA signer here is actually the Label,
+        // not the ctx that was prepended to the message hash
         let pq_signature = pq_backend_module::detached_sign_ctx(&M_prime, LABEL, pq_private_key);
 
         // sign with Ed25519

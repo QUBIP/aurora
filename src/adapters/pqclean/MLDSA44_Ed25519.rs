@@ -415,43 +415,17 @@ pub(super) use encoder_functions::SubjectPublicKeyInfo2PEM as ENCODER_SubjectPub
 mod tests {
     use super::*;
     use crate::adapters::common::wycheproof::*;
-    use signature::Verifier;
+    use signature::{Verifier, VerifierWithCtx};
     use wycheproof::composite_mldsa_verify;
 
     #[allow(non_camel_case_types)]
     struct Mldsa44_Ed25519;
 
-    impl SigAlgVerifyVariant for Mldsa44_Ed25519 {
-        type PublicKey = keymgmt_functions::PublicKey;
-
-        type Signature = signature::Signature;
-
-        fn decode_pubkey(bytes: &[u8]) -> anyhow::Result<Self::PublicKey> {
-            Self::PublicKey::decode(bytes)
-        }
-
-        fn decode_signature(bytes: &[u8]) -> anyhow::Result<Self::Signature> {
-            Self::Signature::try_from(bytes)
-        }
-
-        fn verify(
-            pubkey: &Self::PublicKey,
-            msg: &[u8],
-            sig: &Self::Signature,
-        ) -> Result<(), signature::Error> {
-            pubkey.verify(msg, sig)
-        }
-
-        // This adapter does not support signatures with a non-empty ctx.
-        fn verify_with_ctx(
-            _pubkey: &Self::PublicKey,
-            _msg: &[u8],
-            _sig: &Self::Signature,
-            _ctx: &[u8],
-        ) -> Result<(), signature::Error> {
-            Err(signature::Error::new())
-        }
-    }
+    impl_sigalg_verify_variant!(
+        Mldsa44_Ed25519,
+        keymgmt_functions::PublicKey,
+        signature::Signature
+    );
 
     #[test]
     fn test_mldsa_44_ed_25519_verify_from_wycheproof() {
@@ -460,40 +434,14 @@ mod tests {
         );
     }
 
-    use signature::{SignatureBytes, SignatureEncoding, Signer};
+    use signature::{SignatureBytes, SignatureEncoding, Signer, SignerWithCtx};
     use wycheproof::composite_mldsa_sign;
 
-    impl SigAlgSignVariant for Mldsa44_Ed25519 {
-        type PrivateKey = keymgmt_functions::PrivateKey;
-
-        type Signature = signature::Signature;
-
-        fn decode_privkey(bytes: &[u8]) -> anyhow::Result<Self::PrivateKey> {
-            Self::PrivateKey::decode(bytes)
-        }
-
-        fn try_sign(
-            privkey: &Self::PrivateKey,
-            msg: &[u8],
-            //deterministic: bool,
-        ) -> Result<Self::Signature, signature::Error> {
-            Self::PrivateKey::try_sign(privkey, msg)
-        }
-
-        fn try_sign_with_ctx(
-            _privkey: &Self::PrivateKey,
-            _msg: &[u8],
-            _ctx: &[u8],
-            //deterministic: bool,
-        ) -> Result<Self::Signature, signature::Error> {
-            // this adapter doesn't implement signing with ctx yet
-            Err(signature::Error::new())
-        }
-
-        fn encode_signature(sig: &Self::Signature) -> Vec<u8> {
-            Vec::from(sig.to_bytes().as_ref())
-        }
-    }
+    impl_sigalg_sign_variant!(
+        Mldsa44_Ed25519,
+        keymgmt_functions::PrivateKey,
+        signature::Signature
+    );
 
     #[test]
     fn test_mldsa_44_ed_25519_sign_from_wycheproof() {
