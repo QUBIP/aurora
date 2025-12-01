@@ -81,3 +81,23 @@ impl TryInto<SignatureBytes> for Signature {
 impl SignatureEncoding for Signature {
     type Repr = SignatureBytes;
 }
+
+/// Verify the provided message bytestring using `Self` (typically a public key)
+pub(crate) trait VerifierWithCtx<S> {
+    /// Use `Self` to verify that the provided signature for a given message
+    /// bytestring is authentic.
+    fn verify_with_ctx(&self, msg: &[u8], signature: &S, ctx: &[u8]) -> Result<(), Error>;
+}
+
+/// Sign the provided message bytestring using `Self`, returning a digital signature.
+pub(crate) trait SignerWithCtx<S> {
+    /// Sign the given message and return a digital signature
+    fn sign_with_ctx(&self, msg: &[u8], ctx: &[u8]) -> S {
+        self.try_sign_with_ctx(msg, ctx)
+            .expect("signature operation failed")
+    }
+
+    /// Attempt to sign the given message, returning a digital signature on
+    /// success, or an error if something went wrong.
+    fn try_sign_with_ctx(&self, msg: &[u8], ctx: &[u8]) -> Result<S, Error>;
+}

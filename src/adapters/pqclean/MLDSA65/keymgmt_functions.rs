@@ -23,7 +23,9 @@ use pqcrypto_mldsa::mldsa65 as backend_module;
 use super::OurError as KMGMTError;
 type OurResult<T> = anyhow::Result<T, KMGMTError>;
 
-use super::signature::{Signature, SignatureBytes, SignatureEncoding};
+use super::signature::{
+    Signature, SignatureBytes, SignatureEncoding, SignerWithCtx, VerifierWithCtx,
+};
 
 pub(crate) const PUBKEY_LEN: usize = PublicKey::byte_len();
 pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len();
@@ -128,6 +130,29 @@ impl Verifier<Signature> for PublicKey {
             )
         })?;
         backend_module::verify_detached_signature(&sig, msg, &self.0)
+            .map_err(map_into_VerificationError)
+            .map_err(forge::crypto::signature::Error::from_source)
+    }
+}
+
+impl VerifierWithCtx<Signature> for PublicKey {
+    #[named]
+    fn verify_with_ctx(
+        &self,
+        msg: &[u8],
+        sig: &Signature,
+        ctx: &[u8],
+    ) -> Result<(), signature::Error> {
+        let sig = sig.to_bytes();
+        let sig = sig.as_ref();
+        use pqcrypto_traits::sign::DetachedSignature;
+        let sig = backend_module::DetachedSignature::from_bytes(sig).map_err(|e| {
+            error!(target: log_target!(), "{e:?}");
+            forge::crypto::signature::Error::from_source(
+                VerificationError::GenericVerificationError,
+            )
+        })?;
+        backend_module::verify_detached_signature_ctx(&sig, msg, ctx, &self.0)
             .map_err(map_into_VerificationError)
             .map_err(forge::crypto::signature::Error::from_source)
     }
@@ -240,6 +265,15 @@ impl Signer<Signature> for PrivateKey {
     fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
         let Self(ref sk) = self;
         let signature = backend_module::detached_sign(msg, sk);
+        Signature::try_from(signature.as_bytes())
+            .map_err(|e| forge::crypto::signature::Error::from_source(e))
+    }
+}
+
+impl SignerWithCtx<Signature> for PrivateKey {
+    fn try_sign_with_ctx(&self, msg: &[u8], ctx: &[u8]) -> Result<Signature, signature::Error> {
+        let Self(ref sk) = self;
+        let signature = backend_module::detached_sign_ctx(msg, ctx, sk);
         Signature::try_from(signature.as_bytes())
             .map_err(|e| forge::crypto::signature::Error::from_source(e))
     }

@@ -25,9 +25,6 @@ pub trait SigAlgVerifyVariant {
     ) -> Result<(), signature::Error>;
 }
 
-// currently unused; since none of our adapters implement verify_with_ctx, we have manual impls for
-// the SigAlgVerifyVariant trait that return an error there instead of calling a method
-#[macro_export]
 macro_rules! impl_sigalg_verify_variant {
     ($variant:ident, $pubkey:ty, $sig:ty) => {
         impl $crate::adapters::common::wycheproof::SigAlgVerifyVariant for $variant {
@@ -61,6 +58,7 @@ macro_rules! impl_sigalg_verify_variant {
         }
     };
 }
+pub(crate) use impl_sigalg_verify_variant;
 
 /// Borrowed from https://gitlab.com/nisec/qubip/qryptotoken/-/tree/06725b053d280c91a51d8b31775c5360aed9dc50/src/mldsa/wycheproof
 /// with some changes, most notably that the tests for error conditions are much shorter because
@@ -304,6 +302,41 @@ pub trait SigAlgSignVariant {
 
     fn encode_signature(sig: &Self::Signature) -> Vec<u8>;
 }
+
+macro_rules! impl_sigalg_sign_variant {
+    ($variant:ident, $privkey:ty, $sig:ty) => {
+        impl $crate::adapters::common::wycheproof::SigAlgSignVariant for $variant {
+            type PrivateKey = $privkey;
+            type Signature = $sig;
+
+            fn decode_privkey(bytes: &[u8]) -> anyhow::Result<Self::PrivateKey> {
+                <$privkey>::decode(bytes)
+            }
+
+            fn try_sign(
+                privkey: &Self::PrivateKey,
+                msg: &[u8],
+                //deterministic: bool,
+            ) -> Result<Self::Signature, signature::Error> {
+                Self::PrivateKey::try_sign(privkey, msg)
+            }
+
+            fn try_sign_with_ctx(
+                privkey: &Self::PrivateKey,
+                msg: &[u8],
+                ctx: &[u8],
+                //deterministic: bool,
+            ) -> Result<Self::Signature, signature::Error> {
+                Self::PrivateKey::try_sign_with_ctx(privkey, msg, ctx)
+            }
+
+            fn encode_signature(sig: &Self::Signature) -> Vec<u8> {
+                Vec::from(sig.to_bytes().as_ref())
+            }
+        }
+    };
+}
+pub(crate) use impl_sigalg_sign_variant;
 
 /// Borrowed from https://gitlab.com/nisec/qubip/qryptotoken/-/tree/06725b053d280c91a51d8b31775c5360aed9dc50/src/mldsa/wycheproof
 /// with some changes, most notably that the tests for error conditions are much shorter because
