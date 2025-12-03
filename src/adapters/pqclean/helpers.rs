@@ -55,3 +55,30 @@ where
         }
     }
 }
+
+/// Derive the expanded secret key from a seed
+#[named]
+pub(super) fn derive_secret_key_from_seed<T>(seed: &[u8]) -> Option<T>
+where
+    T: SupportedSecretKey,
+{
+    let seed: &[u8; 32] = seed.try_into().ok()?;
+    let foreign_key = <foreign_module::SigningKey<T::ForeignParamSet>>::from_seed(seed.into());
+    let key_bytes = foreign_key.encode();
+    let res = <T as pqcrypto_traits::sign::SecretKey>::from_bytes(&key_bytes);
+    match res {
+        Ok(sk) => Some(sk),
+        Err(e) => {
+            error!(target: log_target!(), "Failed to derive the expanded private key from the seed: {e:?}");
+            return None;
+        }
+    }
+}
+
+/// Decode the bytes as a secret key, deriving from seed if necessary
+pub(super) fn decode_secret_key<T>(bytes: &[u8]) -> Option<T>
+where
+    T: SupportedSecretKey,
+{
+    derive_secret_key_from_seed(bytes).or_else(|| T::from_bytes(bytes).ok())
+}

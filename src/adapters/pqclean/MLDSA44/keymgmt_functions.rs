@@ -174,14 +174,9 @@ impl PrivateKey {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let k = <backend_module::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(bytes)
-            .map_err(|e| {
-                anyhow!(
-                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA44) returned {:?}",
-                    e
-                )
-            })?;
-        Ok(Self(k))
+        super::helpers::decode_secret_key(bytes)
+            .map(Self)
+            .ok_or(anyhow!("Unable to decode private key"))
     }
 
     pub const fn byte_len() -> usize {

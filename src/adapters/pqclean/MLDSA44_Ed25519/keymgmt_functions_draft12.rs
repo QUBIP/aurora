@@ -311,16 +311,7 @@ impl PrivateKey {
         let (pq_bytes, trad_bytes) = bytes
             .split_at_checked(pq_backend_module::secret_key_bytes())
             .ok_or_else(|| anyhow!("Unexpected lenght on decode"))?;
-        let pq_private_key =
-            <pq_backend_module::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(
-                pq_bytes,
-            )
-            .map_err(|e| {
-                anyhow!(
-                    "pqcrypto_traits::sign::SecretKey::from_bytes (MLDSA44) returned {:?}",
-                    e
-                )
-            })?;
+        let pq_private_key = PQPrivateKey::new(pq_bytes.try_into()?)?;
         let trad_private_key = trad_bytes
             .try_into()
             .map_err(|_| anyhow!("Ed25519 secret key should be 32 bytes"))?;
