@@ -1,7 +1,11 @@
 /// Make a text encoder for a public key.
 ///
 /// The encoder outputs the bytes of the key as colon-separated hex values.
-/// It takes one argument, `property_definition`, which should be an OpenSSL property query string
+/// This macro takes two arguments:
+///
+/// - `encoder_struct`, the name of the encoder. The macro will define an empty struct with this
+/// name and implement the `Encoder` trait on it.
+/// - `property_definition`, which should be an OpenSSL property query string
 /// as described in [property(7)](https://docs.openssl.org/3.2/man7/property/).
 ///
 /// This macro should be called in the `encoder_functions` submodule of an algorithm module.
@@ -9,20 +13,19 @@
 /// must have the type `Option<PublicKey>`, where `PublicKey` has an `encode` method that returns
 /// the key data as something coercible to `&[u8]` (e.g. `Vec<u8>`).
 ///
-/// The resulting encoder struct is named `Structureless2Text`, and like all other encoders it must
-/// be registered in the adapter module's `AdapterContextTrait::register_algorithms`
-/// implementation.
+/// Like all other encoders, the resulting encoder must be registered in the adapter module's
+/// `AdapterContextTrait::register_algorithms` implementation.
 ///
 /// # Example
 ///
 /// ```
 /// use crate::adapters::common::transcoders::make_pubkey_text_encoder;
-/// make_pubkey_text_encoder!(c"x.author='QUBIP',x.qubip.adapter='pqclean',output='text'");
+/// make_pubkey_text_encoder!(Structureless2Text, c"x.author='QUBIP',x.qubip.adapter='pqclean',output='text'");
 /// ```
 macro_rules! make_pubkey_text_encoder {
-    ($property_definition:literal) => {
-    pub(crate) struct Structureless2Text();
-    impl $crate::forge::operations::transcoders::Encoder for Structureless2Text {
+    ($encoder_struct:ident, $property_definition:literal) => {
+    pub(crate) struct $encoder_struct();
+    impl $crate::forge::operations::transcoders::Encoder for $encoder_struct {
         const PROPERTY_DEFINITION: &'static CStr =
             $property_definition;
 
@@ -116,14 +119,14 @@ macro_rules! make_pubkey_text_encoder {
         }
     }
 
-    impl $crate::forge::operations::transcoders::DoesSelection for Structureless2Text {
+    impl $crate::forge::operations::transcoders::DoesSelection for $encoder_struct {
         const SELECTION_MASK: $crate::forge::operations::keymgmt::selection::Selection =
             $crate::forge::operations::keymgmt::selection::Selection::PUBLIC_KEY;
     }
 
     $crate::forge::operations::transcoders::make_does_selection_fn!(
         does_selection_text,
-        Structureless2Text,
+        $encoder_struct,
         ProviderInstance
     );
 
