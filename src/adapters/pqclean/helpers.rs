@@ -3,23 +3,23 @@ use function_name::named;
 /// pqclean does not provide support to derive the public key from an
 /// expanded private key so we resort to
 /// RustCrypto/signatures/ml-dsa to work around this
-use ml_dsa as foreign_module;
+use ml_dsa as foreign_mldsa_module;
 
-pub(super) trait SupportedSecretKey: pqcrypto_traits::sign::SecretKey {
-    type ForeignParamSet: foreign_module::MlDsaParams;
+pub(super) trait SupportedMlDsaSecretKey: pqcrypto_traits::sign::SecretKey {
+    type ForeignParamSet: foreign_mldsa_module::MlDsaParams;
     type PublicKey;
 }
 
-impl SupportedSecretKey for pqcrypto_mldsa::mldsa44::SecretKey {
-    type ForeignParamSet = foreign_module::MlDsa44;
+impl SupportedMlDsaSecretKey for pqcrypto_mldsa::mldsa44::SecretKey {
+    type ForeignParamSet = foreign_mldsa_module::MlDsa44;
     type PublicKey = pqcrypto_mldsa::mldsa44::PublicKey;
 }
-impl SupportedSecretKey for pqcrypto_mldsa::mldsa65::SecretKey {
-    type ForeignParamSet = foreign_module::MlDsa65;
+impl SupportedMlDsaSecretKey for pqcrypto_mldsa::mldsa65::SecretKey {
+    type ForeignParamSet = foreign_mldsa_module::MlDsa65;
     type PublicKey = pqcrypto_mldsa::mldsa65::PublicKey;
 }
-impl SupportedSecretKey for pqcrypto_mldsa::mldsa87::SecretKey {
-    type ForeignParamSet = foreign_module::MlDsa87;
+impl SupportedMlDsaSecretKey for pqcrypto_mldsa::mldsa87::SecretKey {
+    type ForeignParamSet = foreign_mldsa_module::MlDsa87;
     type PublicKey = pqcrypto_mldsa::mldsa87::PublicKey;
 }
 
@@ -27,8 +27,8 @@ impl SupportedSecretKey for pqcrypto_mldsa::mldsa87::SecretKey {
 #[named]
 pub(super) fn derive_public_key<T>(sk: &T) -> Option<T::PublicKey>
 where
-    T: SupportedSecretKey,
-    <T as SupportedSecretKey>::PublicKey: pqcrypto_traits::sign::PublicKey,
+    T: SupportedMlDsaSecretKey,
+    <T as SupportedMlDsaSecretKey>::PublicKey: pqcrypto_traits::sign::PublicKey,
 {
     let encoded_sk = <T as pqcrypto_traits::sign::SecretKey>::as_bytes(sk);
     let encoded_sk = match encoded_sk.try_into() {
@@ -38,13 +38,13 @@ where
             return None;
         }
     };
-    let csk = <foreign_module::SigningKey<T::ForeignParamSet>>::decode(encoded_sk);
+    let csk = <foreign_mldsa_module::SigningKey<T::ForeignParamSet>>::decode(encoded_sk);
     let cpk = csk.verifying_key();
     let pk_bytes = cpk.encode();
     let pk_bytes = pk_bytes.as_slice();
 
     let res =
-        <<T as SupportedSecretKey>::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(
+        <<T as SupportedMlDsaSecretKey>::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(
             pk_bytes,
         );
     match res {
@@ -60,10 +60,11 @@ where
 #[named]
 pub(super) fn derive_secret_key_from_seed<T>(seed: &[u8]) -> Option<T>
 where
-    T: SupportedSecretKey,
+    T: SupportedMlDsaSecretKey,
 {
     let seed: &[u8; 32] = seed.try_into().ok()?;
-    let foreign_key = <foreign_module::SigningKey<T::ForeignParamSet>>::from_seed(seed.into());
+    let foreign_key =
+        <foreign_mldsa_module::SigningKey<T::ForeignParamSet>>::from_seed(seed.into());
     let key_bytes = foreign_key.encode();
     let res = <T as pqcrypto_traits::sign::SecretKey>::from_bytes(&key_bytes);
     match res {
@@ -78,7 +79,7 @@ where
 /// Decode the bytes as a secret key, deriving from seed if necessary
 pub(super) fn decode_secret_key<T>(bytes: &[u8]) -> Option<T>
 where
-    T: SupportedSecretKey,
+    T: SupportedMlDsaSecretKey,
 {
     derive_secret_key_from_seed(bytes).or_else(|| T::from_bytes(bytes).ok())
 }
