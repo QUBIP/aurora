@@ -170,7 +170,6 @@ macro_rules! make_privkey_text_encoder {
         const DISPATCH_TABLE: &'static [$crate::forge::bindings::OSSL_DISPATCH] = {
             mod dispatch_table_module {
                 use super::*;
-                use $crate::adapters::common::helpers::format_hex_bytes;
                 use bindings::{OSSL_FUNC_encoder_does_selection_fn, OSSL_FUNC_ENCODER_DOES_SELECTION};
                 use bindings::{OSSL_FUNC_encoder_encode_fn, OSSL_FUNC_ENCODER_ENCODE};
                 use bindings::{OSSL_FUNC_encoder_freectx_fn, OSSL_FUNC_ENCODER_FREECTX};
@@ -212,44 +211,31 @@ macro_rules! make_privkey_text_encoder {
                     _cb: $crate::forge::bindings::OSSL_PASSPHRASE_CALLBACK,
                     _cbarg: *mut c_void,
                 ) -> c_int {
+                    use $crate::forge::operations::keymgmt::selection::Selection;
+
                     const SUCCESS: c_int = 1;
                     const ERROR_RET: c_int = 0;
-                    trace!(target: log_target!(), "Called!");
 
-                    debug!(target: log_target!(), "Got selection: {selection:#b}");
-                    if (selection & ($crate::forge::bindings::OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
-                        error!(target: log_target!(), "Invalid selection: {selection:#?}");
-                        return ERROR_RET;
-                    }
+                    trace!(target: log_target!(), " Called!");
 
                     let encoderctx: &EncoderContext = $crate::handleResult!(vencoderctx.try_into());
+
+                    if out.is_null() {
+                        error!(target: log_target!(), "No OSSL_CORE_BIO passed to encoder");
+                        return ERROR_RET;
+                    }
 
                     if obj_raw.is_null() {
                         error!(target: log_target!(), "No provider-native object passed to encoder");
                         return ERROR_RET;
                     }
-
                     let keypair: &KeyPair = $crate::handleResult!(obj_raw.try_into());
-                    match &keypair.private {
-                        Some(key) => {
-                            let key_bytes = key.encode();
-                            let formatted_key_bytes = format_hex_bytes(15, 4, &key_bytes);
-                            let output = format!("Private key bytes:\n{}\n", formatted_key_bytes);
-                            let output = handleResult!(CString::new(output));
-                            match encoderctx.provctx.BIO_write_ex(out, &output.into_bytes_with_nul()) {
-                                Ok(_bytes_written) => {}
-                                Err(e) => {
-                                    error!(target: log_target!(), "Failure using BIO_write_ex() upcall pointer: {e:?}");
-                                    return ERROR_RET;
-                                }
-                            };
-                            return SUCCESS;
-                        }
-                        None => {
-                            error!(target: log_target!(), "No private key");
-                            return ERROR_RET;
-                        }
-                    }
+
+                    debug!(target: log_target!(), "Got selection: {selection:#b}");
+                    let selection = $crate::handleResult!(Selection::try_from(selection as u32));
+
+                    $crate::handleResult!($encoder_struct::encodeToText(encoderctx, out, keypair, &selection));
+                    return SUCCESS;
                 }
 
                 $crate::forge::operations::transcoders::make_does_selection_fn!(
@@ -261,6 +247,48 @@ macro_rules! make_privkey_text_encoder {
 
             dispatch_table_module::TEXT_ENCODER_FUNCTIONS
         };
+    }
+
+    impl $encoder_struct {
+
+        // Actually this should call keypair.privkey.to_text similar to how we have to_DER there.
+        #[named]
+        pub(self) fn encodeToText(
+            encoderctx: &EncoderContext,
+            out: *mut $crate::forge::bindings::OSSL_CORE_BIO,
+            keypair: &KeyPair,
+            selection: &$crate::forge::operations::keymgmt::selection::Selection,
+        ) -> OurResult<()> {
+            use $crate::forge::operations::keymgmt::selection::Selection;
+            use $crate::adapters::common::helpers::format_hex_bytes;
+
+            trace!(target: log_target!(), " Called!");
+
+            if !selection.contains(Selection::PRIVATE_KEY) {
+                return Err(anyhow!("Invalid selection: {selection:#?}"));
+            }
+
+            match &keypair.private {
+                Some(key) => {
+                    let key_bytes = key.encode();
+                    let formatted_key_bytes = format_hex_bytes(15, 4, &key_bytes);
+                    let output = format!("Private key bytes:\n{}\n", formatted_key_bytes);
+                    let output = CString::new(output)?;
+                    let ret = unsafe {encoderctx.provctx.BIO_write_ex(out, &output.into_bytes_with_nul())};
+                    match ret {
+                        Ok(_bytes_written) => {
+                            return Ok(())
+                        }
+                        Err(e) => {
+                            return Err(anyhow!("Failure using BIO_write_ex() upcall pointer: {e:?}"));
+                        }
+                    };
+                }
+                None => {
+                    return Err(anyhow!("No private key"));
+                }
+            }
+        }
     }
 
     impl $crate::forge::operations::transcoders::DoesSelection for $encoder_struct {
