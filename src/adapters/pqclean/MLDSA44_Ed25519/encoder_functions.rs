@@ -464,6 +464,13 @@ impl DoesSelection for PrivateKeyInfo2PEM {
 // We can use the same does_selection function as PrivateKeyInfo2DER, so there's no need to call
 // the make_does_selection_fn macro again.
 
+// generate the plain text encoder
+use crate::adapters::common::transcoders::make_privkey_text_encoder;
+make_privkey_text_encoder!(
+    PrivateKeyInfo2Text,
+    c"x.author='QUBIP',x.qubip.adapter='pqclean',output='text',structure='PrivateKeyInfo'"
+);
+
 pub(crate) struct SubjectPublicKeyInfo2DER();
 impl Encoder for SubjectPublicKeyInfo2DER {
     const PROPERTY_DEFINITION: &'static CStr =
