@@ -20,7 +20,7 @@
 ///
 /// ```
 /// use crate::adapters::common::transcoders::make_pubkey_text_encoder;
-/// make_pubkey_text_encoder!(Structureless2Text, c"x.author='QUBIP',x.qubip.adapter='pqclean',output='text'");
+/// make_pubkey_text_encoder!(PubKeyStructureless2Text, c"x.author='QUBIP',x.qubip.adapter='pqclean',output='text'");
 /// ```
 macro_rules! make_pubkey_text_encoder {
     ($encoder_struct:ident, $property_definition:literal) => {

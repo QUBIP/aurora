@@ -726,6 +726,6 @@ impl DoesSelection for SubjectPublicKeyInfo2PEM {
 // generate the plain text encoder
 use crate::adapters::common::transcoders::make_pubkey_text_encoder;
 make_pubkey_text_encoder!(
-    Structureless2Text,
+    PubKeyStructureless2Text,
     c"x.author='QUBIP',x.qubip.adapter='pqclean',output='text'"
 );
