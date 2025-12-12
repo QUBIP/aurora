@@ -5,6 +5,10 @@ use function_name::named;
 /// RustCrypto/signatures/ml-dsa to work around this
 use ml_dsa as foreign_mldsa_module;
 
+pub(super) const ML_DSA_SEED_SIZE: usize = 32;
+
+pub(super) type MlDsaSeed = [u8; ML_DSA_SEED_SIZE];
+
 pub(super) trait SupportedMlDsaSecretKey: pqcrypto_traits::sign::SecretKey {
     type ForeignParamSet: foreign_mldsa_module::MlDsaParams;
     type PublicKey;
@@ -58,11 +62,10 @@ where
 
 /// Derive the expanded secret key from a seed
 #[named]
-pub(super) fn derive_secret_key_from_seed<T>(seed: &[u8]) -> Option<T>
+pub(super) fn derive_secret_key_from_seed<T>(seed: &MlDsaSeed) -> Option<T>
 where
     T: SupportedMlDsaSecretKey,
 {
-    let seed: &[u8; 32] = seed.try_into().ok()?;
     let foreign_key =
         <foreign_mldsa_module::SigningKey<T::ForeignParamSet>>::from_seed(seed.into());
     let key_bytes = foreign_key.encode();
@@ -81,5 +84,8 @@ pub(super) fn decode_secret_key<T>(bytes: &[u8]) -> Option<T>
 where
     T: SupportedMlDsaSecretKey,
 {
-    derive_secret_key_from_seed(bytes).or_else(|| T::from_bytes(bytes).ok())
+    match TryInto::<&MlDsaSeed>::try_into(bytes) {
+        Ok(seed) => derive_secret_key_from_seed(seed),
+        Err(_) => T::from_bytes(bytes).ok(),
+    }
 }
