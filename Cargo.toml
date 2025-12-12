@@ -91,7 +91,6 @@ pqcrypto-mldsa = { version = "0.1.0", optional = true }
 pqcrypto-traits = { version = "0.3.5", optional = true }
 sha2 = { version = "0.10.9", optional = true }
 itertools = "0.14.0"
-wycheproof = { git = "https://github.com/eferollo/wycheproof-rs", branch = "composite-mldsa-draft" }
 
 [build-dependencies]
 rasn-compiler = "0.11.0"
@@ -101,3 +100,4 @@ regex = "1"
 tempfile = "3"
 serde_json = "1.0.140"
 paste = "1.0"
+wycheproof = { git = "https://github.com/eferollo/wycheproof-rs", branch = "composite-mldsa-draft" }

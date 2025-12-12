@@ -7,4 +7,6 @@ pub mod keymgmt_functions;
 pub mod macros;
 
 pub mod transcoders;
+
+#[cfg(test)]
 pub mod wycheproof;
