@@ -25,7 +25,14 @@ use ed25519_dalek as trad_backend_module;
 use pqcrypto_mldsa::mldsa65 as pq_backend_module;
 
 type PQPublicKey = pq_backend_module::PublicKey;
-type PQPrivateKey = pq_backend_module::SecretKey;
+
+use helpers::MlDsaSeed;
+#[derive(PartialEq)]
+pub struct PQPrivateKey {
+    seed: MlDsaSeed,
+    expanded: pq_backend_module::SecretKey,
+}
+
 type TPublicKey = trad_backend_module::VerifyingKey;
 type TPrivateKey = trad_backend_module::SecretKey;
 
@@ -287,8 +294,19 @@ fn map_PQError_into_VerificationError(
     }
 }
 
+impl PQPrivateKey {
+    pub fn new(seed: &MlDsaSeed) -> Result<Self, KMGMTError> {
+        helpers::derive_secret_key_from_seed(seed)
+            .map(|k| Self {
+                seed: *seed,
+                expanded: k,
+            })
+            .ok_or(anyhow!("Unable to decode private key"))
+    }
+}
+
 impl PrivateKey {
-    const PQ_PRIVATE_KEY_LEN: usize = pq_backend_module::secret_key_bytes();
+    const PQ_PRIVATE_KEY_LEN: usize = helpers::ML_DSA_SEED_SIZE;
     const T_PRIVATE_KEY_LEN: usize = trad_backend_module::SECRET_KEY_LENGTH;
     const PQ_SIGNATURE_LEN: usize = PublicKey::PQ_SIGNATURE_LEN;
     const T_SIGNATURE_LEN: usize = PublicKey::T_SIGNATURE_LEN;
@@ -298,21 +316,22 @@ impl PrivateKey {
             pq_private_key,
             trad_private_key,
         } = self;
-        let mut bytes =
-            <pq_backend_module::SecretKey as pqcrypto_traits::sign::SecretKey>::as_bytes(
-                pq_private_key,
-            )
-            .to_vec();
+        let mut bytes = pq_private_key.seed.to_vec();
         bytes.extend(trad_private_key);
         bytes
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        if bytes.len() != Self::byte_len() {
+            anyhow::bail!(
+                "Cannot decode MLDSA65-Ed25519 private key of length {}",
+                bytes.len()
+            )
+        }
         let (pq_bytes, trad_bytes) = bytes
-            .split_at_checked(pq_backend_module::secret_key_bytes())
+            .split_at_checked(Self::PQ_PRIVATE_KEY_LEN)
             .ok_or_else(|| anyhow!("Unexpected lenght on decode"))?;
-        let pq_private_key = super::helpers::derive_secret_key_from_seed(pq_bytes)
-            .ok_or(anyhow!("Unable to decode ML-DSA-65 private key seed"))?;
+        let pq_private_key = PQPrivateKey::new(pq_bytes.try_into()?)?;
         let trad_private_key = trad_bytes
             .try_into()
             .map_err(|_| anyhow!("Ed25519 secret key should be 32 bytes"))?;
@@ -331,7 +350,7 @@ impl PrivateKey {
     }
 
     fn derive_PQ_public_key(&self) -> Option<PQPublicKey> {
-        super::helpers::derive_public_key(&self.pq_private_key)
+        super::helpers::derive_public_key(&self.pq_private_key.expanded)
     }
 
     /// Derive a matching public key from this private key
@@ -373,12 +392,11 @@ impl PrivateKey {
         debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
 
         let (privkey, opt_pubkey) = match decodedprivkey {
-            ASNPrivateKey::seed(_seed) => unimplemented!(),
-            ASNPrivateKey::expandedKey(expandedKey) => {
-                let slice: &[u8] = &expandedKey;
+            ASNPrivateKey::seed(bytes) => {
+                let slice: &[u8] = &bytes;
                 let privkey = keymgmt_functions::PrivateKey::decode(slice)?;
 
-                // We need to derive a public key from the private key, without a seed
+                // We need to derive a public key from the private key
                 let pubkey = match privkey.derive_public_key() {
                     Some(k) => k,
                     None => {
@@ -390,6 +408,7 @@ impl PrivateKey {
                 };
                 (privkey, Some(pubkey))
             }
+            ASNPrivateKey::expandedKey(_expandedKey) => unimplemented!(),
             ASNPrivateKey::both(_private_key_both) => unimplemented!(),
         };
         Ok((privkey, opt_pubkey))
@@ -401,7 +420,7 @@ impl PrivateKey {
         use asn_definitions::PrivateKey as ASNPrivateKey;
 
         let raw_sk_bytes = self.encode();
-        let asn_sk = ASNPrivateKey::expandedKey(raw_sk_bytes.into());
+        let asn_sk = ASNPrivateKey::seed(raw_sk_bytes.into());
         let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
             Ok(v) => v,
             Err(e) => {
@@ -449,7 +468,8 @@ impl SignerWithCtx<Signature> for PrivateKey {
         // sign with ML-DSA
         // the so-called `ctx` that gets passed to the ML-DSA signer here is actually the Label,
         // not the ctx that was prepended to the message hash
-        let pq_signature = pq_backend_module::detached_sign_ctx(&M_prime, LABEL, pq_private_key);
+        let pq_signature =
+            pq_backend_module::detached_sign_ctx(&M_prime, LABEL, &pq_private_key.expanded);
 
         // sign with Ed25519
         let trad_signature =
@@ -525,12 +545,20 @@ impl<'a> KeyPair<'a> {
     fn generate(provctx: &'a ProviderInstance) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
 
-        // Isn't it weird that this operation can't fail? What does the pqclean implementation do if
-        // it can't find a randomness source or it can't allocate memory or something?
-        let (pq_public_key, pq_private_key) = pq_backend_module::keypair();
+        // generate PQ private key
+        let prng = provctx.get_rng();
+        let mut seed_buf = [0u8; helpers::ML_DSA_SEED_SIZE];
+        let pq_private_key = match prng.try_fill_bytes(&mut seed_buf) {
+            Ok(_) => PQPrivateKey::new(&seed_buf)?,
+            Err(_) => anyhow::bail!("Unable to generate randomness for ML-DSA keygen"),
+        };
 
-        // Similarly, it seems weird that this can't fail. Hopefully a different layer can handle it
-        // if something goes wrong here.
+        // derive PQ public key from it
+        let pq_public_key = helpers::derive_public_key(&pq_private_key.expanded).ok_or(anyhow!(
+            "Unable to derive public ML-DSA key from private key"
+        ))?;
+
+        // generate traditional keypair
         let trad_keypair = trad_backend_module::SigningKey::generate(provctx.get_rng());
         let trad_private_key = trad_keypair.to_bytes();
         let trad_public_key = trad_keypair.verifying_key();
@@ -1140,10 +1168,8 @@ mod tests {
         crate::tests::common::setup().expect("Failed to initialize test setup");
 
         // Compare against https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-maximum-key-and-signature-s
-        // except the SECRETKEY_LEN, which is 64 in that table because that document uses the
-        // assumption that only the seed of the ML-DSA secret key should be stored
         assert_eq!(PUBKEY_LEN, 1984);
-        assert_eq!(SECRETKEY_LEN, 4064);
+        assert_eq!(SECRETKEY_LEN, 64);
         assert_eq!(SIGNATURE_LEN, 3373);
 
         assert_eq!(SECURITY_BITS, 192);
