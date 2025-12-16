@@ -287,7 +287,9 @@ impl PrivateKey {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        let (pq_bytes, trad_bytes) = bytes.split_at(pq_backend_module::secret_key_bytes());
+        let (pq_bytes, trad_bytes) = bytes
+            .split_at_checked(pq_backend_module::secret_key_bytes())
+            .ok_or_else(|| anyhow!("Unexpected lenght on decode"))?;
         let pq_private_key =
             <pq_backend_module::SecretKey as pqcrypto_traits::sign::SecretKey>::from_bytes(
                 pq_bytes,
