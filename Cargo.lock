@@ -146,7 +146,7 @@ dependencies = [
  "bitflags",
  "cexpr",
  "clang-sys",
- "itertools",
+ "itertools 0.13.0",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -399,6 +399,12 @@ dependencies = [
  "quote",
  "syn 2.0.100",
 ]
+
+[[package]]
+name = "data-encoding"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "der"
@@ -777,6 +783,15 @@ name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]
@@ -1281,6 +1296,7 @@ dependencies = [
  "ed25519-dalek",
  "env_logger",
  "function_name",
+ "itertools 0.14.0",
  "kem",
  "lazy_static",
  "libc",
@@ -1303,6 +1319,7 @@ dependencies = [
  "slh-dsa",
  "slhdsa-c-rs",
  "tempfile",
+ "wycheproof",
 ]
 
 [[package]]
@@ -1441,7 +1458,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bded21caf3a1a0647947c2b22fc14b535213d9c3a5646968171a39b012ebaaaa"
 dependencies = [
  "either",
- "itertools",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -2026,6 +2043,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "wycheproof"
+version = "0.6.0"
+source = "git+https://github.com/eferollo/wycheproof-rs?branch=composite-mldsa-draft#de6d7386cc74b1f83e48c00d6836f56530212812"
+dependencies = [
+ "data-encoding",
+ "serde",
+ "serde_derive",
+ "serde_json",
 ]
 
 [[package]]
