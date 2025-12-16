@@ -31,7 +31,6 @@ export = []
 # One (and not more than one!) of the _draft_N features must be enabled to support `_composite_mldsa_eddsa`!
 # These features are _experimental_: they will be removed in an upcoming release once the composite_sigs draft graduates to RFC.
 # You have been warned: DO NOT DEPEND ON THEM!
-_composite_sigs_draft_07 = []
 _composite_sigs_draft_12 = []
 _composite_sigs_draft_12_postWGLC = []
 

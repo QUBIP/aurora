@@ -43,9 +43,6 @@ use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_IN
 mod decoder_functions;
 mod encoder_functions;
 
-#[cfg(feature = "_composite_sigs_draft_07")]
-#[path = "./MLDSA65_Ed25519/keymgmt_functions_draft07.rs"]
-mod keymgmt_functions;
 #[cfg(feature = "_composite_sigs_draft_12")]
 #[path = "./MLDSA65_Ed25519/keymgmt_functions_draft12.rs"]
 mod keymgmt_functions;
@@ -61,25 +58,6 @@ mod signature_functions;
 
 pub(crate) type OurError = anyhow::Error;
 pub(crate) use anyhow::anyhow;
-
-#[cfg(feature = "_composite_sigs_draft_07")]
-mod consts_composite_sigs_draft_07 {
-    use super::CStr;
-
-    // Ensure proper null-terminated C string
-    // https://docs.openssl.org/master/man7/provider/#algorithm-naming
-    pub const NAMES: &CStr =
-        c"id-MLDSA65-Ed25519-SHA512:mldsa65_ed25519:2.16.840.1.114027.80.9.1.11";
-
-    // OID from <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-07#tab-hash-sig-algs>
-    // OID should be a substring of NAMES
-    pub const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 114027, 80, 9, 1, 11);
-    pub const OID_PKCS8: pkcs8::ObjectIdentifier =
-        pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.114027.80.9.1.11");
-    pub const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.114027.80.9.1.11");
-}
-#[cfg(feature = "_composite_sigs_draft_07")]
-pub use consts_composite_sigs_draft_07::{NAMES, OID, OID_PKCS8, SIGALG_OID};
 
 #[cfg(feature = "_composite_sigs_draft_12")]
 mod consts_composite_sigs_draft_12 {
