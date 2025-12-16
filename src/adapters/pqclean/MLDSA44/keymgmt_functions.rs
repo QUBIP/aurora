@@ -120,18 +120,8 @@ impl PublicKey {
 impl Verifier<Signature> for PublicKey {
     #[named]
     fn verify(&self, msg: &[u8], sig: &Signature) -> Result<(), forge::crypto::signature::Error> {
-        let sig = sig.to_bytes();
-        let sig = sig.as_ref();
-        use pqcrypto_traits::sign::DetachedSignature;
-        let sig = backend_module::DetachedSignature::from_bytes(sig).map_err(|e| {
-            error!(target: log_target!(), "{e:?}");
-            forge::crypto::signature::Error::from_source(
-                VerificationError::GenericVerificationError,
-            )
-        })?;
-        backend_module::verify_detached_signature(&sig, msg, &self.0)
-            .map_err(map_into_VerificationError)
-            .map_err(forge::crypto::signature::Error::from_source)
+        trace!(target: log_target!(), "Called");
+        self.verify_with_ctx(msg, sig, &[])
     }
 }
 
@@ -143,6 +133,7 @@ impl VerifierWithCtx<Signature> for PublicKey {
         sig: &Signature,
         ctx: &[u8],
     ) -> Result<(), signature::Error> {
+        trace!(target: log_target!(), "Called");
         let sig = sig.to_bytes();
         let sig = sig.as_ref();
         use pqcrypto_traits::sign::DetachedSignature;
@@ -263,10 +254,7 @@ impl PrivateKey {
 
 impl Signer<Signature> for PrivateKey {
     fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
-        let Self(ref sk) = self;
-        let signature = backend_module::detached_sign(msg, sk);
-        Signature::try_from(signature.as_bytes())
-            .map_err(|e| forge::crypto::signature::Error::from_source(e))
+        self.try_sign_with_ctx(msg, &[])
     }
 }
 

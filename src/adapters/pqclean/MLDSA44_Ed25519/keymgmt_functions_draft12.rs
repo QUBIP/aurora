@@ -181,12 +181,11 @@ impl PublicKey {
 const PREFIX: &[u8] = "CompositeAlgorithmSignatures2025".as_bytes();
 const LABEL: &[u8] = "COMPSIG-MLDSA44-Ed25519-SHA512".as_bytes();
 
-// https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-verify
-// There's no way to pass additional context info (`ctx` in the linked spec) into this Verifier
-// trait's verify function, so we take `ctx` to be the empty string.
 impl Verifier<Signature> for PublicKey {
-    fn verify(&self, msg: &[u8], signature: &Signature) -> Result<(), signature::Error> {
-        self.verify_with_ctx(msg, signature, &[])
+    #[named]
+    fn verify(&self, msg: &[u8], sig: &Signature) -> Result<(), forge::crypto::signature::Error> {
+        trace!(target: log_target!(), "Called");
+        self.verify_with_ctx(msg, sig, &[])
     }
 }
 
@@ -422,9 +421,6 @@ impl PrivateKey {
     }
 }
 
-// https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-06#name-sign
-// Just like with the Verifier above, there's no way to pass additional context info (`ctx` in the
-// linked spec) into this Signer trait's try_sign function, so we take `ctx` to be the empty string.
 impl Signer<Signature> for PrivateKey {
     fn try_sign(&self, msg: &[u8]) -> Result<Signature, forge::crypto::signature::Error> {
         self.try_sign_with_ctx(msg, &[])
