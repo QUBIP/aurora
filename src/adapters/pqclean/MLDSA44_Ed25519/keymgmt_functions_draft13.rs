@@ -22,7 +22,7 @@ use std::{
 };
 
 use ed25519_dalek as trad_backend_module;
-use pqcrypto_mldsa::mldsa65 as pq_backend_module;
+use pqcrypto_mldsa::mldsa44 as pq_backend_module;
 
 type PQPublicKey = pq_backend_module::PublicKey;
 
@@ -98,7 +98,7 @@ impl PublicKey {
             )
             .map_err(|e| {
                 anyhow!(
-                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
+                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA44) returned {:?}",
                     e
                 )
             })?;
@@ -184,9 +184,9 @@ impl PublicKey {
     }
 }
 
-// https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-prefix-label-and-ctx
+// https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13#name-prefix-label-and-ctx
 const PREFIX: &[u8] = "CompositeAlgorithmSignatures2025".as_bytes();
-const LABEL: &[u8] = "COMPSIG-MLDSA65-Ed25519-SHA512".as_bytes();
+const LABEL: &[u8] = "COMPSIG-MLDSA44-Ed25519-SHA512".as_bytes();
 
 impl Verifier<Signature> for PublicKey {
     #[named]
@@ -324,7 +324,7 @@ impl PrivateKey {
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
         if bytes.len() != Self::byte_len() {
             anyhow::bail!(
-                "Cannot decode MLDSA65-Ed25519 private key of length {}",
+                "Cannot decode MLDSA44-Ed25519 private key of length {}",
                 bytes.len()
             )
         }
@@ -1114,8 +1114,8 @@ pub(super) unsafe extern "C" fn match_(
 pub(super) mod asn_definitions {
     pub use crate::asn_definitions::x509_ml_dsa_2025 as defns;
 
-    pub use defns::MLDSA65PrivateKey as PrivateKey;
-    pub use defns::MLDSA65PublicKey as PublicKey;
+    pub use defns::MLDSA44PrivateKey as PrivateKey;
+    pub use defns::MLDSA44PublicKey as PublicKey;
 }
 
 #[cfg(test)]
@@ -1167,11 +1167,11 @@ mod tests {
     fn const_sanity_assertions() {
         crate::tests::common::setup().expect("Failed to initialize test setup");
 
-        // Compare against https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-12#name-maximum-key-and-signature-s
-        assert_eq!(PUBKEY_LEN, 1984);
+        // Compare against https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13#name-maximum-key-and-signature-s
+        assert_eq!(PUBKEY_LEN, 1344);
         assert_eq!(SECRETKEY_LEN, 64);
-        assert_eq!(SIGNATURE_LEN, 3373);
+        assert_eq!(SIGNATURE_LEN, 2484);
 
-        assert_eq!(SECURITY_BITS, 192);
+        assert_eq!(SECURITY_BITS, 128);
     }
 }

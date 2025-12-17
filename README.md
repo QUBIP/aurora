@@ -121,17 +121,17 @@ The current supported algorithms are summarized in the following tables.
 | _SLH-DSA-SHAKE-128f_ | rustcrypto | ❎ Exempt                                                                     | [`0x0918` (`2328`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.27`][ID-lamps-x509-slhdsa-09:s3.7]              |
 | _SLH-DSA-SHAKE-192f_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091A` (`2330`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.29`][ID-lamps-x509-slhdsa-09:s3.7]              |
 | _SLH-DSA-SHAKE-256s_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091B` (`2331`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.30`][ID-lamps-x509-slhdsa-09:s3.7]              |
-| _ML-DSA-44_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@12`][ID-lamps-pq-composite-sigs-12] | [`0x090A` (`2314`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.39`][ID-lamps-pq-composite-sigs:GH:post-WGLC:params] |
-| _ML-DSA-65_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@12`][ID-lamps-pq-composite-sigs-12] | [`0x090B` (`2315`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.48`][ID-lamps-pq-composite-sigs:GH:post-WGLC:params] |
+| _ML-DSA-44_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@13`][ID-lamps-pq-composite-sigs-13] | [`0x090A` (`2314`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.39`][ID-lamps-pq-composite-sigs-13:params] |
+| _ML-DSA-65_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@13`][ID-lamps-pq-composite-sigs-13] | [`0x090B` (`2315`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.48`][ID-lamps-pq-composite-sigs-13:params] |
 
 [iana:tls:sigscheme]: https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme
 [ID-tls-mldsa-01:sigscheme]: https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu
 [ID-reddy-tls-slhdsa-01:sigscheme]: https://datatracker.ietf.org/doc/html/draft-reddy-tls-slhdsa-01#name-iana-considerations
-[ID-lamps-pq-composite-sigs-12]: https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/12/
+[ID-lamps-pq-composite-sigs-13]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs/13/
+[ID-lamps-pq-composite-sigs-13:params]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13#name-algorithm-identifiers-and-p
 [ID-reddy-tls-composite-mldsa-05:sigscheme]: https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations
 [nist:csor:algs]: https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
 [ID-lamps-x509-slhdsa-09:s3.7]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-x509-slhdsa-09#section-3-7
-[ID-lamps-pq-composite-sigs:GH:post-WGLC:params]: https://github.com/lamps-wg/draft-composite-sigs/blob/5ba4655fa1ae3b3b4c112c6cd8c97a93e6d900c3/src/algParams.md
 
 > [!NOTE]
 > - The `ML-DSA-{44,65}_ED25519` algorithms also use `ed25519-dalek`
@@ -141,7 +141,7 @@ The current supported algorithms are summarized in the following tables.
 >   experimentation only.
 >   In QUBIP's Internet Browsing Pilot we avoid pure `ML-DSA`
 >   deployments in favor of
->   ["Composite `ML-DSA`"][ID-lamps-pq-composite-sigs-12]
+>   ["Composite `ML-DSA`"][ID-lamps-pq-composite-sigs-13]
 >   and consistently recommend this approach.
 > - Transition recommendations that mandate hybrids for the PQC
 >   transition usually mark `SLH-DSA` as explicitly exempt from the
