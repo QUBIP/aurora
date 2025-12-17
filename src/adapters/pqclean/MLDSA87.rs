@@ -417,6 +417,7 @@ mod tests {
 
     #[test]
     fn test_mldsa_87_verify_from_wycheproof() {
+        crate::tests::common::setup().expect("Failed to initialize test setup");
         run_mldsa_wycheproof_verify_tests::<Mldsa87>(mldsa_verify::TestName::MlDsa87Verify);
     }
 
@@ -427,6 +428,7 @@ mod tests {
 
     #[test]
     fn test_mldsa_87_sign_seed_from_wycheproof() {
+        crate::tests::common::setup().expect("Failed to initialize test setup");
         run_mldsa_wycheproof_sign_tests::<Mldsa87>(
             mldsa_sign::TestName::MlDsa87SignSeed,
             // pqclean doesn't support deterministic ML-DSA
@@ -436,6 +438,7 @@ mod tests {
 
     #[test]
     fn test_mldsa_87_sign_noseed_from_wycheproof() {
+        crate::tests::common::setup().expect("Failed to initialize test setup");
         run_mldsa_wycheproof_sign_tests::<Mldsa87>(
             mldsa_sign::TestName::MlDsa87SignNoSeed,
             // pqclean doesn't support deterministic ML-DSA

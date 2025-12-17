@@ -386,6 +386,7 @@ mod tests {
 
     #[test]
     fn test_mldsa_44_ed_25519_verify_from_wycheproof() {
+        crate::tests::common::setup().expect("Failed to initialize test setup");
         run_composite_mldsa_wycheproof_verify_tests::<Mldsa44_Ed25519>(
             composite_mldsa_verify::TestName::MlDsa44Ed25519,
         );
@@ -402,6 +403,7 @@ mod tests {
 
     #[test]
     fn test_mldsa_44_ed_25519_sign_from_wycheproof() {
+        crate::tests::common::setup().expect("Failed to initialize test setup");
         run_composite_mldsa_wycheproof_sign_tests::<Mldsa44_Ed25519>(
             composite_mldsa_sign::TestName::MlDsa44Ed25519,
             // pqclean doesn't support deterministic ML-DSA
