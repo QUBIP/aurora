@@ -46,7 +46,10 @@ impl<'a> TryFrom<&'a [u8]> for Signature {
 
     fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
         if value.len() != SIGNATURE_LEN {
-            log::error!("Signature is expected to be exactly {SIGNATURE_LEN} bytes");
+            log::error!(
+                "Signature is expected to be exactly {SIGNATURE_LEN} bytes, got {}",
+                value.len()
+            );
             return Err(anyhow!(
                 "signature length mismatch, got {}, expected {SIGNATURE_LEN}",
                 value.len()
