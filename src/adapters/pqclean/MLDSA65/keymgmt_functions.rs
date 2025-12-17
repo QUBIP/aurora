@@ -183,7 +183,7 @@ impl PrivateKey {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        super::helpers::decode_secret_key(bytes)
+        super::helpers::decode_mldsa_secret_key(bytes)
             .map(Self)
             .ok_or(anyhow!("Unable to decode private key"))
     }
@@ -198,7 +198,7 @@ impl PrivateKey {
 
     /// Derive a matching public key from this private key
     pub fn derive_public_key(&self) -> Option<PublicKey> {
-        let pk = super::helpers::derive_public_key(&self.0);
+        let pk = super::helpers::derive_mldsa_public_key(&self.0);
         pk.map(|inner| PublicKey(inner))
     }
 

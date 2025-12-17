@@ -29,7 +29,7 @@ impl SupportedMlDsaSecretKey for pqcrypto_mldsa::mldsa87::SecretKey {
 
 /// Derive the matching public key from a secret key
 #[named]
-pub(super) fn derive_public_key<T>(sk: &T) -> Option<T::PublicKey>
+pub(super) fn derive_mldsa_public_key<T>(sk: &T) -> Option<T::PublicKey>
 where
     T: SupportedMlDsaSecretKey,
     <T as SupportedMlDsaSecretKey>::PublicKey: pqcrypto_traits::sign::PublicKey,
@@ -62,7 +62,7 @@ where
 
 /// Derive the expanded secret key from a seed
 #[named]
-pub(super) fn derive_secret_key_from_seed<T>(seed: &MlDsaSeed) -> Option<T>
+pub(super) fn derive_mldsa_secret_key_from_seed<T>(seed: &MlDsaSeed) -> Option<T>
 where
     T: SupportedMlDsaSecretKey,
 {
@@ -83,7 +83,7 @@ const VALIDATE_PRIVKEY_DECODING_VIA_FOREIGN_MODULE: bool = true;
 
 /// Use the foreign_mldsa_module to decode bytes as a secret key
 #[named]
-fn foreign_decode_secret_key<T>(
+fn foreign_decode_mldsa_secret_key<T>(
     bytes: &[u8],
 ) -> std::thread::Result<
     foreign_mldsa_module::SigningKey<<T as SupportedMlDsaSecretKey>::ForeignParamSet>,
@@ -126,14 +126,14 @@ where
 
 /// Decode the bytes as a secret key, deriving from seed if necessary
 #[named]
-pub(super) fn decode_secret_key<T>(bytes: &[u8]) -> Option<T>
+pub(super) fn decode_mldsa_secret_key<T>(bytes: &[u8]) -> Option<T>
 where
     T: SupportedMlDsaSecretKey,
 {
     // First we check if the EncodedBytes match the expected length for seed format
     match TryInto::<&MlDsaSeed>::try_into(bytes) {
         Ok(seed) => {
-            return derive_secret_key_from_seed(seed);
+            return derive_mldsa_secret_key_from_seed(seed);
         }
         Err(_) => (),
     }
@@ -145,7 +145,7 @@ where
         // Currently PQClean is too lenient in parsing private keys.
         // We use a more strict-on-decode foreign module to try and correctly decode
         // the input, before asking PQClean to decode.
-        let foreign_result = foreign_decode_secret_key::<T>(bytes);
+        let foreign_result = foreign_decode_mldsa_secret_key::<T>(bytes);
 
         match foreign_result {
             Ok(_) => (), // we discard the foreign module object

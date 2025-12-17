@@ -302,7 +302,7 @@ fn map_PQError_into_VerificationError(
 
 impl PQPrivateKey {
     pub fn new(seed: &MlDsaSeed) -> Result<Self, KMGMTError> {
-        helpers::derive_secret_key_from_seed(seed)
+        helpers::derive_mldsa_secret_key_from_seed(seed)
             .map(|k| Self {
                 seed: *seed,
                 expanded: k,
@@ -356,7 +356,7 @@ impl PrivateKey {
     }
 
     fn derive_PQ_public_key(&self) -> Option<PQPublicKey> {
-        super::helpers::derive_public_key(&self.pq_private_key.expanded)
+        super::helpers::derive_mldsa_public_key(&self.pq_private_key.expanded)
     }
 
     /// Derive a matching public key from this private key
@@ -567,9 +567,9 @@ impl<'a> KeyPair<'a> {
         };
 
         // derive PQ public key from it
-        let pq_public_key = helpers::derive_public_key(&pq_private_key.expanded).ok_or(anyhow!(
-            "Unable to derive public ML-DSA key from private key"
-        ))?;
+        let pq_public_key = helpers::derive_mldsa_public_key(&pq_private_key.expanded).ok_or(
+            anyhow!("Unable to derive public ML-DSA key from private key"),
+        )?;
 
         // generate traditional keypair
         let trad_keypair = trad_backend_module::SigningKey::generate(provctx.get_rng());
