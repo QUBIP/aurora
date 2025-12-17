@@ -1,6 +1,6 @@
 [package]
 name = "qubip_aurora"
-version = "0.10.0+dev"
+version = "0.10.0"
 edition = "2021"
 description = "A framework to build OpenSSL Providers tailored for the transition to post-quantum cryptography"
 license = "Apache-2.0"
