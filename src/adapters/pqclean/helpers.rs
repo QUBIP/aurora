@@ -79,13 +79,92 @@ where
     }
 }
 
+const VALIDATE_PRIVKEY_DECODING_VIA_FOREIGN_MODULE: bool = true;
+
+/// Use the foreign_mldsa_module to decode bytes as a secret key
+#[named]
+fn foreign_decode_secret_key<T>(
+    bytes: &[u8],
+) -> std::thread::Result<
+    foreign_mldsa_module::SigningKey<<T as SupportedMlDsaSecretKey>::ForeignParamSet>,
+>
+where
+    T: SupportedMlDsaSecretKey,
+{
+    // The `<foreign_mldsa_module::SigningKey<T::ForeignParamSet>>::decode(a)`
+    // call can panic internally.
+    // We want to catch those errors, and handle them gracefully, hence catch_unwind
+    use std::panic::{self, catch_unwind, AssertUnwindSafe};
+
+    let a = match bytes.try_into() {
+        Ok(a) => a,
+        Err(e) => {
+            error!(target: log_target!(), "Found wrong length when decoding EncodedPrivateKey: {e:?}");
+            return Err(Box::new(e));
+        }
+    };
+
+    // Before calling decode within the catch_unwind block, we temporarily
+    // replace the `panic` hook, to avoid polluting the output.
+
+    // Take the current hook so we can restore it later
+    let prev_hook = panic::take_hook();
+
+    panic::set_hook(Box::new(|info| {
+        trace!(target: log_target!(), "Caught panic: {}", info);
+    }));
+
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        <foreign_mldsa_module::SigningKey<T::ForeignParamSet>>::decode(a)
+    }));
+
+    // Restore the previous hook
+    panic::set_hook(prev_hook);
+
+    result
+}
+
 /// Decode the bytes as a secret key, deriving from seed if necessary
+#[named]
 pub(super) fn decode_secret_key<T>(bytes: &[u8]) -> Option<T>
 where
     T: SupportedMlDsaSecretKey,
 {
+    // First we check if the EncodedBytes match the expected length for seed format
     match TryInto::<&MlDsaSeed>::try_into(bytes) {
-        Ok(seed) => derive_secret_key_from_seed(seed),
-        Err(_) => T::from_bytes(bytes).ok(),
+        Ok(seed) => {
+            return derive_secret_key_from_seed(seed);
+        }
+        Err(_) => (),
     }
+
+    // If we reach here, the key was not in seed format, and we exepct an
+    // expanded private key
+
+    if VALIDATE_PRIVKEY_DECODING_VIA_FOREIGN_MODULE {
+        // Currently PQClean is too lenient in parsing private keys.
+        // We use a more strict-on-decode foreign module to try and correctly decode
+        // the input, before asking PQClean to decode.
+        let foreign_result = foreign_decode_secret_key::<T>(bytes);
+
+        match foreign_result {
+            Ok(_) => (), // we discard the foreign module object
+            Err(e) => {
+                if let Some(s) = e.downcast_ref::<&str>() {
+                    error!(target: log_target!(), "Failed to decode the EncodedPrivateKey: {s}");
+                } else if let Some(s) = e.downcast_ref::<String>() {
+                    error!(target: log_target!(), "Failed to decode the EncodedPrivateKey: {s}");
+                } else {
+                    error!(target: log_target!(), "Failed to decode the EncodedPrivateKey");
+                }
+                return None;
+            }
+        }
+
+        // Finally if we reached this point we know that the `foreign_mldsa_module`
+        // could decode the EncodedPrivateKey. We can proceed with the lenient
+        // decoding routines of PQClean
+    }
+
+    T::from_bytes(bytes).ok()
 }
