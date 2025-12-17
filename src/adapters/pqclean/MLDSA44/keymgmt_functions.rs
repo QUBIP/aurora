@@ -134,6 +134,15 @@ impl VerifierWithCtx<Signature> for PublicKey {
         ctx: &[u8],
     ) -> Result<(), signature::Error> {
         trace!(target: log_target!(), "Called");
+
+        // validate ctx length
+        // FIPS 204 specifies maximum ctx len is 255 bytes, so it should
+        // fit into a u8
+        let _ctx_len: u8 = ctx.len().try_into().map_err(|e| {
+            log::error!("Invalid ctx_len: {} (maximum 255 bytes)", ctx.len());
+            forge::crypto::signature::Error::from_source(e)
+        })?;
+
         let sig = sig.to_bytes();
         let sig = sig.as_ref();
         use pqcrypto_traits::sign::DetachedSignature;
@@ -254,8 +263,20 @@ impl Signer<Signature> for PrivateKey {
 }
 
 impl SignerWithCtx<Signature> for PrivateKey {
+    #[named]
     fn try_sign_with_ctx(&self, msg: &[u8], ctx: &[u8]) -> Result<Signature, signature::Error> {
+        trace!(target: log_target!(), "Called");
+
         let Self(ref sk) = self;
+
+        // validate ctx length
+        // FIPS 204 specifies maximum ctx len is 255 bytes, so it should
+        // fit into a u8
+        let _ctx_len: u8 = ctx.len().try_into().map_err(|e| {
+            log::error!("Invalid ctx_len: {} (maximum 255 bytes)", ctx.len());
+            forge::crypto::signature::Error::from_source(e)
+        })?;
+
         let signature = backend_module::detached_sign_ctx(msg, ctx, sk);
         Signature::try_from(signature.as_bytes())
             .map_err(|e| forge::crypto::signature::Error::from_source(e))

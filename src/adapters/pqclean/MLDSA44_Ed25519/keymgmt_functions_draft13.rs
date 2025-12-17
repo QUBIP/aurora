@@ -204,11 +204,17 @@ impl VerifierWithCtx<Signature> for PublicKey {
         sig: &Signature,
         ctx: &[u8],
     ) -> Result<(), forge::crypto::signature::Error> {
+        trace!(target: log_target!(), "Called");
+
         // validate ctx length
-        let ctx_len: u8 = ctx
-            .len()
-            .try_into()
-            .map_err(forge::crypto::signature::Error::from_source)?;
+        // <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13>
+        // mandates the ctx maximum length should fit in a single byte.
+        // Note: this also matches FIPS 204 restriction on the `ctx`
+        // maximum allowed length of 255 bytes.
+        let ctx_len: u8 = ctx.len().try_into().map_err(|e| {
+            log::error!("Invalid ctx_len: {} (maximum 255 bytes)", ctx.len());
+            forge::crypto::signature::Error::from_source(e)
+        })?;
 
         // get at the public keys
         let Self {
@@ -439,16 +445,23 @@ impl Signer<Signature> for PrivateKey {
 }
 
 impl SignerWithCtx<Signature> for PrivateKey {
+    #[named]
     fn try_sign_with_ctx(
         &self,
         msg: &[u8],
         ctx: &[u8],
     ) -> Result<Signature, forge::crypto::signature::Error> {
+        trace!(target: log_target!(), "Called");
+
         // validate ctx length
-        let ctx_len: u8 = ctx
-            .len()
-            .try_into()
-            .map_err(forge::crypto::signature::Error::from_source)?;
+        // <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13>
+        // mandates the ctx maximum length should fit in a single byte.
+        // Note: this also matches FIPS 204 restriction on the `ctx`
+        // maximum allowed length of 255 bytes.
+        let ctx_len: u8 = ctx.len().try_into().map_err(|e| {
+            log::error!("Invalid ctx_len: {} (maximum 255 bytes)", ctx.len());
+            forge::crypto::signature::Error::from_source(e)
+        })?;
 
         // M' :=  Prefix || Label || len(ctx) || ctx || PH( M )
         // (here M is our `msg` argument)
