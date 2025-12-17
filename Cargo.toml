@@ -99,4 +99,4 @@ regex = "1"
 tempfile = "3"
 serde_json = "1.0.140"
 paste = "1.0"
-wycheproof = { git = "https://github.com/eferollo/wycheproof-rs", branch = "composite-mldsa-draft" }
+wycheproof = { git = "https://github.com/eferollo/wycheproof-rs", branch = "composite-mldsa-draft13" }

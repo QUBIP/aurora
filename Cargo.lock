@@ -2048,7 +2048,7 @@ dependencies = [
 [[package]]
 name = "wycheproof"
 version = "0.6.0"
-source = "git+https://github.com/eferollo/wycheproof-rs?branch=composite-mldsa-draft#de6d7386cc74b1f83e48c00d6836f56530212812"
+source = "git+https://github.com/eferollo/wycheproof-rs?branch=composite-mldsa-draft13#c501af1648742658b0c8cd0dec990dd5121422e6"
 dependencies = [
  "data-encoding",
  "serde",
