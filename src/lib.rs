@@ -1,27 +1,17 @@
 #![deny(unexpected_cfgs)]
 
+pub type Error = anyhow::Error;
+
 #[macro_use]
 extern crate log;
 
-pub(crate) use ::function_name::named;
-use std::ffi::{CStr, CString};
-
-pub type Error = anyhow::Error;
-
-macro_rules! function_path {
-    () => {
-        concat!(module_path!(), "::", function_name!(), "()")
-    };
-}
-
-macro_rules! log_target {
-    () => {
-        function_path!()
-    };
-}
+#[macro_use]
+mod helpers;
+pub(crate) use helpers::{handleResult, log_target, named};
 
 pub(crate) mod adapters;
 pub(crate) mod forge;
+
 mod init;
 mod query;
 pub(crate) mod random;
@@ -30,6 +20,8 @@ pub(crate) mod asn_definitions;
 
 #[cfg(test)]
 pub(crate) mod tests;
+
+use std::ffi::{CStr, CString};
 
 use bindings::dispatch_table_entry;
 use bindings::OSSL_PARAM;
@@ -87,8 +79,14 @@ pub static PROV_VER: &str = env!("CARGO_PKG_VERSION");
 pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
 impl<'a> ProviderInstance<'a> {
+    #[named]
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: CoreDispatch<'a>) -> Self {
+        trace!(target: log_target!(), "Called");
+
         let upcaller: CoreDispatchWithCoreHandle<'a> = (core_dispatch, handle).into();
+
+        #[cfg(not(test))]
+        helpers::examine_core_parameters(&upcaller).expect("Error while examining core parameters");
 
         let adapters_ctx = { adapters::FinalizedAdaptersHandle::new(&upcaller) };
 
@@ -218,40 +216,6 @@ impl<'a> TryFrom<*mut core::ffi::c_void> for &ProviderInstance<'a> {
         let r: &mut ProviderInstance<'a> = vctx.try_into()?;
         Ok(r)
     }
-}
-
-/// Match on a `Result`, evaluating to the wrapped value if it is `Ok` or
-/// returning `ERROR_RET` (which must already be defined) if it is `Err`.
-///
-/// This macro should be used in `extern "C"` functions that will be directly
-/// called by OpenSSL. In other functions, `Result`s should be handled in the
-/// usual Rust way.
-///
-/// If invoked with an `Err` value, this macro also calls [`log::error!`] to log
-/// the error.
-///
-/// Before invoking this macro, an identifier `ERROR_RET` must be in scope, and
-/// the type of its value must be the same as (or coercible to) the return type
-/// of the function in which `handleResult!` is being invoked.
-#[macro_export]
-macro_rules! handleResult {
-    ($e:expr) => { match ($e)
-        {
-            Ok(r) => r,
-            Err(e) => {
-                error!(target: log_target!(), "{:#?}", e);
-                return ERROR_RET;
-            }
-        }
-    };
-    //($e:expr, $errhandler:expr) => { match ($e)
-    //    {
-    //        Ok(r) => r,
-    //        Err(e) => {
-    //            errhandler
-    //        }
-    //    }
-    //};
 }
 
 impl CoreUpcaller for ProviderInstance<'_> {
