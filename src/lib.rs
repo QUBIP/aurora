@@ -5,7 +5,6 @@ extern crate log;
 
 pub(crate) use ::function_name::named;
 use std::ffi::{CStr, CString};
-use std::sync::LazyLock;
 
 pub type Error = anyhow::Error;
 
@@ -166,30 +165,33 @@ impl<'a> ProviderInstance<'a> {
     }
 
     pub fn c_prov_name(&self) -> &CStr {
-        #[expect(clippy::let_and_return)]
-        static L: LazyLock<CString> = LazyLock::new(|| {
-            let _s = CString::new(crate::PROV_NAME).expect("Error parsing cPROV_NAME");
-            _s
-        });
-        L.as_ref()
+        use std::sync::OnceLock;
+
+        static CELL: OnceLock<CString> = OnceLock::new();
+
+        let l = CELL.get_or_init(|| CString::new(self.name).expect("Error parsing self.name"));
+        l.as_ref()
     }
 
     pub fn c_prov_version(&self) -> &CStr {
-        #[expect(clippy::let_and_return)]
-        static L: LazyLock<CString> = LazyLock::new(|| {
-            let _s = CString::new(crate::PROV_VER).expect("Error parsing cPROV_VER");
-            _s
-        });
-        L.as_ref()
+        use std::sync::OnceLock;
+
+        static CELL: OnceLock<CString> = OnceLock::new();
+
+        let l =
+            CELL.get_or_init(|| CString::new(self.version).expect("Error parsing self.version"));
+        l.as_ref()
     }
 
     pub fn c_prov_buildinfo(&self) -> &CStr {
-        #[expect(clippy::let_and_return)]
-        static L: LazyLock<CString> = LazyLock::new(|| {
-            let _s = CString::new(crate::PROV_BUILDINFO).expect("Error parsing cPROV_BUILDINFO");
-            _s
+        use std::sync::OnceLock;
+
+        static CELL: OnceLock<CString> = OnceLock::new();
+
+        let l = CELL.get_or_init(|| {
+            CString::new(crate::PROV_BUILDINFO).expect("Error parsing cPROV_BUILDINFO")
         });
-        L.as_ref()
+        l.as_ref()
     }
 }
 
