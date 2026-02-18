@@ -58,7 +58,6 @@ pub use upcalls::{CoreDispatch, CoreDispatchWithCoreHandle};
 /// different configurations, and their own separate state.
 #[derive(Debug)]
 pub struct ProviderInstance<'a> {
-    pub data: [u8; 10],
     core_handle: *const OSSL_CORE_HANDLE,
     core_dispatch: CoreDispatch<'a>,
     pub name: &'a str,
@@ -96,7 +95,6 @@ impl<'a> ProviderInstance<'a> {
         let core_dispatch: CoreDispatch = upcaller.into();
 
         Self {
-            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
             core_handle: handle,
             core_dispatch,
             name: PROV_NAME,
