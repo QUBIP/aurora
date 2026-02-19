@@ -4,6 +4,69 @@
 use super::*;
 pub(crate) use ::function_name::named;
 
+/// Concatenates a base `&CStr` with one or more string literal segments
+/// at compile time, producing a new `&'static CStr`.
+///
+/// This macro is intended for building hierarchical or nested C string
+/// constants without runtime allocation.
+///
+/// # How it works
+///
+/// - The base `CStr` is converted to bytes using [`CStr::to_bytes()`],
+///   which strips the trailing nul terminator.
+/// - Each provided Cstr segment is appended as UTF-8 bytes, stripping the
+///   trailing nul terminator.
+/// - A single trailing `\0` is added.
+/// - The result is validated using [`CStr::from_bytes_with_nul()`] at
+///   compile time.
+///
+/// All operations occur in a `const` context. If the resulting byte
+/// sequence is not a valid C string (e.g. contains interior nuls),
+/// compilation will fail.
+///
+/// # Example
+///
+/// ```rust
+/// use std::ffi::CStr;
+///
+/// const ROOT: &CStr = c"provider=foo";
+///
+/// const PROPERTIES: &CStr =
+///     extend_cstr!(ROOT, c",foo.adapter=bar", c",foo.operation=add");
+///
+/// assert_eq!(
+///     PROPERTIES,
+///     c"provider=foo,foo.adapter=bar,foo.operation=add"
+/// );
+/// ```
+///
+/// # Guarantees
+///
+/// - Fully compile-time evaluation
+/// - No heap allocation
+/// - No runtime overhead
+/// - Compile-time validation of C string invariants
+///
+/// This macro is particularly useful for composing nested property,
+/// logging, or FFI key strings in a structured manner.
+macro_rules! concat_cstr {
+    ($base:expr $(, $segment:literal)+ $(,)?) => {{
+        const BYTES: &[u8] = constcat::concat_slices!(
+            [u8]:
+            $base.to_bytes(),
+            $( $segment.to_bytes(), )*
+            b"\0"
+        );
+
+        // This can never fail, as we are guaranteed to provide the NULL byte above.
+        match ::std::ffi::CStr::from_bytes_with_nul(BYTES) {
+            Ok(c) => c,
+            Err(_) => unreachable!(),
+        }
+    }};
+}
+pub(crate) use concat_cstr;
+
 /// Match on a `Result`, evaluating to the wrapped value if it is `Ok` or
 /// returning `ERROR_RET` (which must already be defined) if it is `Err`.
 ///

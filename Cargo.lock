@@ -311,6 +311,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0dabb6555f92fb9ee4140454eb5dcd14c7960e1225c6d1a6cc361f032947713e"
 
 [[package]]
+name = "constcat"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "136d3e02915a2cea4d74caa8681e2d44b1c3254bdbf17d11d41d587ff858832c"
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1292,6 +1298,7 @@ version = "0.10.1+dev"
 dependencies = [
  "anyhow",
  "asn1",
+ "constcat",
  "der 0.7.10",
  "ed25519-dalek",
  "env_logger",

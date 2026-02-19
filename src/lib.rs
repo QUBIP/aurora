@@ -7,7 +7,7 @@ extern crate log;
 
 #[macro_use]
 mod helpers;
-pub(crate) use helpers::{handleResult, log_target, named};
+pub(crate) use helpers::{concat_cstr, handleResult, log_target, named};
 
 pub(crate) mod adapters;
 pub(crate) mod forge;
