@@ -112,7 +112,7 @@ fn openssl_aurora_list_all_algorithms() {
     for alg in algs {
         // Assert that the algorithm has the expected x.author property
         assert!(
-            alg.props.iter().any(|p| p == "x.author='QUBIP'"),
+            alg.props.iter().any(|p| p == "x.author=QUBIP"),
             "Provided algorithm should include the proper `x.author` property: {alg:?}"
         );
         // Assert that the algorithm includes the x.qubip.adapter property

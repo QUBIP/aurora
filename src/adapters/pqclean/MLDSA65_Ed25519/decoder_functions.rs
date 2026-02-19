@@ -381,7 +381,7 @@ pub(crate) struct DER2SubjectPublicKeyInfo();
 
 impl Decoder for DER2SubjectPublicKeyInfo {
     const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='SubjectPublicKeyInfo'";
+        c"x.author=QUBIP,x.qubip.adapter=pqclean,input=der,structure=SubjectPublicKeyInfo";
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {
@@ -439,7 +439,7 @@ pub(crate) struct DER2PrivateKeyInfo();
 
 impl Decoder for DER2PrivateKeyInfo {
     const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author='QUBIP',x.qubip.adapter='pqclean',input='der',structure='PrivateKeyInfo'";
+        c"x.author=QUBIP,x.qubip.adapter=pqclean,input=der,structure=PrivateKeyInfo";
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {
