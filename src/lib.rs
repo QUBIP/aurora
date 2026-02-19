@@ -78,7 +78,7 @@ pub static PROV_NAME: &str = env!("CARGO_PKG_NAME");
 pub static PROV_VER: &str = env!("CARGO_PKG_VERSION");
 pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
-const PROPERTY_DEFINITION: &CStr = c"x.author=QUBIP";
+const PROPERTY_DEFINITION: &CStr = c"provider=aurora,x.author=QUBIP";
 
 impl<'a> ProviderInstance<'a> {
     #[named]
