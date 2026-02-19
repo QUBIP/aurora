@@ -20,7 +20,7 @@
 ///
 /// ```
 /// use crate::adapters::common::transcoders::make_pubkey_text_encoder;
-/// make_pubkey_text_encoder!(PubKeyStructureless2Text, c"x.author=QUBIP,x.qubip.adapter=pqclean,output=text");
+/// make_pubkey_text_encoder!(PubKeyStructureless2Text, c"x.author=QUBIP,qubip.adapter=pqclean,output=text");
 /// ```
 macro_rules! make_pubkey_text_encoder {
     ($encoder_struct:ident, $property_definition:literal) => {
@@ -185,7 +185,7 @@ pub(crate) use make_pubkey_text_encoder;
 ///
 /// ```
 /// use crate::adapters::common::transcoders::make_privkey_text_encoder;
-/// make_privkey_text_encoder!(PrivateKeyInfo2Text, c"x.author=QUBIP,x.qubip.adapter=pqclean,output=text,structure=PrivateKeyInfo");
+/// make_privkey_text_encoder!(PrivateKeyInfo2Text, c"x.author=QUBIP,qubip.adapter=pqclean,output=text,structure=PrivateKeyInfo");
 /// ```
 macro_rules! make_privkey_text_encoder {
     ($encoder_struct:ident, $property_definition:literal) => {

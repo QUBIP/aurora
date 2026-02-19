@@ -15,7 +15,7 @@ use std::ffi::CStr;
 
 pub(crate) type OurError = aurora::Error;
 
-const PROPERTY_DEFINITION: &CStr = c"x.author=QUBIP,x.qubip.adapter=rustcrypto";
+const PROPERTY_DEFINITION: &CStr = c"x.author=QUBIP,qubip.adapter=rustcrypto";
 
 #[allow(non_snake_case)]
 pub(crate) mod SLHDSASHAKE128f;
