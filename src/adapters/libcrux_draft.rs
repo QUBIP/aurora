@@ -12,7 +12,8 @@ use std::ffi::CStr;
 
 pub(crate) type OurError = aurora::Error;
 
-const PROPERTY_DEFINITION: &CStr = c"x.author=QUBIP,qubip.adapter=libcruxdraft";
+const PROPERTY_DEFINITION: &CStr =
+    concat_cstr!(super::PROPERTY_DEFINITION, c",qubip.adapter=libcruxdraft");
 
 #[allow(non_snake_case)]
 pub(crate) mod X25519MLKEM768Draft00;

@@ -9,6 +9,8 @@ use function_name::named;
 use std::collections::HashMap;
 use std::ffi::CStr;
 
+use aurora::PROPERTY_DEFINITION;
+
 use anyhow::anyhow;
 
 #[cfg(feature = "libcrux_adapter")]

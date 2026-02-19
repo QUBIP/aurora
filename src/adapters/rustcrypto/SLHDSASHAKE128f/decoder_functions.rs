@@ -373,8 +373,10 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
 pub(crate) struct DER2SubjectPublicKeyInfo();
 
 impl Decoder for DER2SubjectPublicKeyInfo {
-    const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author=QUBIP,qubip.adapter=rustcrypto,input=der,structure=SubjectPublicKeyInfo";
+    const PROPERTY_DEFINITION: &'static CStr = concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",input=der,structure=SubjectPublicKeyInfo"
+    );
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {
@@ -431,8 +433,10 @@ transcoders::make_does_selection_fn!(
 pub(crate) struct DER2PrivateKeyInfo();
 
 impl Decoder for DER2PrivateKeyInfo {
-    const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author=QUBIP,qubip.adapter=rustcrypto,input=der,structure=PrivateKeyInfo";
+    const PROPERTY_DEFINITION: &'static CStr = concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",input=der,structure=PrivateKeyInfo"
+    );
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {

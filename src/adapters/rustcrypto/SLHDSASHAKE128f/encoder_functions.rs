@@ -127,8 +127,10 @@ use transcoders::DoesSelection;
 use transcoders::Encoder;
 
 impl Encoder for PrivateKeyInfo2DER {
-    const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author=QUBIP,qubip.adapter=rustcrypto,output=der,structure=PrivateKeyInfo";
+    const PROPERTY_DEFINITION: &'static CStr = concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",output=der,structure=PrivateKeyInfo"
+    );
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {
@@ -333,8 +335,10 @@ transcoders::make_does_selection_fn!(
 pub(crate) struct PrivateKeyInfo2PEM();
 
 impl Encoder for PrivateKeyInfo2PEM {
-    const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author=QUBIP,qubip.adapter=rustcrypto,output=pem,structure=PrivateKeyInfo";
+    const PROPERTY_DEFINITION: &'static CStr = concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",output=pem,structure=PrivateKeyInfo"
+    );
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {
@@ -464,8 +468,10 @@ impl DoesSelection for PrivateKeyInfo2PEM {
 
 pub(crate) struct SubjectPublicKeyInfo2DER();
 impl Encoder for SubjectPublicKeyInfo2DER {
-    const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author=QUBIP,qubip.adapter=rustcrypto,output=der,structure=SubjectPublicKeyInfo";
+    const PROPERTY_DEFINITION: &'static CStr = concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",output=der,structure=SubjectPublicKeyInfo"
+    );
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {
@@ -593,8 +599,10 @@ transcoders::make_does_selection_fn!(
 
 pub(crate) struct SubjectPublicKeyInfo2PEM();
 impl Encoder for SubjectPublicKeyInfo2PEM {
-    const PROPERTY_DEFINITION: &'static CStr =
-        c"x.author=QUBIP,qubip.adapter=rustcrypto,output=pem,structure=SubjectPublicKeyInfo";
+    const PROPERTY_DEFINITION: &'static CStr = concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",output=pem,structure=SubjectPublicKeyInfo"
+    );
 
     const DISPATCH_TABLE: &'static [OSSL_DISPATCH] = {
         mod dispatch_table_module {

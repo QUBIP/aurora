@@ -78,6 +78,8 @@ pub static PROV_NAME: &str = env!("CARGO_PKG_NAME");
 pub static PROV_VER: &str = env!("CARGO_PKG_VERSION");
 pub static PROV_BUILDINFO: &str = env!("CARGO_GIT_DESCRIBE");
 
+const PROPERTY_DEFINITION: &CStr = c"x.author=QUBIP";
+
 impl<'a> ProviderInstance<'a> {
     #[named]
     pub fn new(handle: *const OSSL_CORE_HANDLE, core_dispatch: CoreDispatch<'a>) -> Self {

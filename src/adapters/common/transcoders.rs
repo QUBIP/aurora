@@ -23,7 +23,7 @@
 /// make_pubkey_text_encoder!(PubKeyStructureless2Text, c"x.author=QUBIP,qubip.adapter=pqclean,output=text");
 /// ```
 macro_rules! make_pubkey_text_encoder {
-    ($encoder_struct:ident, $property_definition:literal) => {
+    ($encoder_struct:ident, $property_definition:expr) => {
     pub(crate) struct $encoder_struct();
     impl $crate::forge::operations::transcoders::Encoder for $encoder_struct {
         const PROPERTY_DEFINITION: &'static CStr =
@@ -188,7 +188,7 @@ pub(crate) use make_pubkey_text_encoder;
 /// make_privkey_text_encoder!(PrivateKeyInfo2Text, c"x.author=QUBIP,qubip.adapter=pqclean,output=text,structure=PrivateKeyInfo");
 /// ```
 macro_rules! make_privkey_text_encoder {
-    ($encoder_struct:ident, $property_definition:literal) => {
+    ($encoder_struct:ident, $property_definition:expr) => {
     pub(crate) struct $encoder_struct();
     impl $crate::forge::operations::transcoders::Encoder for $encoder_struct {
         const PROPERTY_DEFINITION: &'static CStr =
