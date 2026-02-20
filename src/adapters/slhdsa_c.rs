@@ -16,7 +16,7 @@ use std::ffi::CStr;
 pub(crate) type OurError = aurora::Error;
 
 const PROPERTY_DEFINITION: &CStr =
-    concat_cstr!(super::PROPERTY_DEFINITION, c",qubip.adapter=slhdsa_c");
+    concat_cstr!(super::PROPERTY_DEFINITION, c",aurora.adapter=slhdsa_c");
 
 #[allow(non_snake_case)]
 pub(crate) mod SLHDSASHAKE192f;
