@@ -22,7 +22,6 @@ default = [
 ]
 default_adapters = [
   "libcrux_adapter",
-  "pqclean_adapter",
   "rustcrypto_adapter",
   "slhdsa_c_adapter",
   "mldsa_native_adapter",
