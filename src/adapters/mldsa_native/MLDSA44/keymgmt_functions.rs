@@ -40,9 +40,14 @@ pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 #[derive(PartialEq)]
 pub struct PublicKey(backend_module::PublicKey<ParamSet>);
 
-// TODO store the public key
 #[derive(PartialEq)]
-pub enum PrivateKey {
+pub struct PrivateKey {
+    private: PrivateKeyData,
+    public: backend_module::PublicKey<ParamSet>,
+}
+
+#[derive(PartialEq)]
+pub enum PrivateKeyData {
     Expanded(backend_module::SecretKey<ParamSet>),
     Both {
         seed: MlDsaSeed,
@@ -162,9 +167,9 @@ impl VerifierWithCtx<Signature> for PublicKey {
 
 impl PrivateKey {
     pub fn expanded_key(&self) -> &backend_module::SigningKey<ParamSet> {
-        match self {
-            PrivateKey::Expanded(signing_key) => signing_key,
-            PrivateKey::Both { seed: _, expanded } => expanded,
+        match &self.private {
+            PrivateKeyData::Expanded(signing_key) => signing_key,
+            PrivateKeyData::Both { seed: _, expanded } => expanded,
         }
     }
 
@@ -173,36 +178,45 @@ impl PrivateKey {
     /// If the seed is available, only the seed is encoded. Otherwise, the
     /// expanded form of the key is encoded.
     pub fn encode(&self) -> Vec<u8> {
-        match self {
-            PrivateKey::Expanded(signing_key) => signing_key.as_bytes().to_vec(),
-            PrivateKey::Both { seed, expanded: _ } => seed.as_bytes().to_vec(),
+        match &self.private {
+            PrivateKeyData::Expanded(signing_key) => signing_key.as_bytes().to_vec(),
+            PrivateKeyData::Both { seed, expanded: _ } => seed.as_bytes().to_vec(),
         }
     }
 
     /// Attempt to decode `bytes` as a private key.
     ///
     /// If the bytes represent a key in seed format, then the expanded form of
-    /// the private key is derived from it and both are stored. If the bytes
-    /// represent a key in expanded form, then they are stored as-is.
+    /// the private key is derived from it, as well as the public key, and all
+    /// are stored. If the bytes represent a key in expanded form, then the
+    /// public key is derived and stored with it (there is no way to recover the
+    /// seed).
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
         // We don't want to short-circuit on the outer TryInto::<&MlDsaSeed>, because a failure
         // there could just mean we have an expanded key instead of a seed. However, if this TryInto
         // succeeds, then we expect that the bytes are a valid seed, and we do want to short-circuit
         // if the backend module's keygen_from_seed fails.
         if let Ok(seed) = TryInto::<&MlDsaSeed>::try_into(bytes) {
-            let key = backend_module::keygen_from_seed::<ParamSet>(seed).map(|(sk, _vk)| {
-                PrivateKey::Both {
-                    seed: *seed,
-                    expanded: sk,
-                }
-            })?;
+            let key =
+                backend_module::keygen_from_seed::<ParamSet>(seed).map(|(sk, vk)| PrivateKey {
+                    private: PrivateKeyData::Both {
+                        seed: *seed,
+                        expanded: sk,
+                    },
+                    public: vk,
+                })?;
             return Ok(key);
         }
 
         // If we're here, then we do want to short-circuit on a TryInto failure, because the only
         // valid thing the bytes can be is an expanded key (as represented by the backend key type).
-        let key = TryInto::<backend_module::SecretKey<ParamSet>>::try_into(bytes)
-            .map(PrivateKey::Expanded)?;
+        let key = TryInto::<backend_module::SecretKey<ParamSet>>::try_into(bytes).map(|sk| {
+            let vk = sk.verifying_key();
+            PrivateKey {
+                private: PrivateKeyData::Expanded(sk),
+                public: vk,
+            }
+        })?;
         Ok(key)
     }
 
@@ -214,11 +228,9 @@ impl PrivateKey {
         ParamSet::SIGNATURE_LEN
     }
 
-    /// Derive the matching public key from this private key
-    // TODO update this after storing the public key in the PrivateKey structure
+    /// Retrieve the matching public key for this private key
     pub fn derive_public_key(&self) -> PublicKey {
-        let pk = &self.expanded_key().verifying_key();
-        PublicKey(pk.clone())
+        PublicKey(self.public.clone())
     }
 
     #[named]
@@ -252,9 +264,9 @@ impl PrivateKey {
         use asn_definitions::PrivateKey as ASNPrivateKey;
 
         let raw_sk_bytes = self.encode();
-        let asn_sk = match self {
-            PrivateKey::Expanded(_) => ASNPrivateKey::seed(raw_sk_bytes.into()),
-            PrivateKey::Both {
+        let asn_sk = match self.private {
+            PrivateKeyData::Expanded(_) => ASNPrivateKey::seed(raw_sk_bytes.into()),
+            PrivateKeyData::Both {
                 seed: _,
                 expanded: _,
             } => ASNPrivateKey::expandedKey(raw_sk_bytes.into()),
@@ -358,10 +370,23 @@ impl<'a> KeyPair<'a> {
     fn generate(provctx: &'a ProviderInstance) -> Result<Self, KMGMTError> {
         trace!(target: log_target!(), "Called");
 
-        let (sk, pk) = backend_module::keygen()?;
+        let mut seed = [0u8; 32];
+        let rng = provctx.get_rng();
+        rng.fill_bytes(&mut seed);
+
+        let seed: &MlDsaSeed = &seed.into();
+        let (sk, pk) = backend_module::keygen_from_seed(seed)?;
+
+        let sk = PrivateKey {
+            private: PrivateKeyData::Both {
+                seed: *seed,
+                expanded: sk,
+            },
+            public: pk.clone(),
+        };
 
         Ok(KeyPair {
-            private: Some(PrivateKey::Expanded(sk)),
+            private: Some(sk),
             public: Some(PublicKey(pk)),
             provctx,
         })
