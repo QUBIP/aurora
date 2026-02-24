@@ -421,7 +421,6 @@ mod tests {
         run_mldsa_wycheproof_verify_tests::<Mldsa44>(mldsa_verify::TestName::MlDsa44Verify);
     }
 
-    use mldsa_native_rs::ContextSigner;
     use signature::{SignatureBytes, SignatureEncoding, Signer, SignerWithCtx};
     use wycheproof::mldsa_sign;
 
