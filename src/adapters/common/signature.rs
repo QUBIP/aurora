@@ -61,6 +61,22 @@ impl<'a> TryFrom<&'a [u8]> for Signature {
     }
 }
 
+// Usually, if you have a `fn f(x: &[u8])` and a fixed-length slice e.g. `y: &[u8; 3]`, you can call
+// `f(y)` and let the compiler take care of the conversion instead of having to do `f(y.as_slice())`
+// to manually throw the length info away; however, that conversion happens when you already have
+// `f` with a fully specified type signature, not when `f` is provided by a generic trait with an
+// implementation specialized to `&[u8]`. So, without this impl, if you have a `sig: &[u8; 2420]`
+// and you call `Signature::try_from(sig)`, you'll get a "trait bound is not satisfied" error.
+impl<'a, const N: usize> TryFrom<&'a [u8; N]> for Signature {
+    type Error = <Signature as TryFrom<&'a [u8]>>::Error;
+
+    fn try_from(value: &'a [u8; N]) -> Result<Self, Self::Error> {
+        // Here the conversion from &[u8; N] to &[u8] happens automatically; we could call
+        // `value.as_slice()` if we wanted, but it's not necessary.
+        TryFrom::<&'a [u8]>::try_from(value)
+    }
+}
+
 /// A wrapper around `Vec<u8>` that provides an abstraction for working
 /// with the raw bytes of a signature. It implements the `AsRef<[u8]>` trait for convenient
 /// access to the underlying byte slice.
