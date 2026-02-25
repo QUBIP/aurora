@@ -61,8 +61,10 @@ slhdsa_c_adapter = [
   "_slhdsa",
 ]
 mldsa_native_adapter = [
+  "dep:ed25519-dalek",
   "dep:mldsa-native-rs",
   "dep:ml-dsa",
+  "dep:sha2",
   "_transcoders_deps",
   "_mldsa",
 ]

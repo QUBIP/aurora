@@ -21,6 +21,8 @@ const PROPERTY_DEFINITION: &CStr =
 #[allow(non_snake_case)]
 pub(crate) mod MLDSA44;
 #[allow(non_snake_case)]
+pub(crate) mod MLDSA44_Ed25519;
+#[allow(non_snake_case)]
 pub(crate) mod MLDSA65;
 #[allow(non_snake_case)]
 pub(crate) mod MLDSA87;
@@ -38,7 +40,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             algorithm_to_register!(MLDSA65, SIG_FUNCTIONS),
             algorithm_to_register!(MLDSA87, SIG_FUNCTIONS),
             //algorithm_to_register!(MLDSA65_Ed25519, SIG_FUNCTIONS),
-            //algorithm_to_register!(MLDSA44_Ed25519, SIG_FUNCTIONS),
+            algorithm_to_register!(MLDSA44_Ed25519, SIG_FUNCTIONS),
         ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_SIGNATURE, signature_algorithms.into_iter())?;
@@ -48,7 +50,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             algorithm_to_register!(MLDSA65, KMGMT_FUNCTIONS),
             algorithm_to_register!(MLDSA87, KMGMT_FUNCTIONS),
             //algorithm_to_register!(MLDSA65_Ed25519, KMGMT_FUNCTIONS),
-            //algorithm_to_register!(MLDSA44_Ed25519, KMGMT_FUNCTIONS),
+            algorithm_to_register!(MLDSA44_Ed25519, KMGMT_FUNCTIONS),
         ]);
         // ownership transfers to the iterator which is transferred to the handle
         handle.register_algorithms(OSSL_OP_KEYMGMT, keymgmt_algorithms.into_iter())?;
@@ -68,8 +70,8 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             //decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2SubjectPublicKeyInfo),
             //decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2PrivateKeyInfo),
             // MLDSA44_Ed25519
-            //decoder_to_register!(MLDSA44_Ed25519, DECODER_DER2SubjectPublicKeyInfo),
-            //decoder_to_register!(MLDSA44_Ed25519, DECODER_DER2PrivateKeyInfo),
+            decoder_to_register!(MLDSA44_Ed25519, DECODER_DER2SubjectPublicKeyInfo),
+            decoder_to_register!(MLDSA44_Ed25519, DECODER_DER2PrivateKeyInfo),
         ]);
 
         handle.register_algorithms(OSSL_OP_DECODER, decoder_algorithms.into_iter())?;
@@ -104,12 +106,12 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             //encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
             //encoder_to_register!(MLDSA65_Ed25519, ENCODER_PubKeyStructureless2Text),
             // MLDSA44_Ed25519
-            //encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2DER),
-            //encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2PEM),
-            //encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2Text),
-            //encoder_to_register!(MLDSA44_Ed25519, ENCODER_SubjectPublicKeyInfo2DER),
-            //encoder_to_register!(MLDSA44_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
-            //encoder_to_register!(MLDSA44_Ed25519, ENCODER_PubKeyStructureless2Text),
+            encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2DER),
+            encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2PEM),
+            encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2Text),
+            encoder_to_register!(MLDSA44_Ed25519, ENCODER_SubjectPublicKeyInfo2DER),
+            encoder_to_register!(MLDSA44_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
+            encoder_to_register!(MLDSA44_Ed25519, ENCODER_PubKeyStructureless2Text),
         ]);
 
         handle.register_algorithms(OSSL_OP_ENCODER, encoder_algorithms.into_iter())?;
@@ -140,7 +142,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             // ------ MLDSA65_Ed25519
             //MLDSA65_Ed25519::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
             // ------ MLDSA44_Ed25519
-            //MLDSA44_Ed25519::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
+            MLDSA44_Ed25519::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
         ];
         for a in tls_sigalgs {
             let first: &bindings::OSSL_PARAM = a.first().unwrap_or(&CONST_OSSL_PARAM::END);
@@ -159,7 +161,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             MLDSA65::OBJ_SIGID,
             MLDSA87::OBJ_SIGID,
             //MLDSA65_Ed25519::OBJ_SIGID,
-            //MLDSA44_Ed25519::OBJ_SIGID,
+            MLDSA44_Ed25519::OBJ_SIGID,
         ];
 
         for obj_sigid in obj_sigids {
