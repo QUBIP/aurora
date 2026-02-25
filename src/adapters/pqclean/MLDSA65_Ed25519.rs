@@ -96,7 +96,7 @@ pub(crate) static ALGORITHM_ID_DER: LazyLock<Vec<u8>> = LazyLock::new(|| {
 });
 
 // Ensure proper null-terminated C string
-pub(super) const DESCRIPTION: &CStr = c"mldsa65_ed25519 from pqclean and libcrux";
+pub(super) const DESCRIPTION: &CStr = c"mldsa65_ed25519 from pqclean and ed25519_dalek";
 
 /// number of bits of security
 pub(crate) const SECURITY_BITS: u32 = 192;
