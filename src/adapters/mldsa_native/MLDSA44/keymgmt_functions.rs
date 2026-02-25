@@ -21,7 +21,8 @@ use mldsa_native_rs as backend_module;
 use mldsa_native_rs::parameter_sets::ML_DSA_44 as ParamSet;
 use mldsa_native_rs::signature::Keypair;
 use mldsa_native_rs::{
-    AsBytes, ContextSigner, FromBytes, MlDsaSeed, SignatureLen, SigningKeyLen, VerifyingKeyLen,
+    AsBytes, ContextSigner, FromBytes, MlDsaSeed, SeedLen, SignatureLen, SigningKeyLen,
+    VerifyingKeyLen,
 };
 
 use super::OurError as KMGMTError;
@@ -166,6 +167,13 @@ impl VerifierWithCtx<Signature> for PublicKey {
 }
 
 impl PrivateKey {
+    pub fn seed(&self) -> Result<MlDsaSeed, KMGMTError> {
+        match &self.private {
+            PrivateKeyData::Expanded(_) => Err(anyhow!("Key does not contain a seed")),
+            PrivateKeyData::Both { seed, expanded: _ } => Ok(*seed),
+        }
+    }
+
     pub fn expanded_key(&self) -> &backend_module::SigningKey<ParamSet> {
         match &self.private {
             PrivateKeyData::Expanded(signing_key) => signing_key,
@@ -226,6 +234,10 @@ impl PrivateKey {
 
     pub const fn signature_bytes() -> usize {
         ParamSet::SIGNATURE_LEN
+    }
+
+    pub const fn seed_bytes() -> usize {
+        ParamSet::SEED_LEN
     }
 
     /// Retrieve the matching public key for this private key
