@@ -200,19 +200,9 @@ impl PrivateKey {
     /// public key is derived and stored with it (there is no way to recover the
     /// seed).
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        // We don't want to short-circuit on the outer TryInto::<&MlDsaSeed>, because a failure
-        // there could just mean we have an expanded key instead of a seed. However, if this TryInto
-        // succeeds, then we expect that the bytes are a valid seed, and we do want to short-circuit
-        // if the backend module's keygen_from_seed fails.
-        if let Ok(seed) = TryInto::<&MlDsaSeed>::try_into(bytes) {
-            let key =
-                backend_module::keygen_from_seed::<ParamSet>(seed).map(|(sk, vk)| PrivateKey {
-                    private: PrivateKeyData::Both {
-                        seed: *seed,
-                        expanded: sk,
-                    },
-                    public: vk,
-                })?;
+        // We don't want to short-circuit if we fail here, because a failure here could just mean we
+        // have an expanded key instead of a seed. However, if this succeeds, then we're finished.
+        if let Ok(key) = Self::decode_seed(bytes) {
             return Ok(key);
         }
 
@@ -225,6 +215,20 @@ impl PrivateKey {
                 public: vk,
             }
         })?;
+        Ok(key)
+    }
+
+    /// Attempt to decode `bytes` as a private key in seed format.
+    pub fn decode_seed(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        let seed = TryInto::<&MlDsaSeed>::try_into(bytes)?;
+        let key =
+            backend_module::keygen_from_seed::<ParamSet>(seed).map(|(sk, vk)| PrivateKey {
+                private: PrivateKeyData::Both {
+                    seed: *seed,
+                    expanded: sk,
+                },
+                public: vk,
+            })?;
         Ok(key)
     }
 
