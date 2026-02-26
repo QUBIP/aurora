@@ -67,6 +67,7 @@ mldsa_native_adapter = [
   "dep:sha2",
   "_transcoders_deps",
   "_mldsa",
+  "_composite_mldsa_eddsa",
 ]
 
 # This feature is _private_: it collects all the dependecies for transcoders

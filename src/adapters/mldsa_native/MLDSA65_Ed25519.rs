@@ -42,7 +42,10 @@ use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_IN
 
 mod decoder_functions;
 mod encoder_functions;
-pub(super) mod keymgmt_functions;
+
+#[cfg(feature = "_composite_sigs_draft_13")]
+#[path = "./MLDSA65_Ed25519/keymgmt_functions_draft13.rs"]
+mod keymgmt_functions;
 
 #[path = "../common/signature.rs"]
 mod signature;
@@ -53,24 +56,29 @@ mod signature_functions;
 pub(crate) type OurError = anyhow::Error;
 pub(crate) use anyhow::anyhow;
 
-// Ensure proper null-terminated C string
-// https://docs.openssl.org/master/man7/provider/#algorithm-naming
-pub(super) const NAMES: &CStr = c"ML-DSA-65:2.16.840.1.101.3.4.3.18:id-ml-dsa-65:mldsa65";
+#[cfg(feature = "_composite_sigs_draft_13")]
+mod consts_composite_sigs_draft_13 {
+    use super::CStr;
+
+    // Ensure proper null-terminated C string
+    // https://docs.openssl.org/master/man7/provider/#algorithm-naming
+    pub const NAMES: &CStr = c"id-MLDSA65-Ed25519-SHA512:mldsa65_ed25519:1.3.6.1.5.5.7.6.48";
+
+    // OID from <https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13#name-algorithm-identifiers-and-p>
+    // OID should be a substring of NAMES
+    pub const OID: asn1::ObjectIdentifier = asn1::oid!(1, 3, 6, 1, 5, 5, 7, 6, 48);
+    pub const OID_PKCS8: pkcs8::ObjectIdentifier =
+        pkcs8::ObjectIdentifier::new_unwrap("1.3.6.1.5.5.7.6.48");
+    pub const SIGALG_OID: Option<&CStr> = Some(c"1.3.6.1.5.5.7.6.48");
+}
+#[cfg(feature = "_composite_sigs_draft_13")]
+pub use consts_composite_sigs_draft_13::{NAMES, OID, OID_PKCS8, SIGALG_OID};
 
 /// NAME should be a substring of NAMES
-pub(crate) const NAME: &CStr = c"ML-DSA-65";
+pub(crate) const NAME: &CStr = c"mldsa65_ed25519";
 
 /// LONG_NAME should be a substring of NAMES
-pub(crate) const LONG_NAME: &CStr = c"id-ml-dsa-65";
-
-/// OID should be a substring of NAMES
-///
-/// This OID is defined in
-/// <https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration>.
-pub(crate) const OID: asn1::ObjectIdentifier = asn1::oid!(2, 16, 840, 1, 101, 3, 4, 3, 18);
-pub(crate) const OID_PKCS8: pkcs8::ObjectIdentifier =
-    pkcs8::ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.3.18");
-pub(crate) const SIGALG_OID: Option<&CStr> = Some(c"2.16.840.1.101.3.4.3.18");
+pub(crate) const LONG_NAME: &CStr = c"id-MLDSA65-Ed25519-SHA512";
 
 crate::adapters::common::keymgmt_functions::oid_consistency_tests!();
 
@@ -88,7 +96,7 @@ pub(crate) static ALGORITHM_ID_DER: LazyLock<Vec<u8>> = LazyLock::new(|| {
 });
 
 // Ensure proper null-terminated C string
-pub(super) const DESCRIPTION: &CStr = c"ML-DSA-65 from mldsa-native";
+pub(super) const DESCRIPTION: &CStr = c"mldsa65_ed25519 from mldsa-native and ed25519_dalek";
 
 /// number of bits of security
 pub(crate) const SECURITY_BITS: u32 = 192;
@@ -112,7 +120,7 @@ pub(crate) mod capabilities {
         use forge::osslparams::CONST_OSSL_PARAM;
         use tls_sigalg::*;
 
-        /// A [_unit-like struct_][rustbook:unit-like-structs] implementing [`TLSSigAlg`] for `id-ml-dsa-65`.
+        /// A [_unit-like struct_][rustbook:unit-like-structs] implementing [`TLSSigAlg`] for `mldsa65_ed25519`.
         ///
         /// [rustbook:unit-like-structs]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html#unit-like-structs-without-any-fields
         pub(crate) struct TLSSigAlgCap;
@@ -120,8 +128,6 @@ pub(crate) mod capabilities {
         /// Implement [`TLSSigAlg`] for [`TLSSigAlgCap`]
         ///
         /// # NOTE
-        ///
-        /// > For ML-DSA we refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu>.
         ///
         /// We use default values for MAX_TLS (none), MIN_DTLS (disabled), MAX_DTLS (disabled)
         impl TLSSigAlg for TLSSigAlgCap {
@@ -131,8 +137,9 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For ML-DSA we refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu>.
-            const SIGALG_IANA_NAME: &CStr = c"mldsa65";
+            /// > For mldsa65_ed25519 we currently refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations>
+            /// > as IANA does not list mldsa65_ed25519 in the registry yet.
+            const SIGALG_IANA_NAME: &CStr = c"mldsa65_ed25519";
 
             /// The TLS algorithm ID value as given in the [IANA TLS SignatureScheme registry][IANA:tls-signaturescheme].
             ///
@@ -140,8 +147,9 @@ pub(crate) mod capabilities {
             ///
             /// # NOTE
             ///
-            /// > For ML-DSA we refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu>.
-            const SIGALG_CODEPOINT: u32 = 0x0905; // 2309 in decimal notation
+            /// > For mldsa65_ed25519 we currently refer to ids reserved by <https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations>
+            /// > as IANA does not list mldsa65_ed25519 in the registry yet.
+            const SIGALG_CODEPOINT: u32 = 0x090B; // 2315 in decimal notation
 
             /// A name for the signature algorithm as known by the provider.
             ///
@@ -151,15 +159,14 @@ pub(crate) mod capabilities {
             ///
             /// [SSL_CONF_cmd(3ossl):cli]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-command-line-commands
             /// [SSL_CONF_cmd(3ossl):conf]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-configuration-file-commands
-            const SIGALG_NAME: &CStr = c"ML-DSA-65";
+            const SIGALG_NAME: &CStr = super::super::NAME;
 
             /// The OID of the [`Self::SIGALG_SIG_NAME`] algorithm in canonical numeric text form. \[optional\]
             ///
             /// # NOTE
             ///
-            /// > The OIDs for ML-DSA come from the [NIST Computer Security Objects Register](https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration).
-            ///
-            /// > These values match the [values used in OpenSSL 3.5 in `providers/common/capabilities.c`](https://github.com/openssl/openssl/blob/97fbbc2f1f023d712d38263c824b6c5c8ffe6e61/providers/common/capabilities.c#L316-L320)
+            /// > The OID for mldsa65_ed25519 comes from the
+            /// [IETF LAMPS draft](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13#name-algorithm-identifiers-and-p).
             const SIGALG_OID: Option<&CStr> = super::super::SIGALG_OID;
 
             const SECURITY_BITS: u32 = super::super::SECURITY_BITS;
@@ -171,49 +178,6 @@ pub(crate) mod capabilities {
 
         pub(crate) static OSSL_PARAM_ARRAY: &[CONST_OSSL_PARAM] =
             tls_sigalg::as_params!(TLSSigAlgCap);
-
-        pub(crate) struct OQScompatCap;
-
-        /// Implement [`TLSSigAlg`] for [`OQScompatCap`].
-        ///
-        /// This is identical to [`TLSSigAlgCap`], but uses `"mldsa65"` for [`TLSSigAlg::SIGALG_NAME`] for compatiblity with the OQS provider.
-        impl TLSSigAlg for OQScompatCap {
-            /// A name for the signature algorithm as known by the provider.
-            ///
-            /// Note this is also the name that
-            /// [`SSL_CONF_cmd(-sigalgs)`][SSL_CONF_cmd(3ossl):cli]/[`SSL_CONF_cmd(SignatureAlgorithms)`][SSL_CONF_cmd(3ossl):conf]
-            /// will support.
-            ///
-            /// Here we use `"mldsa65"` for compatiblity with the OQS provider.
-            ///
-            /// [SSL_CONF_cmd(3ossl):cli]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-command-line-commands
-            /// [SSL_CONF_cmd(3ossl):conf]: https://docs.openssl.org/master/man3/SSL_CONF_cmd/#supported-configuration-file-commands
-            const SIGALG_NAME: &CStr = c"mldsa65";
-
-            const SIGALG_IANA_NAME: &CStr = TLSSigAlgCap::SIGALG_IANA_NAME;
-            const SIGALG_CODEPOINT: u32 = TLSSigAlgCap::SIGALG_CODEPOINT;
-            const SECURITY_BITS: u32 = TLSSigAlgCap::SECURITY_BITS;
-
-            /// If needed, this OID has already been defined
-            const SIGALG_OID: Option<&CStr> = None;
-            /// If needed, this OID has already been defined
-            const SIGALG_SIG_OID: Option<&CStr> = None;
-            /// If needed, this OID has already been defined
-            const SIGALG_HASH_OID: Option<&CStr> = None;
-            /// If needed, this OID has already been defined
-            const SIGALG_KEYTYPE_OID: Option<&CStr> = None;
-
-            const SIGALG_SIG_NAME: Option<&CStr> = TLSSigAlgCap::SIGALG_SIG_NAME;
-            const SIGALG_HASH_NAME: Option<&CStr> = TLSSigAlgCap::SIGALG_HASH_NAME;
-            const SIGALG_KEYTYPE: Option<&CStr> = TLSSigAlgCap::SIGALG_KEYTYPE;
-            const MIN_TLS: TLSVersion = TLSSigAlgCap::MIN_TLS;
-            const MAX_TLS: TLSVersion = TLSSigAlgCap::MAX_TLS;
-            const MIN_DTLS: DTLSVersion = TLSSigAlgCap::MIN_DTLS;
-            const MAX_DTLS: DTLSVersion = TLSSigAlgCap::MAX_DTLS;
-        }
-
-        pub(crate) static OSSL_PARAM_ARRAY_OQSCOMP: &[CONST_OSSL_PARAM] =
-            tls_sigalg::as_params!(OQScompatCap);
     }
 }
 
@@ -404,49 +368,44 @@ pub(super) use encoder_functions::PubKeyStructureless2Text as ENCODER_PubKeyStru
 pub(super) use encoder_functions::SubjectPublicKeyInfo2DER as ENCODER_SubjectPublicKeyInfo2DER;
 pub(super) use encoder_functions::SubjectPublicKeyInfo2PEM as ENCODER_SubjectPublicKeyInfo2PEM;
 
-// These are exposed so we can use this module as the PQ backend in MLDSA65_Ed25519
-pub(super) use keymgmt_functions::{PrivateKey, PublicKey};
-pub(super) use mldsa_native_rs::MlDsaSeed;
-pub(super) use signature::{Signature, SignerWithCtx, VerifierWithCtx};
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::adapters::common::wycheproof::*;
     use signature::{Verifier, VerifierWithCtx};
-    use wycheproof::mldsa_verify;
+    use wycheproof::composite_mldsa_verify;
 
-    struct Mldsa65;
+    #[allow(non_camel_case_types)]
+    struct Mldsa65_Ed25519;
 
-    impl_sigalg_verify_variant!(Mldsa65, keymgmt_functions::PublicKey, signature::Signature);
-
-    #[test]
-    fn test_mldsa_65_verify_from_wycheproof() {
-        crate::tests::common::setup().expect("Failed to initialize test setup");
-        run_mldsa_wycheproof_verify_tests::<Mldsa65>(mldsa_verify::TestName::MlDsa65Verify);
-    }
-
-    use signature::{SignatureBytes, SignatureEncoding, Signer, SignerWithCtx};
-    use wycheproof::mldsa_sign;
-
-    impl_sigalg_sign_variant!(Mldsa65, keymgmt_functions::PrivateKey, signature::Signature);
+    impl_sigalg_verify_variant!(
+        Mldsa65_Ed25519,
+        keymgmt_functions::PublicKey,
+        signature::Signature
+    );
 
     #[test]
-    fn test_mldsa_65_sign_seed_from_wycheproof() {
+    fn test_mldsa_65_ed_25519_verify_from_wycheproof() {
         crate::tests::common::setup().expect("Failed to initialize test setup");
-        run_mldsa_wycheproof_sign_tests::<Mldsa65>(
-            mldsa_sign::TestName::MlDsa65SignSeed,
-            // TODO clean up this test as appropriate for this adapter
-            // depending on whether we will or won't support deterministic ML-DSA in mldsa-native-rs
-            false,
+        run_composite_mldsa_wycheproof_verify_tests::<Mldsa65_Ed25519>(
+            composite_mldsa_verify::TestName::MlDsa65Ed25519,
         );
     }
 
+    use signature::{SignatureBytes, SignatureEncoding, Signer, SignerWithCtx};
+    use wycheproof::composite_mldsa_sign;
+
+    impl_sigalg_sign_variant!(
+        Mldsa65_Ed25519,
+        keymgmt_functions::PrivateKey,
+        signature::Signature
+    );
+
     #[test]
-    fn test_mldsa_65_sign_noseed_from_wycheproof() {
+    fn test_mldsa_65_ed_25519_sign_from_wycheproof() {
         crate::tests::common::setup().expect("Failed to initialize test setup");
-        run_mldsa_wycheproof_sign_tests::<Mldsa65>(
-            mldsa_sign::TestName::MlDsa65SignNoSeed,
+        run_composite_mldsa_wycheproof_sign_tests::<Mldsa65_Ed25519>(
+            composite_mldsa_sign::TestName::MlDsa65Ed25519,
             // TODO clean up this test as appropriate for this adapter
             // depending on whether we will or won't support deterministic ML-DSA in mldsa-native-rs
             false,

@@ -25,6 +25,8 @@ pub(crate) mod MLDSA44_Ed25519;
 #[allow(non_snake_case)]
 pub(crate) mod MLDSA65;
 #[allow(non_snake_case)]
+pub(crate) mod MLDSA65_Ed25519;
+#[allow(non_snake_case)]
 pub(crate) mod MLDSA87;
 
 #[derive(Debug)]
@@ -39,7 +41,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             algorithm_to_register!(MLDSA44, SIG_FUNCTIONS),
             algorithm_to_register!(MLDSA65, SIG_FUNCTIONS),
             algorithm_to_register!(MLDSA87, SIG_FUNCTIONS),
-            //algorithm_to_register!(MLDSA65_Ed25519, SIG_FUNCTIONS),
+            algorithm_to_register!(MLDSA65_Ed25519, SIG_FUNCTIONS),
             algorithm_to_register!(MLDSA44_Ed25519, SIG_FUNCTIONS),
         ]);
         // ownership transfers to the iterator which is transferred to the handle
@@ -49,7 +51,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             algorithm_to_register!(MLDSA44, KMGMT_FUNCTIONS),
             algorithm_to_register!(MLDSA65, KMGMT_FUNCTIONS),
             algorithm_to_register!(MLDSA87, KMGMT_FUNCTIONS),
-            //algorithm_to_register!(MLDSA65_Ed25519, KMGMT_FUNCTIONS),
+            algorithm_to_register!(MLDSA65_Ed25519, KMGMT_FUNCTIONS),
             algorithm_to_register!(MLDSA44_Ed25519, KMGMT_FUNCTIONS),
         ]);
         // ownership transfers to the iterator which is transferred to the handle
@@ -67,8 +69,8 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             decoder_to_register!(MLDSA87, DECODER_DER2SubjectPublicKeyInfo),
             decoder_to_register!(MLDSA87, DECODER_DER2PrivateKeyInfo),
             // MLDSA65_Ed25519
-            //decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2SubjectPublicKeyInfo),
-            //decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2PrivateKeyInfo),
+            decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2SubjectPublicKeyInfo),
+            decoder_to_register!(MLDSA65_Ed25519, DECODER_DER2PrivateKeyInfo),
             // MLDSA44_Ed25519
             decoder_to_register!(MLDSA44_Ed25519, DECODER_DER2SubjectPublicKeyInfo),
             decoder_to_register!(MLDSA44_Ed25519, DECODER_DER2PrivateKeyInfo),
@@ -99,12 +101,12 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             encoder_to_register!(MLDSA87, ENCODER_SubjectPublicKeyInfo2PEM),
             encoder_to_register!(MLDSA87, ENCODER_PubKeyStructureless2Text),
             // MLDSA65_Ed25519
-            //encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2DER),
-            //encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2PEM),
-            //encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2Text),
-            //encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2DER),
-            //encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
-            //encoder_to_register!(MLDSA65_Ed25519, ENCODER_PubKeyStructureless2Text),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2DER),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2PEM),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_PrivateKeyInfo2Text),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2DER),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_SubjectPublicKeyInfo2PEM),
+            encoder_to_register!(MLDSA65_Ed25519, ENCODER_PubKeyStructureless2Text),
             // MLDSA44_Ed25519
             encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2DER),
             encoder_to_register!(MLDSA44_Ed25519, ENCODER_PrivateKeyInfo2PEM),
@@ -140,7 +142,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             // Add second sigalg capability for better compatibility with OQS-provider
             MLDSA87::capabilities::tls_sigalg::OSSL_PARAM_ARRAY_OQSCOMP,
             // ------ MLDSA65_Ed25519
-            //MLDSA65_Ed25519::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
+            MLDSA65_Ed25519::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
             // ------ MLDSA44_Ed25519
             MLDSA44_Ed25519::capabilities::tls_sigalg::OSSL_PARAM_ARRAY,
         ];
@@ -160,7 +162,7 @@ impl AdapterContextTrait for MldsaNativeAdapter {
             MLDSA44::OBJ_SIGID,
             MLDSA65::OBJ_SIGID,
             MLDSA87::OBJ_SIGID,
-            //MLDSA65_Ed25519::OBJ_SIGID,
+            MLDSA65_Ed25519::OBJ_SIGID,
             MLDSA44_Ed25519::OBJ_SIGID,
         ];
 
