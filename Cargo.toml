@@ -27,6 +27,7 @@ default_adapters = [
   "mldsa_native_adapter",
 ]
 env_logger = ["dep:env_logger"]
+skip_troublesome_wycheproof = []
 export = []
 
 # One (and not more than one!) of the _draft_N features must be enabled to support `_composite_mldsa_eddsa`!

@@ -355,6 +355,7 @@ pub fn run_mldsa_wycheproof_sign_tests<MlDsaParamSet: SigAlgSignVariant>(
         TestSet::load(test_name).unwrap_or_else(|e| panic!("Failed to load sign test set: {e}"));
     let mut passed = 0;
     let mut failed = 0;
+    #[allow(unused_mut)] // Only mutated when `skip_troublesome_wycheproof` is enabled
     let mut skipped = 0;
 
     for group in test_set.test_groups {
@@ -425,6 +426,7 @@ pub fn run_mldsa_wycheproof_sign_tests<MlDsaParamSet: SigAlgSignVariant>(
                 MlDsaParamSet::try_sign_with_ctx(&privkey, &msg, &ctx)
             };
 
+            #[cfg(feature = "skip_troublesome_wycheproof")]
             if test.comment == "private key with s1 vector out of range"
                 || test.comment == "private key with s2 vector out of range"
             {
