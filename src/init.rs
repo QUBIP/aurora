@@ -80,6 +80,12 @@ pub extern "C" fn OSSL_provider_init(
 #[named]
 pub unsafe extern "C" fn provider_teardown(vprovctx: *mut c_void) {
     trace!(target: log_target!(), "{}", "Called!");
+
+    if vprovctx.is_null() {
+        debug!(target: log_target!(), "Bailing out: called with a NULL pointer.");
+        return;
+    }
+
     let /* mut */ prov: Box<ProviderInstance> = unsafe { Box::from_raw(vprovctx.cast()) };
     let name = prov.name;
     trace!(target: log_target!(), "Teardown of \"{name}\"");

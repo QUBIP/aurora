@@ -436,10 +436,12 @@ pub(super) unsafe extern "C" fn new(vprovctx: *mut c_void) -> *mut c_void {
 #[named]
 pub(super) unsafe extern "C" fn free(vkey: *mut c_void) {
     trace!(target: log_target!(), "{}", "Called!");
-    let /* mut  */kp: Box<KeyPair> = unsafe { Box::from_raw(vkey.cast()) };
-    //todo!("Cleanse the private key data")
-    //todo!("Free the key data")
-    drop(kp);
+    if !vkey.is_null() {
+        let /* mut  */kp: Box<KeyPair> = unsafe { Box::from_raw(vkey.cast()) };
+        //todo!("Cleanse the private key data")
+        //todo!("Free the key data")
+        drop(kp);
+    }
 }
 
 #[named]
@@ -469,9 +471,11 @@ pub(super) unsafe extern "C" fn gen(
 #[named]
 pub(super) unsafe extern "C" fn gen_cleanup(vgenctx: *mut c_void) {
     trace!(target: log_target!(), "{}", "Called!");
-    let /* mut  */genctx: Box<GenCTX> = unsafe { Box::from_raw(vgenctx.cast()) };
-    //todo!("clean up and free the key object generation context genctx");
-    drop(genctx);
+    if !vgenctx.is_null() {
+        let /* mut  */genctx: Box<GenCTX> = unsafe { Box::from_raw(vgenctx.cast()) };
+        //todo!("clean up and free the key object generation context genctx");
+        drop(genctx);
+    }
 }
 
 struct GenCTX<'a> {
