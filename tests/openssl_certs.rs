@@ -97,9 +97,24 @@ pub trait TestParam {
         .expect("openssl failed");
         assert!(output.status.success());
 
+        // This only checks if the certificate chain is built up to a trusted
+        // certificate: it exercises decoding but does not actually call
+        // `verify()` on the self-signature
         let output =
             openssl::run_openssl_with_aurora(["verify", "-CAfile", str_cert_path, str_cert_path])
                 .expect("openssl failed");
+        assert!(output.status.success());
+
+        // We do it again, checking the self-signature as well to exercise the
+        // `verify()` codepath.
+        let output = openssl::run_openssl_with_aurora([
+            "verify",
+            "-check_ss_sig",
+            "-CAfile",
+            str_cert_path,
+            str_cert_path,
+        ])
+        .expect("openssl failed");
         assert!(output.status.success());
 
         assert!(dir.path().exists());
