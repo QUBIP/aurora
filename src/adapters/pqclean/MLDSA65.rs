@@ -42,7 +42,7 @@ use bindings::{OSSL_FUNC_signature_verify_init_fn, OSSL_FUNC_SIGNATURE_VERIFY_IN
 
 mod decoder_functions;
 mod encoder_functions;
-pub(super) mod keymgmt_functions;
+mod keymgmt_functions;
 
 #[path = "../common/signature.rs"]
 mod signature;
@@ -230,25 +230,21 @@ pub(super) const SIG_FUNCTIONS: &[OSSL_DISPATCH] = &[
         OSSL_FUNC_signature_freectx_fn,
         signature_functions::freectx
     ),
-    #[cfg(any())]
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_SIGN_INIT,
         OSSL_FUNC_signature_sign_init_fn,
         signature_functions::sign_init
     ),
-    #[cfg(any())]
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_SIGN,
         OSSL_FUNC_signature_sign_fn,
         signature_functions::sign
     ),
-    #[cfg(any())]
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_VERIFY_INIT,
         OSSL_FUNC_signature_verify_init_fn,
         signature_functions::verify_init
     ),
-    #[cfg(any())]
     dispatch_table_entry!(
         OSSL_FUNC_SIGNATURE_VERIFY,
         OSSL_FUNC_signature_verify_fn,
