@@ -151,7 +151,7 @@ pub(super) unsafe extern "C" fn decodeSPKI(
     trace!(target: log_target!(), "{}", "Called!");
 
     trace!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
-    if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
+    if selection != 0 && (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return STOP_DECODING_PROCESS;
     }
@@ -279,8 +279,7 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     trace!(target: log_target!(), "{}", "Called!");
 
     trace!(target: log_target!(), "Got selection in decode(): {:#b}", selection);
-    // TODO is this the right check to be making?
-    if (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
+    if selection != 0 && (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return STOP_DECODING_PROCESS;
     }
