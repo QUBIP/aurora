@@ -357,7 +357,7 @@ impl PrivateKey {
         debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
 
         let (privkey, opt_pubkey) = match decodedprivkey {
-            ASNPrivateKey::seed(bytes) => {
+            ASNPrivateKey(bytes) => {
                 let slice: &[u8] = &bytes;
                 let privkey = keymgmt_functions::PrivateKey::decode(slice)?;
 
@@ -373,8 +373,6 @@ impl PrivateKey {
                 };
                 (privkey, Some(pubkey))
             }
-            ASNPrivateKey::expandedKey(_expandedKey) => unimplemented!(),
-            ASNPrivateKey::both(_private_key_both) => unimplemented!(),
         };
         Ok((privkey, opt_pubkey))
     }
@@ -385,7 +383,7 @@ impl PrivateKey {
         use asn_definitions::PrivateKey as ASNPrivateKey;
 
         let raw_sk_bytes = self.encode();
-        let asn_sk = ASNPrivateKey::seed(raw_sk_bytes.into());
+        let asn_sk = ASNPrivateKey(raw_sk_bytes.into());
         let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
             Ok(v) => v,
             Err(e) => {
@@ -1087,10 +1085,10 @@ pub(super) unsafe extern "C" fn match_(
 }
 
 pub(super) mod asn_definitions {
-    pub use crate::asn_definitions::x509_ml_dsa_2025 as defns;
+    pub use crate::asn_definitions::x509_composite_ml_dsa_2025 as defns;
 
-    pub use defns::MLDSA65PrivateKey as PrivateKey;
-    pub use defns::MLDSA65PublicKey as PublicKey;
+    pub use defns::CompositeMLDSAPrivateKey as PrivateKey;
+    pub use defns::CompositeMLDSAPublicKey as PublicKey;
 }
 
 #[cfg(test)]

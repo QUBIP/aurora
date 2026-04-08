@@ -1,0 +1,18 @@
+-- Not actually from https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs/#name-asn1-module
+-- The textbook serialization format for composite ML-DSA keys is as raw bytes, not as ASN.1, but
+-- since it's a common pattern in the aurora adapters to use rasn-generated types for encoding and
+-- decoding, we have these for familiarity/uniformity.
+X509-Composite-ML-DSA-2025
+
+DEFINITIONS IMPLICIT TAGS ::= BEGIN
+
+EXPORTS ALL;
+
+-- Using a tag of 0 (instead of the default 4 for OCTET STRING) maintains compatibility
+-- with version 0.10 of aurora, which mistakenly used the ASN.1 structure for a seed-only pure
+-- ML-DSA private key (which has a tag of 0) to encode the bytes of a composite ML-DSA private key.
+Composite-ML-DSA-PrivateKey ::= [0] OCTET STRING
+
+Composite-ML-DSA-PublicKey ::= OCTET STRING
+
+END
