@@ -250,7 +250,7 @@ impl PrivateKey {
         let key_bytes = match decodedprivkey {
             ASNPrivateKey::seed(seed) => seed.to_vec(),
             ASNPrivateKey::expandedKey(expandedKey) => expandedKey.to_vec(),
-            ASNPrivateKey::both(_private_key_both) => unimplemented!(),
+            ASNPrivateKey::both(private_key_both) => private_key_both.seed.to_vec(),
         };
 
         let privkey = keymgmt_functions::PrivateKey::decode(&key_bytes)?;
