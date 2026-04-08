@@ -281,11 +281,11 @@ impl PrivateKey {
 
         let raw_sk_bytes = self.encode();
         let asn_sk = match self.private {
-            PrivateKeyData::Expanded(_) => ASNPrivateKey::seed(raw_sk_bytes.into()),
+            PrivateKeyData::Expanded(_) => ASNPrivateKey::expandedKey(raw_sk_bytes.into()),
             PrivateKeyData::Both {
                 seed: _,
                 expanded: _,
-            } => ASNPrivateKey::expandedKey(raw_sk_bytes.into()),
+            } => ASNPrivateKey::seed(raw_sk_bytes.into()),
         };
         let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
             Ok(v) => v,
