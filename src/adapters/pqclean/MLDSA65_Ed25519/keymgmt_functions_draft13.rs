@@ -414,8 +414,10 @@ impl PrivateKey {
                 };
                 (privkey, Some(pubkey))
             }
-            ASNPrivateKey::expandedKey(_expandedKey) => unimplemented!(),
-            ASNPrivateKey::both(_private_key_both) => unimplemented!(),
+            ASNPrivateKey::expandedKey(_) | ASNPrivateKey::both(_) => {
+                error!(target: log_target!(), "Unsupported private key encoding format");
+                return Err(anyhow!("Unsupported private key encoding format"));
+            }
         };
         Ok((privkey, opt_pubkey))
     }
