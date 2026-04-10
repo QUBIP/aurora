@@ -906,7 +906,11 @@ pub(super) unsafe extern "C" fn load(reference: *const c_void, reference_sz: usi
     const ERROR_RET: *mut c_void = std::ptr::null_mut();
     debug!(target: log_target!(), "{}", "Called!");
 
-    assert_eq!(reference_sz, std::mem::size_of::<KeyPair>());
+    if reference_sz != std::mem::size_of::<KeyPair>() {
+        error!(target: log_target!(), "reference_sz should equal size_of::<KeyPair>");
+        return ERROR_RET;
+    }
+
     if reference.is_null() {
         error!(target: log_target!(), "reference should not be NULL");
         unreachable!()
