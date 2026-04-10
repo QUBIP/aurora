@@ -1016,7 +1016,7 @@ mod tests {
         assert_eq!(SECRETKEY_LEN, 96);
         assert_eq!(SIGNATURE_LEN, 35664);
 
-        // NIST Seucurity levels: https://csrc.nist.gov/glossary/term/fips_140_security_level
+        // NIST Security levels: https://csrc.nist.gov/glossary/term/fips_140_security_level
         // Compare against https://datatracker.ietf.org/doc/html/draft-prabel-pquip-pqc-guidance-00#name-conventions-and-definitions
         assert_eq!(SECURITY_BITS, 192);
     }

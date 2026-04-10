@@ -138,7 +138,7 @@ where
         Err(_) => (),
     }
 
-    // If we reach here, the key was not in seed format, and we exepct an
+    // If we reach here, the key was not in seed format, and we expect an
     // expanded private key
 
     if VALIDATE_PRIVKEY_DECODING_VIA_FOREIGN_MODULE {
