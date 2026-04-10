@@ -216,27 +216,28 @@ impl PrivateKey {
 
         debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
 
-        let (privkey, opt_pubkey) = match decodedprivkey {
-            ASNPrivateKey::seed(_seed) => unimplemented!(),
-            ASNPrivateKey::expandedKey(expandedKey) => {
-                let slice: &[u8] = &expandedKey;
-                let privkey = keymgmt_functions::PrivateKey::decode(slice)?;
-
-                // We need to derive a public key from the private key, without a seed
-                let pubkey = match privkey.derive_public_key() {
-                    Some(k) => k,
-                    None => {
-                        error!(target: log_target!(), "Could not derive the public key from the inner private key");
-                        return Err(anyhow!(
-                            "Could not derive the public key from the inner private key"
-                        ));
-                    }
-                };
-                (privkey, Some(pubkey))
-            }
-            ASNPrivateKey::both(_private_key_both) => unimplemented!(),
+        let privkey_bytes: &[u8] = match decodedprivkey {
+            ASNPrivateKey::seed(ref seed) => &seed,
+            ASNPrivateKey::expandedKey(ref expandedKey) => &expandedKey,
+            // the expanded form would be computed from the seed anyway if we used the seed,
+            // so we may as well just grab the expanded form to begin with
+            ASNPrivateKey::both(ref private_key_both) => &private_key_both.expanded_key,
         };
-        Ok((privkey, opt_pubkey))
+
+        let privkey = keymgmt_functions::PrivateKey::decode(privkey_bytes)?;
+
+        // We need to derive a public key from the private key
+        let pubkey = match privkey.derive_public_key() {
+            Some(k) => k,
+            None => {
+                error!(target: log_target!(), "Could not derive the public key from the inner private key");
+                return Err(anyhow!(
+                    "Could not derive the public key from the inner private key"
+                ));
+            }
+        };
+
+        Ok((privkey, Some(pubkey)))
     }
 
     #[named]
