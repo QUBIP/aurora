@@ -73,6 +73,7 @@ pub(crate) use generate_all_tests;
 
 pub mod test_structs {
     #![allow(dead_code)]
+    #![allow(non_camel_case_types)]
 
     use super::*;
 
@@ -104,5 +105,15 @@ pub mod test_structs {
     pub struct SLHDSASHAKE256sTests();
     impl TestParam for SLHDSASHAKE256sTests {
         const ALG_NAME: &str = "slhdsa_shake_256s";
+    }
+
+    pub struct MLDSA44_Ed25519Tests();
+    impl TestParam for MLDSA44_Ed25519Tests {
+        const ALG_NAME: &str = "mldsa44_ed25519";
+    }
+
+    pub struct MLDSA65_Ed25519Tests();
+    impl TestParam for MLDSA65_Ed25519Tests {
+        const ALG_NAME: &str = "mldsa65_ed25519";
     }
 }
