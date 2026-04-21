@@ -472,7 +472,10 @@ impl DoesSelection for PrivateKeyInfo2PEM {
 use crate::adapters::common::transcoders::make_privkey_text_encoder;
 make_privkey_text_encoder!(
     PrivateKeyInfo2Text,
-    c"x.author='QUBIP',x.qubip.adapter='mldsa_native',output='text',structure='PrivateKeyInfo'"
+    concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",output=text,structure=PrivateKeyInfo"
+    )
 );
 
 pub(crate) struct SubjectPublicKeyInfo2DER();
