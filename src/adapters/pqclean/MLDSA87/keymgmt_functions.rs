@@ -219,12 +219,21 @@ impl PrivateKey {
         let privkey_bytes: &[u8] = match decodedprivkey {
             ASNPrivateKey::seed(ref seed) => &seed,
             ASNPrivateKey::expandedKey(ref expandedKey) => &expandedKey,
-            // the expanded form would be computed from the seed anyway if we used the seed,
-            // so we may as well just grab the expanded form to begin with
-            ASNPrivateKey::both(ref private_key_both) => &private_key_both.expanded_key,
+            ASNPrivateKey::both(ref private_key_both) => &private_key_both.seed,
         };
 
         let privkey = keymgmt_functions::PrivateKey::decode(privkey_bytes)?;
+
+        // If we had both seed and expanded in the decoded key, check that the expanded form
+        // produced by PrivateKey::decode matches the expected one.
+        if let ASNPrivateKey::both(ref private_key_both) = decodedprivkey {
+            if private_key_both.expanded_key != privkey.encode() {
+                error!(target: log_target!(), "Expanded form derived from seed did not match decoded expanded key");
+                return Err(anyhow!(
+                    "Expanded form derived from seed did not match decoded expanded key"
+                ));
+            }
+        }
 
         // We need to derive a public key from the private key
         let pubkey = match privkey.derive_public_key() {
