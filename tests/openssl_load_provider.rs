@@ -1,5 +1,15 @@
 #![deny(unexpected_cfgs)]
 
+//! ## ⚠️ FRAGILE TESTS
+//!
+//! These tests depend on the output of `openssl list`, whose format is
+//! not stable and not guaranteed by OpenSSL.
+//!
+//! As a result, they are only known to be valid for the current
+//! compatibility target: __unpatched__ OpenSSL 3.2.2.
+//!
+//! If the OpenSSL version changes, these tests may need to be updated.
+
 mod common;
 
 use common::run_openssl_with_aurora;
@@ -60,11 +70,14 @@ impl Algorithm {
             .map(|v| v.trim().to_string())
             .collect();
         let provider = provider.trim().to_string();
-        let props = props
-            .trim()
-            .split(",")
-            .map(|v| v.trim().to_string())
-            .collect();
+        let props = match props.is_empty() {
+            true => vec![],
+            false => props
+                .trim()
+                .split(",")
+                .map(|v| v.trim().to_string())
+                .collect(),
+        };
         Self {
             names,
             provider,
@@ -73,13 +86,13 @@ impl Algorithm {
     }
 }
 
-/// List all provided algorithms
+/// List all provided encoders/decoders
 #[test]
-#[ignore] // ignoring as the regex only catpures encoders/decoders
-fn openssl_aurora_list_all_algorithms() {
+fn openssl_aurora_list_all_transcoders() {
     let testctx = common::setup().expect("Failed to initialize test setup");
     let _ = testctx;
-    let output = run_openssl_with_aurora(["list", "-all-algorithms"]).expect("openssl failed");
+    let output =
+        run_openssl_with_aurora(["list", "-encoders", "-decoders"]).expect("openssl failed");
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // `(?m)` enables multiline mode, so `^` and `$` work per line
@@ -100,16 +113,18 @@ fn openssl_aurora_list_all_algorithms() {
         .collect();
 
     // Print all captured algorithms (for debug, optional)
-    println!("Captured algs: {:?}", algs);
+    println!("Captured algs: {algs:?}");
 
     assert_eq!(
         algs.is_empty(),
         false,
-        "aurora should provide at least one algorithm"
+        "aurora should provide at least one encoder/decoder"
     );
 
     // For each provided algorithm
     for alg in algs {
+        //println!("{alg:?}");
+
         // Assert that the algorithm has the expected x.author property
         assert!(
             alg.props.iter().any(|p| p == "x.author=QUBIP"),
@@ -119,6 +134,11 @@ fn openssl_aurora_list_all_algorithms() {
         assert!(
             alg.props.iter().any(|p| p.contains("aurora.adapter=")),
             "Provided algorithm should include the `aurora.adapter` property: {alg:?}"
+        );
+        // Assert that the algorithm has the expected provider= property
+        assert!(
+            alg.props.iter().any(|p| p == "provider=aurora"),
+            "Provided algorithm should include the proper `provider` property: {alg:?}"
         );
     }
 }
