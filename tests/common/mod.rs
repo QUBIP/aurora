@@ -1,3 +1,4 @@
+pub mod decode_tests;
 pub mod openssl;
 mod setup;
 
