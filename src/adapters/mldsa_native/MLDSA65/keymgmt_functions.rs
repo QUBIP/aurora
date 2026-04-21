@@ -264,12 +264,24 @@ impl PrivateKey {
         debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
 
         let key_bytes = match decodedprivkey {
-            ASNPrivateKey::seed(seed) => seed.to_vec(),
-            ASNPrivateKey::expandedKey(expandedKey) => expandedKey.to_vec(),
-            ASNPrivateKey::both(private_key_both) => private_key_both.seed.to_vec(),
+            ASNPrivateKey::seed(ref seed) => seed.to_vec(),
+            ASNPrivateKey::expandedKey(ref expandedKey) => expandedKey.to_vec(),
+            ASNPrivateKey::both(ref private_key_both) => private_key_both.seed.to_vec(),
         };
 
         let privkey = keymgmt_functions::PrivateKey::decode(&key_bytes)?;
+
+        // If we had both seed and expanded in the decoded key, check that the expanded form
+        // produced by PrivateKey::decode matches the expected one.
+        if let ASNPrivateKey::both(private_key_both) = decodedprivkey {
+            if private_key_both.expanded_key != privkey.encode() {
+                error!(target: log_target!(), "Expanded form derived from seed did not match decoded expanded key");
+                return Err(anyhow!(
+                    "Expanded form derived from seed did not match decoded expanded key"
+                ));
+            }
+        }
+
         let pubkey = privkey.derive_public_key();
 
         Ok((privkey, pubkey))
