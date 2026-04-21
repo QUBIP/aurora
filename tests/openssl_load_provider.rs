@@ -86,6 +86,47 @@ impl Algorithm {
     }
 }
 
+/// List all provided key managers
+#[test]
+fn openssl_aurora_list_all_key_managers() {
+    let testctx = common::setup().expect("Failed to initialize test setup");
+    let _ = testctx;
+    let output = run_openssl_with_aurora(["list", "-key-managers"]).expect("openssl failed");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // `(?m)` enables multiline mode, so `^` and `$` work per line
+    let algs_re = Regex::new(
+        r"(?m)^\s*IDs:\s*(?:\{\s*)?(?P<algnames>.+?)(?:\s*\})?\s@\s(?P<provider>.+)\s*$",
+    )
+    .expect("Invalid regex");
+    let algs: Vec<_> = algs_re
+        .captures_iter(&stdout)
+        .map(|caps| {
+            let names = caps["algnames"].to_string();
+            let provider = caps["provider"].to_string();
+            let props = String::new();
+            Algorithm::new(names, provider, props)
+        })
+        // Filter those provided by libaurora
+        .filter(|a| a.provider == "libaurora")
+        .collect();
+
+    // Print all captured algorithms (for debug, optional)
+    println!("Captured algs: {:?}", algs);
+
+    assert_eq!(
+        algs.is_empty(),
+        false,
+        "aurora should provide at least one key manager"
+    );
+
+    // For each provided algorithm
+    for alg in algs {
+        let _ = alg;
+        //println!("{alg:?}");
+    }
+}
+
 /// List all provided encoders/decoders
 #[test]
 fn openssl_aurora_list_all_transcoders() {
