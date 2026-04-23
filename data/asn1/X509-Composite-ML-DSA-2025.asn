@@ -11,7 +11,12 @@ EXPORTS ALL;
 -- Using a tag of 0 (instead of the default 4 for OCTET STRING) maintains compatibility
 -- with version 0.10 of aurora, which mistakenly used the ASN.1 structure for a seed-only pure
 -- ML-DSA private key (which has a tag of 0) to encode the bytes of a composite ML-DSA private key.
-Composite-ML-DSA-PrivateKey ::= [0] OCTET STRING
+-- The default-tagged encoding of an OCTET STRING was used in version 0.9 of aurora; this variant is
+-- now only used to maintain backwards compatibility in decoding keys generated with that version.
+Composite-ML-DSA-PrivateKey ::= CHOICE {
+    zeroTagged [0] OCTET STRING,
+    defaultTagged OCTET STRING
+    }
 
 Composite-ML-DSA-PublicKey ::= OCTET STRING
 

@@ -111,7 +111,7 @@ pub(crate) const OBJ_SIGID: ObjSigId = ObjSigId {
 };
 
 #[allow(unused_imports)]
-pub(crate) use keymgmt_functions::{PUBKEY_LEN, SECRETKEY_LEN, SIGNATURE_LEN};
+pub(crate) use keymgmt_functions::{PUBKEY_LEN, SECRETKEY_SEED_LEN, SIGNATURE_LEN};
 
 pub(crate) mod capabilities {
     pub(crate) mod tls_sigalg {

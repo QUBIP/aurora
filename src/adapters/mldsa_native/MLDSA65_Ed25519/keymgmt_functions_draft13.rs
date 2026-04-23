@@ -14,6 +14,7 @@ use forge::{
     ossl_callback::OSSLCallback,
     osslparams::*,
 };
+use mldsa_native_rs::AsBytes;
 use sha2::{Digest, Sha512};
 use std::{
     ffi::{c_int, c_void},
@@ -37,8 +38,16 @@ use super::signature::{
     Signature, SignatureBytes, SignatureEncoding, SignerWithCtx, VerifierWithCtx,
 };
 
+/// Length of the public key.
 pub(crate) const PUBKEY_LEN: usize = PublicKey::byte_len();
-pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len();
+
+/// Length of the secret key with the PQ part in seed-only form.
+pub(crate) const SECRETKEY_SEED_LEN: usize = PrivateKey::byte_len_seed();
+
+/// Length of the secret key with the PQ part in expanded form.
+pub(crate) const SECRETKEY_EXPANDED_LEN: usize = PrivateKey::byte_len_expanded();
+
+/// Length of the signature.
 pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 
 #[derive(PartialEq)]
@@ -260,46 +269,68 @@ impl VerifierWithCtx<Signature> for PublicKey {
 }
 
 impl PQPrivateKey {
-    pub fn new(seed: &MlDsaSeed) -> Result<Self, KMGMTError> {
-        PQPrivateKey::decode_seed(seed)
+    pub fn new(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        PQPrivateKey::decode(bytes)
     }
 }
 
 impl PrivateKey {
-    const PQ_PRIVATE_KEY_LEN: usize = PQPrivateKey::seed_bytes();
+    const PQ_PRIVATE_KEY_SEED_LEN: usize = PQPrivateKey::seed_bytes();
+    const PQ_PRIVATE_KEY_EXPANDED_LEN: usize = PQPrivateKey::byte_len();
     const T_PRIVATE_KEY_LEN: usize = trad_backend_module::SECRET_KEY_LENGTH;
     const PQ_SIGNATURE_LEN: usize = PublicKey::PQ_SIGNATURE_LEN;
     const T_SIGNATURE_LEN: usize = PublicKey::T_SIGNATURE_LEN;
 
+    /// Encode the key as a byte vector.
+    ///
+    /// The vector contains the PQ part of the key followed by the the
+    /// traditional part.
     pub fn encode(&self) -> Vec<u8> {
+        let mut bytes = self.encode_pq();
+        bytes.extend(self.encode_traditional());
+        bytes
+    }
+
+    /// Encode the PQ part of the key as a byte vector.
+    ///
+    /// This is the seed of the PQ key (`Self::PQ_PRIVATE_KEY_SEED_LEN` bytes)
+    /// if the seed is available, or the expanded form of the PQ key
+    /// (`Self::PQ_PRIVATE_KEY_EXPANDED_LEN` bytes) if it is not.
+    pub(crate) fn encode_pq(&self) -> Vec<u8> {
         let Self {
             pq_private_key,
+            trad_private_key: _,
+        } = self;
+        pq_private_key.seed().map_or_else(
+            |_| pq_private_key.expanded_key().as_bytes().to_vec(),
+            |bytes| bytes.to_vec(),
+        )
+    }
+
+    /// Encode the traditional part of the key as a byte vector.
+    ///
+    /// This is always `Self::T_PRIVATE_KEY_LEN` bytes long.
+    pub(crate) fn encode_traditional(&self) -> Vec<u8> {
+        let Self {
+            pq_private_key: _,
             trad_private_key,
         } = self;
-        let seed = pq_private_key.seed();
-        match seed {
-            Ok(bytes) => {
-                let mut bytes = bytes.to_vec();
-                bytes.extend(trad_private_key);
-                bytes
-            }
-            // As long as we create `PQPrivateKey`s with the `new` method, we're guaranteed that
-            // they have a seed stored in them. (This `encode` method itself can't be fallible,
-            // because the `make_privkey_text_encoder` macro in adapters::common::transcoders needs
-            // the return value to be usable as a `&[u8]`.
-            Err(_) => unreachable!(),
-        }
+        trad_private_key.to_vec()
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        if bytes.len() != Self::byte_len() {
+        if bytes.len() != Self::byte_len_seed() && bytes.len() != Self::byte_len_expanded() {
             anyhow::bail!(
                 "Cannot decode MLDSA65-Ed25519 private key of length {}",
                 bytes.len()
-            )
+            );
         }
+
+        // the first part of the key is always the PQ part
+        let split_index = bytes.len() - Self::T_PRIVATE_KEY_LEN;
+
         let (pq_bytes, trad_bytes) = bytes
-            .split_at_checked(Self::PQ_PRIVATE_KEY_LEN)
+            .split_at_checked(split_index)
             .ok_or_else(|| anyhow!("Unexpected length on decode"))?;
         let pq_private_key = PQPrivateKey::new(pq_bytes.try_into()?)?;
         let trad_private_key = trad_bytes
@@ -311,8 +342,14 @@ impl PrivateKey {
         })
     }
 
-    pub const fn byte_len() -> usize {
-        Self::PQ_PRIVATE_KEY_LEN + Self::T_PRIVATE_KEY_LEN
+    /// Byte length of the key when the PQ part is in seed form.
+    pub const fn byte_len_seed() -> usize {
+        Self::PQ_PRIVATE_KEY_SEED_LEN + Self::T_PRIVATE_KEY_LEN
+    }
+
+    /// Byte length of the key when the PQ part is in expanded form.
+    pub const fn byte_len_expanded() -> usize {
+        Self::PQ_PRIVATE_KEY_EXPANDED_LEN + Self::T_PRIVATE_KEY_LEN
     }
 
     pub const fn signature_bytes() -> usize {
@@ -356,25 +393,26 @@ impl PrivateKey {
 
         debug!(target: log_target!(), "Parsed private key material out of ASN.1 for decoding!");
 
-        let (privkey, opt_pubkey) = match decodedprivkey {
-            ASNPrivateKey(bytes) => {
-                let slice: &[u8] = &bytes;
-                let privkey = keymgmt_functions::PrivateKey::decode(slice)?;
-
-                // We need to derive a public key from the private key
-                let pubkey = match privkey.derive_public_key() {
-                    Some(k) => k,
-                    None => {
-                        error!(target: log_target!(), "Could not derive the public key from the inner private key");
-                        return Err(anyhow!(
-                            "Could not derive the public key from the inner private key"
-                        ));
-                    }
-                };
-                (privkey, Some(pubkey))
+        let bytes = match decodedprivkey {
+            ASNPrivateKey::zeroTagged(ref bytes) | ASNPrivateKey::defaultTagged(ref bytes) => {
+                bytes.to_vec()
             }
         };
-        Ok((privkey, opt_pubkey))
+
+        let privkey = keymgmt_functions::PrivateKey::decode(&bytes)?;
+
+        // We need to derive a public key from the private key
+        let pubkey = match privkey.derive_public_key() {
+            Some(k) => k,
+            None => {
+                error!(target: log_target!(), "Could not derive the public key from the inner private key");
+                return Err(anyhow!(
+                    "Could not derive the public key from the inner private key"
+                ));
+            }
+        };
+
+        Ok((privkey, Some(pubkey)))
     }
 
     #[named]
@@ -383,7 +421,7 @@ impl PrivateKey {
         use asn_definitions::PrivateKey as ASNPrivateKey;
 
         let raw_sk_bytes = self.encode();
-        let asn_sk = ASNPrivateKey(raw_sk_bytes.into());
+        let asn_sk = ASNPrivateKey::zeroTagged(raw_sk_bytes.into());
         let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
             Ok(v) => v,
             Err(e) => {
@@ -519,7 +557,7 @@ impl<'a> KeyPair<'a> {
         let prng = provctx.get_rng();
         let mut seed_buf = [0u8; PQPrivateKey::seed_bytes()];
         let pq_private_key = match prng.try_fill_bytes(&mut seed_buf) {
-            Ok(_) => PQPrivateKey::new(&seed_buf.into())?,
+            Ok(_) => PQPrivateKey::new(&seed_buf)?,
             Err(_) => anyhow::bail!("Unable to generate randomness for ML-DSA keygen"),
         };
 
@@ -1142,7 +1180,7 @@ mod tests {
 
         // Compare against https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13#name-maximum-key-and-signature-s
         assert_eq!(PUBKEY_LEN, 1984);
-        assert_eq!(SECRETKEY_LEN, 64);
+        assert_eq!(SECRETKEY_SEED_LEN, 64);
         assert_eq!(SIGNATURE_LEN, 3373);
 
         assert_eq!(SECURITY_BITS, 192);
