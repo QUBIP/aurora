@@ -400,6 +400,11 @@ pub(super) use encoder_functions::PubKeyStructureless2Text as ENCODER_PubKeyStru
 pub(super) use encoder_functions::SubjectPublicKeyInfo2DER as ENCODER_SubjectPublicKeyInfo2DER;
 pub(super) use encoder_functions::SubjectPublicKeyInfo2PEM as ENCODER_SubjectPublicKeyInfo2PEM;
 
+// These are exposed so we can use this module as the PQ backend in MLDSA44_Ed25519
+pub(super) use super::helpers::MlDsaSeed;
+pub(super) use keymgmt_functions::{PrivateKey, PublicKey};
+pub(super) use signature::{Signature, SignerWithCtx, VerifierWithCtx};
+
 #[cfg(test)]
 mod tests {
     use super::*;

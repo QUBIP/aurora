@@ -21,17 +21,11 @@ use std::{
     fmt::Debug,
 };
 
+use super::MLDSA65 as pq_backend_module;
 use ed25519_dalek as trad_backend_module;
-use pqcrypto_mldsa::mldsa65 as pq_backend_module;
 
 type PQPublicKey = pq_backend_module::PublicKey;
-
-use helpers::MlDsaSeed;
-#[derive(PartialEq)]
-pub struct PQPrivateKey {
-    seed: MlDsaSeed,
-    expanded: pq_backend_module::SecretKey,
-}
+type PQPrivateKey = pq_backend_module::PrivateKey;
 
 type TPublicKey = trad_backend_module::VerifyingKey;
 type TPrivateKey = trad_backend_module::SecretKey;
@@ -44,7 +38,7 @@ use super::signature::{
 };
 
 pub(crate) const PUBKEY_LEN: usize = PublicKey::byte_len();
-pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len();
+pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len_seed();
 pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 
 // The wrapped key from the pqcrypto crate has to be public, or else we can't access it to use it
@@ -71,9 +65,9 @@ impl core::fmt::Debug for PublicKey {
 }
 
 impl PublicKey {
-    const PQ_PUBLIC_KEY_LEN: usize = pq_backend_module::public_key_bytes();
+    const PQ_PUBLIC_KEY_LEN: usize = pq_backend_module::PUBKEY_LEN;
     const T_PUBLIC_KEY_LEN: usize = trad_backend_module::PUBLIC_KEY_LENGTH;
-    const PQ_SIGNATURE_LEN: usize = pq_backend_module::signature_bytes();
+    const PQ_SIGNATURE_LEN: usize = pq_backend_module::SIGNATURE_LEN;
     const T_SIGNATURE_LEN: usize = trad_backend_module::SIGNATURE_LENGTH;
 
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
@@ -92,16 +86,8 @@ impl PublicKey {
         let trad_bytes: &[u8; Self::T_PUBLIC_KEY_LEN] =
             trad_bytes.try_into().expect("slice has unexpected size");
 
-        let pq_public_key =
-            <pq_backend_module::PublicKey as pqcrypto_traits::sign::PublicKey>::from_bytes(
-                pq_bytes,
-            )
-            .map_err(|e| {
-                anyhow!(
-                    "pqcrypto_traits::sign::PublicKey::from_bytes (MLDSA65) returned {:?}",
-                    e
-                )
-            })?;
+        let pq_public_key = pq_backend_module::PublicKey::decode(pq_bytes)
+            .map_err(|e| anyhow!("PublicKey::from_bytes (MLDSA65) returned {:?}", e))?;
         let trad_public_key =
             trad_backend_module::VerifyingKey::from_bytes(trad_bytes).map_err(|e| {
                 anyhow!(
@@ -120,11 +106,7 @@ impl PublicKey {
             pq_public_key,
             trad_public_key,
         } = self;
-        let mut bytes =
-            <pq_backend_module::PublicKey as pqcrypto_traits::sign::PublicKey>::as_bytes(
-                pq_public_key,
-            )
-            .to_vec();
+        let mut bytes = pq_public_key.encode();
         bytes.extend(trad_public_key.as_bytes());
         bytes
     }
@@ -248,8 +230,7 @@ impl VerifierWithCtx<Signature> for PublicKey {
         M_prime.extend(msg_hash);
 
         // verify with ML-DSA
-        use pqcrypto_traits::sign::DetachedSignature;
-        let pq_sig = pq_backend_module::DetachedSignature::from_bytes(pq_sig).map_err(|e| {
+        let pq_sig = pq_backend_module::Signature::try_from(pq_sig).map_err(|e| {
             error!(target: log_target!(), "Error when verifying PQ signature: {e:?}");
             forge::crypto::signature::Error::from_source(
                 VerificationError::GenericVerificationError,
@@ -257,14 +238,12 @@ impl VerifierWithCtx<Signature> for PublicKey {
         })?;
         // the so-called `ctx` that gets passed to the ML-DSA verifier here is actually the Label,
         // not the ctx that was prepended to the message hash
-        pq_backend_module::verify_detached_signature_ctx(
-            &pq_sig,
-            M_prime.as_slice(),
-            LABEL,
+        pq_backend_module::VerifierWithCtx::verify_with_ctx(
             pq_public_key,
-        )
-        .map_err(map_PQError_into_VerificationError)
-        .map_err(forge::crypto::signature::Error::from_source)?;
+            M_prime.as_slice(),
+            &pq_sig,
+            LABEL,
+        )?;
 
         // verify with Ed25519
         let trad_sig = trad_backend_module::Signature::from_bytes(trad_sig);
@@ -301,42 +280,70 @@ fn map_PQError_into_VerificationError(
 }
 
 impl PQPrivateKey {
-    pub fn new(seed: &MlDsaSeed) -> Result<Self, KMGMTError> {
-        helpers::derive_mldsa_secret_key_from_seed(seed)
-            .map(|k| Self {
-                seed: *seed,
-                expanded: k,
-            })
-            .ok_or(anyhow!("Unable to decode private key"))
+    pub fn new(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        PQPrivateKey::decode(bytes)
     }
 }
 
 impl PrivateKey {
-    const PQ_PRIVATE_KEY_LEN: usize = helpers::ML_DSA_SEED_SIZE;
+    const PQ_PRIVATE_KEY_SEED_LEN: usize = PQPrivateKey::seed_bytes();
+    const PQ_PRIVATE_KEY_EXPANDED_LEN: usize = PQPrivateKey::byte_len();
     const T_PRIVATE_KEY_LEN: usize = trad_backend_module::SECRET_KEY_LENGTH;
     const PQ_SIGNATURE_LEN: usize = PublicKey::PQ_SIGNATURE_LEN;
     const T_SIGNATURE_LEN: usize = PublicKey::T_SIGNATURE_LEN;
 
+    /// Encode the key as a byte vector.
+    ///
+    /// The vector contains the PQ part of the key followed by the the
+    /// traditional part.
     pub fn encode(&self) -> Vec<u8> {
-        let Self {
-            pq_private_key,
-            trad_private_key,
-        } = self;
-        let mut bytes = pq_private_key.seed.to_vec();
-        bytes.extend(trad_private_key);
+        let mut bytes = self.encode_pq();
+        bytes.extend(self.encode_traditional());
         bytes
     }
 
+    /// Encode the PQ part of the key as a byte vector.
+    ///
+    /// This is the seed of the PQ key (`Self::PQ_PRIVATE_KEY_SEED_LEN` bytes)
+    /// if the seed is available, or the expanded form of the PQ key
+    /// (`Self::PQ_PRIVATE_KEY_EXPANDED_LEN` bytes) if it is not.
+    pub(crate) fn encode_pq(&self) -> Vec<u8> {
+        let Self {
+            pq_private_key,
+            trad_private_key: _,
+        } = self;
+        use pqcrypto_traits::sign::SecretKey;
+        pq_private_key.seed().map_or_else(
+            |_| pq_private_key.expanded_key().as_bytes().to_vec(),
+            |bytes| bytes.to_vec(),
+        )
+    }
+
+    /// Encode the traditional part of the key as a byte vector.
+    ///
+    /// This is always `Self::T_PRIVATE_KEY_LEN` bytes long.
+    pub(crate) fn encode_traditional(&self) -> Vec<u8> {
+        let Self {
+            pq_private_key: _,
+            trad_private_key,
+        } = self;
+        trad_private_key.to_vec()
+    }
+
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        if bytes.len() != Self::byte_len() {
+        if bytes.len() != Self::byte_len_seed() && bytes.len() != Self::byte_len_expanded() {
             anyhow::bail!(
                 "Cannot decode MLDSA65-Ed25519 private key of length {}",
                 bytes.len()
-            )
+            );
         }
+
+        // the first part of the key is always the PQ part
+        let split_index = bytes.len() - Self::T_PRIVATE_KEY_LEN;
+
         let (pq_bytes, trad_bytes) = bytes
-            .split_at_checked(Self::PQ_PRIVATE_KEY_LEN)
-            .ok_or_else(|| anyhow!("Unexpected lenght on decode"))?;
+            .split_at_checked(split_index)
+            .ok_or_else(|| anyhow!("Unexpected length on decode"))?;
         let pq_private_key = PQPrivateKey::new(pq_bytes.try_into()?)?;
         let trad_private_key = trad_bytes
             .try_into()
@@ -347,8 +354,14 @@ impl PrivateKey {
         })
     }
 
-    pub const fn byte_len() -> usize {
-        Self::PQ_PRIVATE_KEY_LEN + Self::T_PRIVATE_KEY_LEN
+    /// Byte length of the key when the PQ part is in seed form.
+    pub const fn byte_len_seed() -> usize {
+        Self::PQ_PRIVATE_KEY_SEED_LEN + Self::T_PRIVATE_KEY_LEN
+    }
+
+    /// Byte length of the key when the PQ part is in expanded form.
+    pub const fn byte_len_expanded() -> usize {
+        Self::PQ_PRIVATE_KEY_EXPANDED_LEN + Self::T_PRIVATE_KEY_LEN
     }
 
     pub const fn signature_bytes() -> usize {
@@ -356,7 +369,7 @@ impl PrivateKey {
     }
 
     fn derive_PQ_public_key(&self) -> Option<PQPublicKey> {
-        super::helpers::derive_mldsa_public_key(&self.pq_private_key.expanded)
+        self.pq_private_key.derive_public_key()
     }
 
     /// Derive a matching public key from this private key
@@ -481,14 +494,14 @@ impl SignerWithCtx<Signature> for PrivateKey {
         // the so-called `ctx` that gets passed to the ML-DSA signer here is actually the Label,
         // not the ctx that was prepended to the message hash
         let pq_signature =
-            pq_backend_module::detached_sign_ctx(&M_prime, LABEL, &pq_private_key.expanded);
+            pq_backend_module::SignerWithCtx::sign_with_ctx(pq_private_key, &M_prime, LABEL);
 
         // sign with Ed25519
         let trad_signature =
             trad_backend_module::SigningKey::from_bytes(trad_private_key).sign(&M_prime);
 
         // build the result
-        let mut signature = pq_signature.as_bytes().to_vec();
+        let mut signature = pq_signature.to_vec();
         signature.extend_from_slice(&trad_signature.to_bytes());
 
         Signature::try_from(signature.as_slice())
@@ -566,9 +579,9 @@ impl<'a> KeyPair<'a> {
         };
 
         // derive PQ public key from it
-        let pq_public_key = helpers::derive_mldsa_public_key(&pq_private_key.expanded).ok_or(
-            anyhow!("Unable to derive public ML-DSA key from private key"),
-        )?;
+        let pq_public_key = pq_private_key.derive_public_key().ok_or(anyhow!(
+            "Unable to derive public ML-DSA key from private key"
+        ))?;
 
         // generate traditional keypair
         let trad_keypair = trad_backend_module::SigningKey::generate(provctx.get_rng());

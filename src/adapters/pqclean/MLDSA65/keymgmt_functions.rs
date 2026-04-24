@@ -23,6 +23,7 @@ use pqcrypto_mldsa::mldsa65 as backend_module;
 use super::OurError as KMGMTError;
 type OurResult<T> = anyhow::Result<T, KMGMTError>;
 
+use super::helpers::MlDsaSeed;
 use super::signature::{
     Signature, SignatureBytes, SignatureEncoding, SignerWithCtx, VerifierWithCtx,
 };
@@ -37,7 +38,19 @@ pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 pub struct PublicKey(backend_module::PublicKey);
 
 #[derive(PartialEq)]
-pub struct PrivateKey(backend_module::SecretKey);
+pub struct PrivateKey {
+    private: PrivateKeyData,
+    public: backend_module::PublicKey,
+}
+
+#[derive(PartialEq)]
+pub enum PrivateKeyData {
+    Expanded(backend_module::SecretKey),
+    Both {
+        seed: MlDsaSeed,
+        expanded: backend_module::SecretKey,
+    },
+}
 
 impl core::fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -177,15 +190,69 @@ fn map_into_VerificationError(
 }
 
 impl PrivateKey {
-    pub fn encode(&self) -> Vec<u8> {
-        let Self(ref k) = self;
-        <backend_module::SecretKey as pqcrypto_traits::sign::SecretKey>::as_bytes(k).to_vec()
+    pub fn seed(&self) -> Result<MlDsaSeed, KMGMTError> {
+        match &self.private {
+            PrivateKeyData::Expanded(_) => Err(anyhow!("Key does not contain a seed")),
+            PrivateKeyData::Both { seed, expanded: _ } => Ok(*seed),
+        }
     }
 
+    pub fn expanded_key(&self) -> &backend_module::SecretKey {
+        match &self.private {
+            PrivateKeyData::Expanded(signing_key) => signing_key,
+            PrivateKeyData::Both { seed: _, expanded } => expanded,
+        }
+    }
+
+    /// Encode the private key as a vector of bytes.
+    ///
+    /// If the seed is available, only the seed is encoded. Otherwise, the
+    /// expanded form of the key is encoded.
+    pub fn encode(&self) -> Vec<u8> {
+        use pqcrypto_traits::sign::SecretKey;
+        match &self.private {
+            PrivateKeyData::Expanded(signing_key) => signing_key.as_bytes().to_vec(),
+            PrivateKeyData::Both { seed, expanded: _ } => seed.to_vec(),
+        }
+    }
+
+    /// Attempt to decode `bytes` as a private key.
+    ///
+    /// If the bytes represent a key in seed format, then the expanded form of
+    /// the private key is derived from it, as well as the public key, and all
+    /// are stored. If the bytes represent a key in expanded form, then the
+    /// public key is derived and stored with it (there is no way to recover the
+    /// seed).
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        super::helpers::decode_mldsa_secret_key(bytes)
-            .map(Self)
-            .ok_or(anyhow!("Unable to decode private key"))
+        let pkd = Self::decode_seed(bytes).or_else(|_| {
+            super::helpers::decode_mldsa_secret_key(bytes)
+                .map(PrivateKeyData::Expanded)
+                .ok_or(anyhow!("Unable to decode private key"))
+        })?;
+
+        let backend_key = match pkd {
+            PrivateKeyData::Both { seed: _, expanded } => expanded,
+            PrivateKeyData::Expanded(expanded) => expanded,
+        };
+
+        let public = super::helpers::derive_mldsa_public_key(&backend_key)
+            .ok_or(anyhow!("Unable to derive public key from private key"))?;
+
+        Ok(Self {
+            private: pkd,
+            public,
+        })
+    }
+
+    /// Attempt to decode `bytes` as a private key in seed format.
+    pub fn decode_seed(bytes: &[u8]) -> Result<PrivateKeyData, KMGMTError> {
+        let seed = TryInto::<&MlDsaSeed>::try_into(bytes)?;
+        let key =
+            super::helpers::decode_mldsa_secret_key(seed).map(|expanded| PrivateKeyData::Both {
+                seed: *seed,
+                expanded,
+            });
+        key.ok_or(anyhow!("Unable to decode key from seed"))
     }
 
     pub const fn byte_len() -> usize {
@@ -196,10 +263,14 @@ impl PrivateKey {
         backend_module::signature_bytes()
     }
 
+    pub const fn seed_bytes() -> usize {
+        super::helpers::ML_DSA_SEED_SIZE
+    }
+
     /// Derive a matching public key from this private key
+    // TODO return just `PublicKey` (requires refactoring in other files)
     pub fn derive_public_key(&self) -> Option<PublicKey> {
-        let pk = super::helpers::derive_mldsa_public_key(&self.0);
-        pk.map(|inner| PublicKey(inner))
+        Some(PublicKey(self.public.clone()))
     }
 
     #[named]
@@ -254,7 +325,13 @@ impl PrivateKey {
         use asn_definitions::PrivateKey as ASNPrivateKey;
 
         let raw_sk_bytes = self.encode();
-        let asn_sk = ASNPrivateKey::expandedKey(raw_sk_bytes.into());
+        let asn_sk = match self.private {
+            PrivateKeyData::Expanded(_) => ASNPrivateKey::expandedKey(raw_sk_bytes.into()),
+            PrivateKeyData::Both {
+                seed: _,
+                expanded: _,
+            } => ASNPrivateKey::seed(raw_sk_bytes.into()),
+        };
         let asn_sk_bytes = match rasn::der::encode(&asn_sk) {
             Ok(v) => v,
             Err(e) => {
@@ -277,7 +354,7 @@ impl SignerWithCtx<Signature> for PrivateKey {
     fn try_sign_with_ctx(&self, msg: &[u8], ctx: &[u8]) -> Result<Signature, signature::Error> {
         trace!(target: log_target!(), "Called");
 
-        let Self(ref sk) = self;
+        let sk = self.expanded_key();
 
         // validate ctx length
         // FIPS 204 specifies maximum ctx len is 255 bytes, so it should
@@ -358,8 +435,13 @@ impl<'a> KeyPair<'a> {
         // it can't find a randomness source or it can't allocate memory or something?
         let (pk, sk) = backend_module::keypair();
 
+        let sk = PrivateKey {
+            private: PrivateKeyData::Expanded(sk),
+            public: pk.clone(),
+        };
+
         Ok(KeyPair {
-            private: Some(PrivateKey(sk)),
+            private: Some(sk),
             public: Some(PublicKey(pk)),
             provctx,
         })
