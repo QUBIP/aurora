@@ -113,25 +113,25 @@ The current supported algorithms are summarized in the following tables.
 
 ### Digital Signatures
 
-| Algorithm            | Adapter    | PQ/T Hybrid                                                                   | [_IANA TLS SignatureScheme_][iana:tls:sigscheme] id            | OID                                                                    |
-| -------------------- | ---------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| _ML-DSA-44_          | pqclean    | ❌ Pure-PQC                                                                   | [`0x0904` (`2308`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.17`][nist:csor:algs]                            |
-| _ML-DSA-65_          | pqclean    | ❌ Pure-PQC                                                                   | [`0x0905` (`2309`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.18`][nist:csor:algs]                            |
-| _ML-DSA-87_          | pqclean    | ❌ Pure-PQC                                                                   | [`0x0906` (`2310`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.19`][nist:csor:algs]                            |
-| _SLH-DSA-SHAKE-128f_ | rustcrypto | ❎ Exempt                                                                     | [`0x0918` (`2328`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.27`][ID-lamps-x509-slhdsa-09:s3.7]              |
-| _SLH-DSA-SHAKE-192f_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091A` (`2330`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.29`][ID-lamps-x509-slhdsa-09:s3.7]              |
-| _SLH-DSA-SHAKE-256s_ | slhdsa_c   | ❎ Exempt                                                                     | [`0x091B` (`2331`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️         | [`2.16.840.1.101.3.4.3.30`][ID-lamps-x509-slhdsa-09:s3.7]              |
-| _ML-DSA-44_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@13`][ID-lamps-pq-composite-sigs-13] | [`0x090A` (`2314`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.39`][ID-lamps-pq-composite-sigs-13:params] |
-| _ML-DSA-65_ED25519_  | pqclean    | ✅ Composite [`ID-lamps-pq-composite-sigs@13`][ID-lamps-pq-composite-sigs-13] | [`0x090B` (`2315`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.48`][ID-lamps-pq-composite-sigs-13:params] |
+| Algorithm            | Adapter      | PQ/T Hybrid                                                                   | [_IANA TLS SignatureScheme_][iana:tls:sigscheme] id            | OID                                                               |
+| -------------------- | ------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| _ML-DSA-44_          | mldsa_native | ❌ Pure-PQC                                                                   | [`0x0904` (`2308`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.17`][nist:csor:algs]                       |
+| _ML-DSA-65_          | mldsa_native | ❌ Pure-PQC                                                                   | [`0x0905` (`2309`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.18`][nist:csor:algs]                       |
+| _ML-DSA-87_          | mldsa_native | ❌ Pure-PQC                                                                   | [`0x0906` (`2310`)][ID-tls-mldsa-01:sigscheme]                 | [`2.16.840.1.101.3.4.3.19`][nist:csor:algs]                       |
+| _SLH-DSA-SHAKE-128f_ | rustcrypto   | ❎ Exempt                                                                     | [`0x0918` (`2328`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️       | [`2.16.840.1.101.3.4.3.27`][RFC9909:s3.7]                         |
+| _SLH-DSA-SHAKE-192f_ | slhdsa_c     | ❎ Exempt                                                                     | [`0x091A` (`2330`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️       | [`2.16.840.1.101.3.4.3.29`][RFC9909:s3.7]                         |
+| _SLH-DSA-SHAKE-256s_ | slhdsa_c     | ❎ Exempt                                                                     | [`0x091B` (`2331`)][ID-reddy-tls-slhdsa-01:sigscheme] ⚠️       | [`2.16.840.1.101.3.4.3.30`][RFC9909:s3.7]                         |
+| _ML-DSA-44_ED25519_  | mldsa_native | ✅ Composite [`ID-lamps-pq-composite-sigs@19`][ID-lamps-pq-composite-sigs-19] | [`0x090A` (`2314`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.39`][ID-lamps-pq-composite-sigs-19:params]      |
+| _ML-DSA-65_ED25519_  | mldsa_native | ✅ Composite [`ID-lamps-pq-composite-sigs@19`][ID-lamps-pq-composite-sigs-19] | [`0x090B` (`2315`)][ID-reddy-tls-composite-mldsa-05:sigscheme] | [`1.3.6.1.5.5.7.6.48`][ID-lamps-pq-composite-sigs-19:params]      |
 
 [iana:tls:sigscheme]: https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-signaturescheme
 [ID-tls-mldsa-01:sigscheme]: https://datatracker.ietf.org/doc/html/draft-ietf-tls-mldsa-01#name-ml-dsa-signaturescheme-valu
 [ID-reddy-tls-slhdsa-01:sigscheme]: https://datatracker.ietf.org/doc/html/draft-reddy-tls-slhdsa-01#name-iana-considerations
-[ID-lamps-pq-composite-sigs-13]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs/13/
-[ID-lamps-pq-composite-sigs-13:params]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-13#name-algorithm-identifiers-and-p
+[ID-lamps-pq-composite-sigs-19]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs/19/
+[ID-lamps-pq-composite-sigs-19:params]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-pq-composite-sigs-19#name-algorithm-identifiers-and-p
 [ID-reddy-tls-composite-mldsa-05:sigscheme]: https://datatracker.ietf.org/doc/html/draft-reddy-tls-composite-mldsa-05#name-iana-considerations
 [nist:csor:algs]: https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
-[ID-lamps-x509-slhdsa-09:s3.7]: https://datatracker.ietf.org/doc/html/draft-ietf-lamps-x509-slhdsa-09#section-3-7
+[RFC9909:s3.7]: https://datatracker.ietf.org/doc/html/rfc9909#name-algorithm-identifiers
 
 > [!NOTE]
 > - The `ML-DSA-{44,65}_ED25519` algorithms also use `ed25519-dalek`
@@ -141,7 +141,7 @@ The current supported algorithms are summarized in the following tables.
 >   experimentation only.
 >   In QUBIP's Internet Browsing Pilot we avoid pure `ML-DSA`
 >   deployments in favor of
->   ["Composite `ML-DSA`"][ID-lamps-pq-composite-sigs-13]
+>   ["Composite `ML-DSA`"][ID-lamps-pq-composite-sigs-19]
 >   and consistently recommend this approach.
 > - Transition recommendations that mandate hybrids for the PQC
 >   transition usually mark `SLH-DSA` as explicitly exempt from the
