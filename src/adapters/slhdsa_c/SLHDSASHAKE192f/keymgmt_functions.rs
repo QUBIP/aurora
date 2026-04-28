@@ -156,6 +156,12 @@ impl PrivateKey {
         <InnerParamSet as backend_module::SignatureLen>::LEN::USIZE
     }
 
+    /// Retrieve a matching public key for this private key
+    pub fn derive_public_key(&self) -> Option<PublicKey> {
+        let inner_pk = self.0.verifying_key();
+        Some(PublicKey(inner_pk))
+    }
+
     #[named]
     pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, Option<PublicKey>)> {
         use asn_definitions::PrivateKey as ASNPrivateKey;

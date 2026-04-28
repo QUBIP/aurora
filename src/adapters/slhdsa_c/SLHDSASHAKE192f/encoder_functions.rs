@@ -174,9 +174,9 @@ impl Encoder for PrivateKeyInfo2DER {
 impl KeyPair<'_> {
     #[named]
     fn to_PrivateKeyInfoDER(&self, _encoderctx: &EncoderContext) -> OurResult<Vec<u8>> {
-        debug!(target: log_target!(), "{}", "Called!");
+        trace!(target: log_target!(), "{}", "Called!");
 
-        trace!(target: log_target!(), "Got keypair: {self:?}");
+        debug!(target: log_target!(), "Got keypair: {self:?}");
         if self.private.is_none() {
             error!(target: log_target!(), "Keypair does not contain a private key");
             return Err(anyhow!("Keypair does not contain a private key"));
@@ -186,6 +186,7 @@ impl KeyPair<'_> {
             return Err(anyhow!("Keypair does not contain a public key"));
         }
 
+        // unwrap() is safe here because we've already ensured self.private is not None
         let der_sk_bytes = match self.private.as_ref().unwrap().to_DER() {
             Ok(v) => v,
             Err(e) => {
@@ -209,14 +210,15 @@ impl KeyPair<'_> {
 
     #[named]
     fn to_SPKIDER(&self, _encoderctx: &EncoderContext) -> OurResult<Vec<u8>> {
-        debug!(target: log_target!(), "{}", "Called!");
+        trace!(target: log_target!(), "{}", "Called!");
 
-        trace!(target: log_target!(), "Got keypair: {self:?}");
+        debug!(target: log_target!(), "Got keypair: {self:?}");
         if self.public.is_none() {
             error!(target: log_target!(), "Keypair does not contain a public key");
             return Err(anyhow!("Keypair does not contain a public key"));
         }
 
+        // unwrap() is safe here because we've already ensured self.public is not None
         let der_pk_bytes = match self.public.as_ref().unwrap().to_DER() {
             Ok(v) => v,
             Err(e) => {
@@ -290,9 +292,9 @@ pub(super) unsafe extern "C" fn encodePrivateKeyInfo2DER(
 ) -> c_int {
     const SUCCESS: c_int = 1;
     const ERROR_RET: c_int = 0;
-    debug!(target: log_target!(), "{}", "Called!");
+    trace!(target: log_target!(), "{}", "Called!");
 
-    trace!(target: log_target!(), "Got selection: {selection:#b}");
+    debug!(target: log_target!(), "Got selection: {selection:#b}");
     if (selection & (OSSL_KEYMGMT_SELECT_PRIVATE_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
@@ -465,6 +467,16 @@ impl DoesSelection for PrivateKeyInfo2PEM {
 
 // We can use the same does_selection function as PrivateKeyInfo2DER, so there's no need to call
 // the make_does_selection_fn macro again.
+
+// generate the plain text encoder
+use crate::adapters::common::transcoders::make_privkey_text_encoder;
+make_privkey_text_encoder!(
+    PrivateKeyInfo2Text,
+    concat_cstr!(
+        super::PROPERTY_DEFINITION,
+        c",output=text,structure=PrivateKeyInfo"
+    )
+);
 
 pub(crate) struct SubjectPublicKeyInfo2DER();
 impl Encoder for SubjectPublicKeyInfo2DER {
@@ -687,9 +699,9 @@ pub(super) unsafe extern "C" fn encodeSPKI2PEM(
 ) -> c_int {
     const SUCCESS: c_int = 1;
     const ERROR_RET: c_int = 0;
-    debug!(target: log_target!(), "{}", "Called!");
+    trace!(target: log_target!(), "{}", "Called!");
 
-    trace!(target: log_target!(), "Got selection: {selection:#b}");
+    debug!(target: log_target!(), "Got selection: {selection:#b}");
     if (selection & (OSSL_KEYMGMT_SELECT_PUBLIC_KEY as c_int)) == 0 {
         error!(target: log_target!(), "Invalid selection: {selection:#?}");
         return ERROR_RET;
@@ -728,3 +740,10 @@ impl DoesSelection for SubjectPublicKeyInfo2PEM {
 
 // We can use the same does_selection function as SubjectPublicKeyInfo2DER, so there's no need to
 // call the make_does_selection_fn macro again.
+
+// generate the plain text encoder
+use crate::adapters::common::transcoders::make_pubkey_text_encoder;
+make_pubkey_text_encoder!(
+    PubKeyStructureless2Text,
+    concat_cstr!(super::PROPERTY_DEFINITION, c",output=text")
+);

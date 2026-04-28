@@ -21,7 +21,8 @@ use mldsa_native_rs as backend_module;
 use mldsa_native_rs::parameter_sets::ML_DSA_87 as ParamSet;
 use mldsa_native_rs::signature::Keypair;
 use mldsa_native_rs::{
-    AsBytes, ContextSigner, FromBytes, MlDsaSeed, SignatureLen, SigningKeyLen, VerifyingKeyLen,
+    AsBytes, ContextSigner, FromBytes, MlDsaSeed, SeedLen, SignatureLen, SigningKeyLen,
+    VerifyingKeyLen,
 };
 
 use super::OurError as KMGMTError;
@@ -166,6 +167,13 @@ impl VerifierWithCtx<Signature> for PublicKey {
 }
 
 impl PrivateKey {
+    pub fn seed(&self) -> Result<MlDsaSeed, KMGMTError> {
+        match &self.private {
+            PrivateKeyData::Expanded(_) => Err(anyhow!("Key does not contain a seed")),
+            PrivateKeyData::Both { seed, expanded: _ } => Ok(*seed),
+        }
+    }
+
     pub fn expanded_key(&self) -> &backend_module::SigningKey<ParamSet> {
         match &self.private {
             PrivateKeyData::Expanded(signing_key) => signing_key,
@@ -192,19 +200,9 @@ impl PrivateKey {
     /// public key is derived and stored with it (there is no way to recover the
     /// seed).
     pub fn decode(bytes: &[u8]) -> Result<Self, KMGMTError> {
-        // We don't want to short-circuit on the outer TryInto::<&MlDsaSeed>, because a failure
-        // there could just mean we have an expanded key instead of a seed. However, if this TryInto
-        // succeeds, then we expect that the bytes are a valid seed, and we do want to short-circuit
-        // if the backend module's keygen_from_seed fails.
-        if let Ok(seed) = TryInto::<&MlDsaSeed>::try_into(bytes) {
-            let key =
-                backend_module::keygen_from_seed::<ParamSet>(seed).map(|(sk, vk)| PrivateKey {
-                    private: PrivateKeyData::Both {
-                        seed: *seed,
-                        expanded: sk,
-                    },
-                    public: vk,
-                })?;
+        // We don't want to short-circuit if we fail here, because a failure here could just mean we
+        // have an expanded key instead of a seed. However, if this succeeds, then we're finished.
+        if let Ok(key) = Self::decode_seed(bytes) {
             return Ok(key);
         }
 
@@ -220,6 +218,20 @@ impl PrivateKey {
         Ok(key)
     }
 
+    /// Attempt to decode `bytes` as a private key in seed format.
+    pub fn decode_seed(bytes: &[u8]) -> Result<Self, KMGMTError> {
+        let seed = TryInto::<&MlDsaSeed>::try_into(bytes)?;
+        let key =
+            backend_module::keygen_from_seed::<ParamSet>(seed).map(|(sk, vk)| PrivateKey {
+                private: PrivateKeyData::Both {
+                    seed: *seed,
+                    expanded: sk,
+                },
+                public: vk,
+            })?;
+        Ok(key)
+    }
+
     pub const fn byte_len() -> usize {
         ParamSet::SIGNING_KEY_LEN
     }
@@ -228,13 +240,17 @@ impl PrivateKey {
         ParamSet::SIGNATURE_LEN
     }
 
+    pub const fn seed_bytes() -> usize {
+        ParamSet::SEED_LEN
+    }
+
     /// Retrieve the matching public key for this private key
-    pub fn derive_public_key(&self) -> PublicKey {
-        PublicKey(self.public.clone())
+    pub fn derive_public_key(&self) -> Option<PublicKey> {
+        Some(PublicKey(self.public.clone()))
     }
 
     #[named]
-    pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, PublicKey)> {
+    pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, Option<PublicKey>)> {
         use asn_definitions::PrivateKey as ASNPrivateKey;
 
         let decodedprivkey = match rasn::der::decode::<ASNPrivateKey>(sk_der_bytes) {
@@ -266,9 +282,18 @@ impl PrivateKey {
             }
         }
 
-        let pubkey = privkey.derive_public_key();
+        // We need to derive a public key from the private key
+        let pubkey = match privkey.derive_public_key() {
+            Some(k) => k,
+            None => {
+                error!(target: log_target!(), "Could not derive the public key from the inner private key");
+                return Err(anyhow!(
+                    "Could not derive the public key from the inner private key"
+                ));
+            }
+        };
 
-        Ok((privkey, pubkey))
+        Ok((privkey, Some(pubkey)))
     }
 
     #[named]

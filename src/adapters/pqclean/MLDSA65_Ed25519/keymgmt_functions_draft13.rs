@@ -37,8 +37,13 @@ use super::signature::{
     Signature, SignatureBytes, SignatureEncoding, SignerWithCtx, VerifierWithCtx,
 };
 
+/// Length of the public key.
 pub(crate) const PUBKEY_LEN: usize = PublicKey::byte_len();
+
+/// Length of the secret key with the PQ part in seed-only form.
 pub(crate) const SECRETKEY_LEN: usize = PrivateKey::byte_len_seed();
+
+/// Length of the signature.
 pub(crate) const SIGNATURE_LEN: usize = PrivateKey::signature_bytes();
 
 // The wrapped key from the pqcrypto crate has to be public, or else we can't access it to use it
@@ -780,10 +785,7 @@ struct GenCTX<'a> {
 
 impl<'a> GenCTX<'a> {
     fn new(provctx: &'a ProviderInstance, selection: Selection) -> Self {
-        Self {
-            provctx: provctx,
-            selection: selection,
-        }
+        Self { provctx, selection }
     }
 
     #[named]

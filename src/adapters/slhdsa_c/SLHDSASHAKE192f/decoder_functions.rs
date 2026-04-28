@@ -330,8 +330,15 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
         }
     };
     let (privkey, pubkey) = match pair {
-        (_sk, None) => {
-            unreachable!();
+        (sk, None) => {
+            let pk = match sk.derive_public_key() {
+                Some(pk) => pk,
+                None => {
+                    error!(target: log_target!(), "Failed to derive public key from secret key");
+                    return STOP_DECODING_PROCESS;
+                }
+            };
+            (sk, pk)
         }
         (sk, Some(pk)) => (sk, pk),
     };

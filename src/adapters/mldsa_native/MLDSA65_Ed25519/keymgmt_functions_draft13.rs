@@ -356,7 +356,7 @@ impl PrivateKey {
         Self::PQ_SIGNATURE_LEN + Self::T_SIGNATURE_LEN
     }
 
-    fn derive_PQ_public_key(&self) -> PQPublicKey {
+    fn derive_PQ_public_key(&self) -> Option<PQPublicKey> {
         self.pq_private_key.derive_public_key()
     }
 
@@ -369,7 +369,12 @@ impl PrivateKey {
         let t_sk = trad_backend_module::SigningKey::from_bytes(t_sk);
         let t_pk = t_sk.verifying_key();
 
-        let pq_pk = self.derive_PQ_public_key();
+        let pq_pk = match self.derive_PQ_public_key() {
+            Some(pk) => pk,
+            None => {
+                return None;
+            }
+        };
 
         let pk = PublicKey {
             pq_public_key: pq_pk,
@@ -562,7 +567,9 @@ impl<'a> KeyPair<'a> {
         };
 
         // derive PQ public key from it
-        let pq_public_key = pq_private_key.derive_public_key();
+        let pq_public_key = pq_private_key.derive_public_key().ok_or(anyhow!(
+            "Unable to derive public ML-DSA key from private key"
+        ))?;
 
         // generate traditional keypair
         let trad_keypair = trad_backend_module::SigningKey::generate(provctx.get_rng());

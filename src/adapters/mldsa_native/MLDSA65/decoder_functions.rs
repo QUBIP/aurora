@@ -322,12 +322,25 @@ pub(super) unsafe extern "C" fn decodePrivateKeyInfo(
     }
 
     let derprivkey = pki.private_key;
-    let (privkey, pubkey) = match keymgmt_functions::PrivateKey::from_DER(derprivkey) {
+    let pair = match keymgmt_functions::PrivateKey::from_DER(derprivkey) {
         Ok(pair) => pair,
         Err(e) => {
             error!(target: log_target!(), "Failed to decode private key: {e:?}");
             return STOP_DECODING_PROCESS;
         }
+    };
+    let (privkey, pubkey) = match pair {
+        (sk, None) => {
+            let pk = match sk.derive_public_key() {
+                Some(pk) => pk,
+                None => {
+                    error!(target: log_target!(), "Failed to derive public key from secret key");
+                    return STOP_DECODING_PROCESS;
+                }
+            };
+            (sk, pk)
+        }
+        (sk, Some(pk)) => (sk, pk),
     };
 
     let kp: Box<keymgmt_functions::KeyPair<'_>> =

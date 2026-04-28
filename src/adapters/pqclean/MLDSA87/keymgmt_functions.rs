@@ -268,7 +268,6 @@ impl PrivateKey {
     }
 
     /// Derive a matching public key from this private key
-    // TODO return just `PublicKey` (requires refactoring in other files)
     pub fn derive_public_key(&self) -> Option<PublicKey> {
         Some(PublicKey(self.public.clone()))
     }

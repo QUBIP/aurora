@@ -245,12 +245,12 @@ impl PrivateKey {
     }
 
     /// Retrieve the matching public key for this private key
-    pub fn derive_public_key(&self) -> PublicKey {
-        PublicKey(self.public.clone())
+    pub fn derive_public_key(&self) -> Option<PublicKey> {
+        Some(PublicKey(self.public.clone()))
     }
 
     #[named]
-    pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, PublicKey)> {
+    pub fn from_DER(sk_der_bytes: &[u8]) -> OurResult<(Self, Option<PublicKey>)> {
         use asn_definitions::PrivateKey as ASNPrivateKey;
 
         let decodedprivkey = match rasn::der::decode::<ASNPrivateKey>(sk_der_bytes) {
@@ -282,9 +282,18 @@ impl PrivateKey {
             }
         }
 
-        let pubkey = privkey.derive_public_key();
+        // We need to derive a public key from the private key
+        let pubkey = match privkey.derive_public_key() {
+            Some(k) => k,
+            None => {
+                error!(target: log_target!(), "Could not derive the public key from the inner private key");
+                return Err(anyhow!(
+                    "Could not derive the public key from the inner private key"
+                ));
+            }
+        };
 
-        Ok((privkey, pubkey))
+        Ok((privkey, Some(pubkey)))
     }
 
     #[named]
