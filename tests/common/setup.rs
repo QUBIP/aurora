@@ -44,6 +44,7 @@ fn try_init_logging() -> Result<(), OurError> {
 }
 
 mod build {
+    use super::env::env_bool;
     use std::process::Command;
     use std::sync::Once;
 
@@ -54,7 +55,11 @@ mod build {
             let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
 
             let mut cmd = Command::new(cargo);
-            cmd.arg("build").arg("--quiet");
+            cmd.arg("build");
+
+            if env_bool("TEST_QUIET_BUILD") != Some(false) {
+                cmd.arg("--quiet");
+            }
 
             match profile {
                 "debug" => (),
@@ -69,6 +74,18 @@ mod build {
                     panic!("Unknown profile: {profile:?}")
                 }
             }
+
+            if env_bool("TEST_NO_DEFAULT_FEATURES") == Some(true) {
+                cmd.arg("--no-default-features");
+            }
+            if let Ok(features) = std::env::var("TEST_FEATURES") {
+                let features = features.trim();
+                if !features.is_empty() {
+                    cmd.arg("--features").arg(features);
+                }
+            }
+
+            log::debug!("Cargo build command before integration tests:\t`{cmd:?}`");
 
             let status = cmd.status().expect("Failed to build cdylib");
 
@@ -118,5 +135,17 @@ mod env {
             "Set {v:?} env variable to {:?}",
             std::env::var_os(v).unwrap()
         )
+    }
+
+    pub(super) fn env_bool(name: &str) -> Option<bool> {
+        match std::env::var(name) {
+            Ok(v) => match v.trim().to_ascii_lowercase().as_str() {
+                "1" | "true" | "yes" | "on" => Some(true),
+                "0" | "false" | "no" | "off" | "" => Some(false),
+                other => panic!("invalid boolean value for {name}: {other:?}"),
+            },
+            Err(std::env::VarError::NotPresent) => None,
+            Err(e) => panic!("invalid env var {name}: {e}"),
+        }
     }
 }
