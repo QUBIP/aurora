@@ -26,23 +26,26 @@ fn compile_with_rasn() -> Result<(), Box<dyn Error>> {
     use std::env;
     use std::path::PathBuf;
 
+    let asn_files = [
+        "data/asn1/X509-ML-DSA-2025.asn",
+        "data/asn1/X509-Composite-ML-DSA-2025.asn",
+        "data/asn1/X509-SLH-DSA-Module-2024.asn",
+    ];
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let out_file = out_path.join("rasn-generated.rs");
+
+    for path in &asn_files {
+        println!("cargo:rerun-if-changed={path}");
+    }
 
     eprintln!("rasn-compiler output to be written at {out_file:?}");
 
     // Initialize the compiler with the rust/rasn backend.
-    // To use the typescript backend, initialize the compiler using
-    // `Compiler::<TypescriptBackend, _>::new()`
     match Compiler::<RasnBackend, _>::new()
         // add a single ASN1 source file
-        .add_asn_by_path(PathBuf::from("data/asn1/X509-ML-DSA-2025.asn"))
-        .add_asn_by_path(PathBuf::from("data/asn1/X509-Composite-ML-DSA-2025.asn"))
-        .add_asn_by_path(PathBuf::from("data/asn1/X509-SLH-DSA-Module-2024.asn"))
+        //.add_asn_by_path(PathBuf::from("data/asn1/X509-ML-DSA-2025.asn"))
         // add several ASN1 source files
-        //.add_asn_sources_by_path(
-        //    vec![PathBuf::from("spec_2.asn"), PathBuf::from("spec_3.asn")].iter(),
-        //)
+        .add_asn_sources_by_path(asn_files.iter())
         // set an output path for the generated rust code
         .set_output_path(out_file)
         // you may also compile literal ASN1 snippets
