@@ -264,8 +264,8 @@ funded by the European Union under the Horizon Europe framework programme
 [crate-link]: https://crates.io/crates/qubip_aurora
 [docs-image]: https://docs.rs/qubip_aurora/badge.svg
 [docs-link]: https://docs.rs/qubip_aurora/
-[build-image]: https://img.shields.io/badge/build-not_automated_yet-red "not automated yet"
-[build-link]: # "not automated yet"
+[build-image]: https://github.com/QUBIP/aurora/actions/workflows/rust-tests.yml/badge.svg
+[build-link]: https://github.com/QUBIP/aurora/actions/workflows/rust-tests.yml
 [license-image]: https://img.shields.io/badge/license-Apache2.0-blue.svg
 [rustc-image]: https://img.shields.io/badge/rustc-1.85+-blue.svg
 [//]: # "links"
