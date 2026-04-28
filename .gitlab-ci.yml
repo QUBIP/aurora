@@ -29,6 +29,38 @@ test-code:
     #- cargo install cargo-tarpaulin
     #- cargo tarpaulin --ignore-tests
 
+test-code-pqclean:
+  stage: test
+  script:
+    #- CARGO_INSTALL_ROOT=/ cargo install cargo-nextest --version 0.9.100 --locked
+    - CARGO_INSTALL_ROOT=/ cargo install jaq
+    - QUERY='.features.default - ["default_adapters"] + .features.default_adapters - ["mldsa_native_adapter"] + ["pqclean_adapter"] | join(",")'
+    - TEST_FEATURES="$(jaq -r "$QUERY" Cargo.toml)"
+    - echo "TEST_FEATURES=\"${TEST_FEATURES}\"" >&2
+    # We must set TEST_NO_DEFAULT_FEATURES and TEST_FEATURES as inherited
+    # environment variables when running `cargo test`.
+    # Without this, the cdylib may be built with a different feature set than
+    # the one used for the tests themselves.
+    #
+    # Integration tests (the ones in `/tests/`) use a custom setup that invokes
+    # `cargo build` at the beginning of their execution to ensure the aurora
+    # cdylib is up-to-date.
+    #
+    # However, Cargo does not propagate the CLI flags of `cargo test` (such as
+    # `--no-default-features` and `--features=...`) to subprocesses.
+    # As a result, when the test binaries run and their `setup()` executes,
+    # this feature configuration is no longer visible.
+    # Consequently, the `cargo build` invoked from within the integration tests
+    # would run with default features enabled unless we explicitly forward the
+    # desired configuration via environment variables.
+    #
+    # These environment variables MUST be kept in sync with the `cargo test`
+    # CLI arguments.
+    # Since Cargo does not propagate feature flags to subprocesses, this manual
+    # forwarding is required to ensure the inner `cargo build` uses the same
+    # feature configuration.
+    - TEST_NO_DEFAULT_FEATURES=1 TEST_FEATURES="$TEST_FEATURES" cargo test --no-fail-fast --no-default-features --features="${TEST_FEATURES}"
+
 test-doc:
   stage: test
   script:
